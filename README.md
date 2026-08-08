@@ -9,13 +9,13 @@ This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Eng
 * `video` - This folder contains a video.md file with links to videos demonstrating the vehicle in operation.
 * `schemes` - This folder contains schematic diagrams to illustrate ...
 * `src` - This folder contains the control software code for all components programmed for participation in the competition.
-* `models` - ...
+* `models` - This folder contains all the 3D model files used to design and build robot.
 * `other` - ...
-* `LICENSE` - ...
-* `README` - ...
+* `LICENSE` - This file is the license and terms of use for the materials included in our project.
+* `README` - This file provides an overview of our team and robot, including the key details of or development process.
   
 ### README's Content
-* [Our team](#our-team)
+* [Our Team](#our-team)
 * [Our Robot](#our-robot)
 * [Mobility and Mechanical Design](#mobility-and-mechanical-design)
 * [Power and Sensor Architecture](#power-and-sensor-architecture)
@@ -25,14 +25,19 @@ ___
 # Our Team
 We are YBR, a team from the Science–Mathematics English Program at Yothinburana School, Thailand. Our team consists of three students: Chanakarn Yimsakul, Peradon Nimsongprasert, and Thanphisit Sakulvitulthai, with our mentor, Punnapon Tanasnitikul. Brought together by our interest in robotics, we enjoy learning, solving problems, and turning our ideas into working solutions through every competition. 
 
-![Image](image.jpg)
+<table>
+  <tr>
+    <td><img src="image1.jpg" alt="Image 1" width="200"/></td>
+    <td><img src="image2.jpg" alt="Image 2" width="200"/></td>
+  </tr>
+</table>
 
 ### 1. Peradon Nimsongprasert
-   - Role
+   - Role:
 ### 2. Chanakarn Yimsakul
-   - Role
+   - Role:
 ### 3. Thanphisit Sakulvitulthai
-   - Role
+   - Role:
 ___
 
 # Our Robot
@@ -52,14 +57,45 @@ Meet [Robot Name], our compact yet powerful robot, built to take on every challe
   </tr>
 </table>
 
-* Performance Video
+### Performance Video
+  - Challenge 1: [Open Challenge round](https://www.example.com)
+  - Challenge 2: [Obstacle Challenge round](https://www.example.com)
 
 ___
 
 # Mobility and Mechanical Design
 
 ## Robot Design
+
+### Overview
 info------
+
+[All 3D-printable models used for our robot can be found here](https://github.com/chankrrn/WRO-FE-YBR/tree/ddf69e221b28388c8bd3810408439c530f182edc/models)
+___
+
+## Component
+
+### Main Base
+info ------
+### Supporting Base 1
+info ------
+### Supporting Base 2 (Uno Base)
+info ------
+### Supporting Base 3 (Raspberry Pi Base)
+info ------
+### Gear Adapter
+info ------
+### Motor Rack
+info ------
+### Bearing Mount
+info ------
+### Steering Mount
+info ------
+### Servo Bracket
+info ------
+### Camera Plate
+info ------
+
 ___
 
 # Power and Sensor Architecture
@@ -68,4 +104,8 @@ ___
 
 # Software Architecture and Obstacle Management
 info------
+
+# Conclusion and Result
+summarize + future dev
+
 
