@@ -60,6 +60,7 @@ void setup() {
   serialBuf.reserve(32);
 
   Serial.println("READY");
+  StartButton();
 }
 
 void motor_degree(float angle) {
@@ -146,6 +147,15 @@ void readSerialCommands() {
       if (serialBuf.length() > 40) serialBuf = "";
     }
   }
+}
+
+void StartButton(){
+  while (analogRead(0) > 500){
+    delay(10);
+  }
+  delay(800);
+  Serial.println("Start");
+
 }
 
 void loop() {
