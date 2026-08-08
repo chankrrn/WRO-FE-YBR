@@ -4,13 +4,15 @@ This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Eng
 # Content
 
 ### File's Content
-* `t-photos` -
-* `v-photos` -
-* `video` -
-* `schemes` -
-* `src` -
-* `models` -
-* `other` -
+* `t-photos` - This folder contains photos of our team.
+* `v-photos` - This folder contains six photos of the robot, showing it from all sides, as well as the top and bottom.
+* `video` - This folder contains a video.md file with links to videos demonstrating the vehicle in operation.
+* `schemes` - This folder contains schematic diagrams to illustrate ...
+* `src` - This folder contains the control software code for all components programmed for participation in the competition.
+* `models` - ...
+* `other` - ...
+* `LICENSE` - ...
+* `README` - ...
   
 ### README's Content
 * [Our team](#our-team)
