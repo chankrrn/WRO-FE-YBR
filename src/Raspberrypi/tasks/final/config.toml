@@ -1,0 +1,145 @@
+# =============================================================================
+# Final round - three laps with red/green pillars.
+#
+# Same keys as the qualification config (anything missing falls back to
+# DEFAULTS in tasks/path_task.py), plus the [blocks] section. Speeds are lower
+# across the board because the line moves sideways here and the robot has less
+# room to recover from a late correction.
+# =============================================================================
+
+[laps]
+goal = 3
+
+[speed]
+base = 55
+corner = 50
+lost = 50
+minimum = 50
+
+[path]
+resolution_mm = 20.0
+
+# Gap from the outer wall to the straights (None/unset centers the loop in
+# the corridor: 500mm to the wall, 500mm to the centre block). Lower this to
+# pull the line closer to the wall; raise it to pull it closer to the block.
+wall_margin_mm = 484.0
+
+[pursuit]
+wheelbase_mm = 165.0
+
+# Shorter than qualification: the line moves sideways around each pillar, and a
+# long lookahead cuts the corner off that move and clips the block. Too short
+# and the robot weaves - raise it until it stops, then stop.
+lookahead_base_mm = 400.0
+lookahead_per_speed_mm = 2.5
+lookahead_min_mm = 50.0
+lookahead_max_mm = 300.0
+
+# Inside a bend the lookahead is additionally capped at this fraction of the
+# bend's radius, which is what stops the robot cutting the apex and then
+# running wide correcting. Lower it if it still cuts; raise it if it weaves.
+# Measured on the sim: 0.9 -> 2.1cm corner error, 0.7 -> 1.2cm, off -> 4.2cm.
+corner_lookahead_fraction = 0.60
+
+# Measured from a normal driven lap (SteeringCalibrator, which fits this from
+# ordinary cornering rather than a raw test_steering.py arc - see FutureE
+# discussion: the raw arcs shook the mast enough to corrupt the lidar pose
+# mid-turn). Reported max_road_wheel_deg = 48.5 (robot turns 21% MORE than
+# 40.0 assumed); the calibrator also reads 4-9% low by design, so rounded up
+# from 48.5 rather than used as-is.
+max_road_wheel_deg = 56.0
+max_steer_command = 60.0
+rear_axle_offset_mm = 0.0
+
+# Measured with test_steering.py --lag: true response time is ~0.35s to 63%,
+# more than double what's safe to compensate for (see the tool's own cap at
+# 0.15s - over-predicting overshoots worse than not predicting at all). The
+# gap between 0.35s real and 0.15s compensated is why speed.corner is cut
+# below, rather than raising this further.
+lag_compensation_s = 0.15
+
+[blocks]
+# ---------------------------------------------------------------------------
+# Reset to values reasoned from the field's actual geometry (see FieldMap:
+# outer wall +/-1500mm, centre block +/-500mm -> a 1000mm-wide corridor, i.e.
+# 500mm from the centreline to EITHER the wall or the block), rather than
+# wherever earlier trial-and-error testing had pushed them. FinalTask now
+# checks these against each other at startup (_warn_if_dodge_wont_fit) and
+# prints a WARNING if they do not geometrically fit together, so an
+# unworkable combination shows up in the console instead of as a mystery
+# silent-clamp crash on the mat.
+# ---------------------------------------------------------------------------
+
+# Gap between the robot's BODY and the pillar's near face as it goes past.
+clearance_mm = 120.0
+
+# Half the robot's own width (centerline to its widest point - wheels,
+# mudguards, whatever sticks out furthest). This is a MEASUREMENT, not a
+# tuning knob - kept at its last real value rather than reset, but verify it
+# with a ruler if unsure. Pure pursuit steers the centerline, so without this
+# the robot's actual body comes clearance_mm MINUS this value from the
+# pillar, not clearance_mm.
+robot_half_width_mm = 160.0
+
+# Independent extra padding per colour, on top of clearance_mm. Keep this
+# small: clearance_mm(90) + robot_half_width_mm(150) + this + 25 must stay
+# under what wall_clearance_mm leaves (290mm right now) or it gets silently
+# clamped short - a value here bigger than ~25 was doing exactly that to
+# RED's dodge. If RED still needs padding after retesting, raise
+# wall_clearance_mm's room (lower it) rather than pushing this past the fit.
+red_extra_clearance_mm = 110.0
+green_extra_clearance_mm = 0.0
+
+# How far before a pillar the line starts easing across.
+approach_mm = 570.0
+
+# How far past a pillar to keep the offset (easing back out, not holding
+# then snapping - see _smoothstep in task.py) so the tail of the robot
+# clears it before returning to the line.
+past_mm = 500.0
+
+# Real gap from the robot's BODY to the wall/centre block, never mind how
+# large clearance_mm's dodge wants to be. The true wall's position is exactly
+# known field geometry (no detection uncertainty, unlike a pillar), so this
+# can run tighter than clearance_mm - but not 0; pose tracking still has
+# noise.
+wall_clearance_mm = 25.0
+
+[steer]
+# How fast the steering command may move, in command units per second. This is
+# a RATE LIMIT, not a filter: it does nothing until the contro35ller asks the
+# servo to move faster than this, so ordinary cornering is untouched and only
+# the sharp snaps are turned into sweeps. Those snaps are what shake the mast
+# and blur the camera frame.
+#
+# Measured on the sim (2 laps, this config). "peak" is how fast the servo was
+# actually driven; the tracking cost stays flat until the limit starts eating
+# real corrections:
+#
+#     unlimited   peak 694 u/s   off-line rms 0.83cm
+#     135         peak 135 u/s   off-line rms 0.81cm
+#      90         peak  90 u/s   off-line rms 0.82cm
+#      60         peak  60 u/s   off-line rms 0.82cm     <- 11x calmer, free
+#      45         peak  45 u/s   off-line rms 1.65cm     <- starts to cost
+#      30                        off-line rms 19.9cm, fails to finish
+#wall_
+# So drop it to 60 if the camera is still shaking; below ~50 the robot starts
+# losing the line. Leave unset for 3 x max_steer_command.
+# max_rate_units_s = 60.0
+
+[safety]
+min_pose_confidence = 0.35
+lost_timeout_s = 4.0
+# Lowered from qualification's defaults (450/220) for this round specifically:
+# a deliberate pillar pass targets ~clearance_mm (120mm) of real body gap, so
+# a 220mm front_stop_mm treated every planned dodge as an emergency and
+# stopped-and-reversed on nearly every pillar - see the FutureE discussion.
+# Comfortably below clearance_mm so a correctly-executed pass never trips it,
+# but still catches a pass that is actually going wrong before contact.
+front_slow_mm = 220.0
+front_stop_mm = 150.0
+front_sector_deg = 25.0
+
+[startup]
+localize_timeout_s = 8.0
+mm_per_s_at_full = 700.0
