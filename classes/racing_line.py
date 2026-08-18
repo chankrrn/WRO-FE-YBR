@@ -4,7 +4,7 @@ block and the outer wall.
 
     +-----------------------------+
     |    ,-------------------.    |   straights sit `wall_margin_mm` off the
-    |   /                     \\   |   outer wall, corners are quarter circles
+    |   /                     \\  |   outer wall, corners are quarter circles
     |  |     +-----------+     |  |   of `corner_radius_mm`
     |  |     |  no-go    |     |  |
     |  |     +-----------+     |  |
