@@ -10,7 +10,7 @@ This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Eng
 * `schemes` - This folder contains schematic diagrams to illustrate ...
 * `src` - This folder contains the control software code for all components programmed for participation in the competition.
 * `models` - This folder contains all the 3D model files used to design and build robot.
-* `other` - ...
+* `other` - This folder contains additional files and resources related to our robot.
 * `LICENSE` - This file is the license and terms of use for the materials included in our project.
 * `README` - This file provides an overview of our team and robot, including the key details of or development process.
 
@@ -70,7 +70,11 @@ ___
 ## Robot Design
 
 ### Overview
-info------
+// Add video animation expplain everything about the robot and how they work
+
+// Or add vdo explain all the component of the robot and find somewhere new to put the vdo above
+
+[Here is a preview of our robot's 3D model](https://skfb.ly/pMQIR)
 
 [All 3D-printable models used for our robot can be found here](https://github.com/chankrrn/WRO-FE-YBR/tree/ddf69e221b28388c8bd3810408439c530f182edc/models)
 ___
@@ -78,23 +82,34 @@ ___
 ## Component
 
 ### Main Base
+// Add 3d model file of the component
+
 info ------
+
 ### Supporting Base 1
 info ------
+
 ### Supporting Base 2 (Uno Base)
 info ------
+
 ### Supporting Base 3 (Raspberry Pi Base)
 info ------
+
 ### Gear Adapter
 info ------
+
 ### Motor Rack
 info ------
+
 ### Bearing Mount
 info ------
+
 ### Steering Mount
 info ------
+
 ### Servo Bracket
 info ------
+
 ### Camera Plate
 info ------
 
@@ -102,8 +117,12 @@ ___
 
 # Power and Sensor Architecture
 
+___
+
 # Software Architecture and Obstacle Management
 info------
+
+___
 
 # Conclusion and Result
 summarize + future dev
