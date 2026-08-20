@@ -9,7 +9,7 @@ This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Eng
 * `video` - This folder contains a video.md file with links to videos demonstrating the vehicle in operation.
 * `schemes` - This folder contains schematic diagrams to illustrate ...
 * `src` - This folder contains the control software code for all components programmed for participation in the competition.
-* `models` - This folder contains all the 3D model files used to design and build robot.
+* `models` - This folder contains all the 3D model files used to design and build robot. //change to mech
 * `other` - This folder contains additional files and resources related to our robot.
 * `LICENSE.md` - This file is the license and terms of use for the materials included in our project.
 * `README.md` - This file provides an overview of our team and robot, including the key details of or development process.
@@ -86,10 +86,10 @@ ___
   </tr>
 </table>
 
-- [All 3D-printable models used for our robot can be found here](https://github.com/chankrrn/WRO-FE-YBR/tree/ddf69e221b28388c8bd3810408439c530f182edc/models)
-___
+- [All 3D-printable models used for our robot can be found here](mech/models)
 
 ## Component
+[Details of Each Component](https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/mech_README.md)
 
 // components' pic (summarize)
 ___
