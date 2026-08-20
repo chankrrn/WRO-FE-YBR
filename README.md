@@ -4,15 +4,15 @@ This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Eng
 # Content
 
 ### File's Content
-* `t-photos` - This folder contains photos of our team.
-* `v-photos` - This folder contains six photos of the robot, showing it from all sides, as well as the top and bottom.
+* `team-photos` - This folder contains photos of our team.
+* `robot-photos` - This folder contains six photos of the robot, showing it from all sides, as well as the top and bottom.
 * `video` - This folder contains a video.md file with links to videos demonstrating the vehicle in operation.
 * `schemes` - This folder contains schematic diagrams to illustrate ...
 * `src` - This folder contains the control software code for all components programmed for participation in the competition.
 * `models` - This folder contains all the 3D model files used to design and build robot.
 * `other` - This folder contains additional files and resources related to our robot.
-* `LICENSE` - This file is the license and terms of use for the materials included in our project.
-* `README` - This file provides an overview of our team and robot, including the key details of or development process.
+* `LICENSE.md` - This file is the license and terms of use for the materials included in our project.
+* `README.md` - This file provides an overview of our team and robot, including the key details of or development process.
 
   
 ### README's Content
@@ -21,6 +21,8 @@ This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Eng
 * [Mobility and Mechanical Design](#mobility-and-mechanical-design)
 * [Power and Sensor Architecture](#power-and-sensor-architecture)
 * [Software Architecture and Obstacle Management](#software-architecture-and-obstacle-management)
+* [System Thinking and Engineering Decisions](#system-thinking-and-engineering-decisions)
+* [Build/Compile/Upload Instructions](#build/compile/upload-instructions)
 ___
 
 # Our Team
@@ -60,8 +62,9 @@ Meet [Robot Name], our compact yet powerful robot, built to take on every challe
 </table>
 
 ### Performance Video
-  - Challenge 1: [Open Challenge round](https://www.example.com)
-  - Challenge 2: [Obstacle Challenge round](https://www.example.com)
+  - Test: [Run Test](video/RunTest_video.md) 
+  - Challenge 1: [Open Challenge Round](https://www.example.com)
+  - Challenge 2: [Obstacle Challenge Round](https://www.example.com)
 
 ___
 
@@ -74,45 +77,21 @@ ___
 
 // Or add vdo explain all the component of the robot and find somewhere new to put the vdo above
 
-[Here is a preview of our robot's 3D model](https://skfb.ly/pMQIR)
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/ThanyawutII/Essent1/blob/main/Screenshot%202025-11-24%20113020.png" width="500">
+      <p><a href="https://github.com/Book2009/YB-SUNFLOWER/blob/main/3DModels/Main%20Base.stl" target="_blank">Click here to view the 3D model.</a></p>
+    </td>
+  </tr>
+</table>
 
-[All 3D-printable models used for our robot can be found here](https://github.com/chankrrn/WRO-FE-YBR/tree/ddf69e221b28388c8bd3810408439c530f182edc/models)
+- [All 3D-printable models used for our robot can be found here](https://github.com/chankrrn/WRO-FE-YBR/tree/ddf69e221b28388c8bd3810408439c530f182edc/models)
 ___
 
 ## Component
 
-### Main Base
-// Add 3d model file of the component
-
-info ------
-
-### Supporting Base 1
-info ------
-
-### Supporting Base 2 (Uno Base)
-info ------
-
-### Supporting Base 3 (Raspberry Pi Base)
-info ------
-
-### Gear Adapter
-info ------
-
-### Motor Rack
-info ------
-
-### Bearing Mount
-info ------
-
-### Steering Mount
-info ------
-
-### Servo Bracket
-info ------
-
-### Camera Plate
-info ------
-
+// components' pic (summarize)
 ___
 
 # Power and Sensor Architecture
@@ -122,6 +101,12 @@ ___
 # Software Architecture and Obstacle Management
 info------
 
+___
+
+# System Thinking and Engineering Decisions
+___
+
+# Build/Compile/Upload Instructions
 ___
 
 # Conclusion and Result
