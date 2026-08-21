@@ -8,17 +8,14 @@ ___
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/123.png" width="400">
+      <img src="https://github.com/123.png" width="350">
       <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/models/MainBase.stl">Click here to view the 3D model.</a></p>
     </td>
   </tr>
 </table>
 
-The Main Base is the main structural layer of the robot and supports several important components. The Raspberry Pi 5 is mounted on this level to keep it as low as possible, since an extension board is placed on top. This helps reduce the overall height of the robot, makes cable routing easier, and keeps the camera’s field of view clear.
+The Main Base is the robot’s main structural layer, supporting the Raspberry Pi 5, steering servo, and drive motors. Mounting the Raspberry Pi 5 low helps reduce the robot’s overall height, simplify cable routing, and keep the camera’s view clear. The base also keeps the servo and motors properly aligned for balanced weight distribution, while connection points allow the upper layer to be securely attached and maintain a stable structure.
 
-The base also provides mounting points for the Servo Bracket and Motor Mount which hold the steering servo and motors connected to the differential gear system. These mounting points are positioned carefully to keep the components aligned and help distribute the robot’s weight evenly.
-
-In addition, the Main Base has dedicated connection points for the next structural layer. This allows the upper parts of the robot to be securely stacked while keeping the overall structure stable.
 
 
 ### - Supporting Base 1
@@ -28,7 +25,7 @@ info ------
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/123.png" width="400">
+      <img src="https://github.com/123.png" width="350">
       <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/models/UnoBase.stl">Click here to view the 3D model.</a></p>
     </td>
   </tr>
@@ -38,18 +35,14 @@ info ------
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/123.png" width="400">
+      <img src="https://github.com/123.png" width="350">
       <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/models/PiBase.stl">Click here to view the 3D model.</a></p>
     </td>
   </tr>
 </table>
 
 ### - Gear Adapter
-The Gear Adapter is a custom-designed part that connects the GM25 motor to LEGO differential gears. Since the GM25 motor shaft cannot connect directly to LEGO gears, the adapter provides a simple and secure way to join the two systems.
-
-The center hole is designed to fit tightly onto the GM25 motor shaft, helping prevent the adapter from slipping while the motor is running. The two side holes are made for LEGO Technic pins, allowing the adapter to connect firmly to the LEGO gear.
-
-This design makes it possible to combine a non-LEGO motor with LEGO drivetrain components while maintaining smooth and reliable power transmission.
+The Gear Adapter is a custom part that connects the GM25 motor to the LEGO differential gear. Its center hole fits tightly onto the motor shaft to prevent slipping, while the two side holes allow LEGO Technic pins to secure it to the gear. This simple design allows the non-LEGO motor to work smoothly and reliably with the LEGO drivetrain.
 
 
 ### - Motor Rack
@@ -65,30 +58,26 @@ info ------
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/123.png" width="400">
+      <img src="https://github.com/123.png" width="350">
       <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/d13ff506b7ce7c83859c156f1935925f337665c5/mech/models/ServoBracket.stl">Click here to view the 3D model.</a></p>
     </td>
   </tr>
 </table>
 
-The Servo Bracket is designed to hold a LEGO-compatible steering servo securely in place. Since the servo normally uses Technic pins instead of screws, the bracket has built-in cylindrical pegs that work like Technic pins. This allows the servo to easily snap into the bracket and stay firmly attached.
-
-The bracket has a simple U-shaped design with side mounting plates that help keep the servo stable and properly aligned with the Main Base. Its shape also places the servo at the right height and angle for the steering system while keeping the part lightweight and easy to 3D print.
-
-Overall, the bracket provides a simple and reliable way to connect the LEGO-style servo to the custom 3D-printed chassis, making the steering system easier to assemble and use.
+The Servo Bracket securely holds the LEGO-compatible steering servo using built-in cylindrical pegs that act like Technic pins, allowing it to snap into place easily. Its U-shaped design keeps the servo stable and properly aligned with the Main Base while maintaining the correct height and angle for steering. The bracket is also lightweight and easy to 3D print, making it a simple and reliable way to integrate the servo into the custom chassis.
 
 
 ### - Camera Positioning Mechanism
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/123.png" width="400">
+      <img src="https://github.com/123.png" width="350">
       <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/842b297ad1873506880c49be992acc7f23d90d8d/mech/models/CamMount.stl">Click here to view the 3D model.</a></p>
     </td>
   </tr>
 </table>
 
-///Cam Mount info
+The Camera Positioning Mechanism allows the camera’s height and angle to be easily adjusted for different environments. This is especially useful during competitions, where lighting and arena conditions may differ from testing. The mechanism enables quick on-site adjustments, allowing the camera position to be fine-tuned without redesigning or reprinting any parts.
 
 <table align="center">
   <tr>
@@ -97,10 +86,6 @@ Overall, the bracket provides a simple and reliable way to connect the LEGO-styl
     <td><img src="image3.jpg" alt="Camera Plate" width="200"/></td>
   </tr>
 </table>
-
-The Camera Positioning Mechanism makes it easy to adjust the camera’s height and angle to suit different environments. This is especially helpful during competitions, where the lighting and arena setup may be different from the conditions used during testing.
-
-A key advantage of this design is that the camera can be adjusted quickly on-site. This allows us to fine-tune its position when needed without having to redesign or reprint any parts.
 
 
   - __Camera Arm:__
@@ -130,11 +115,7 @@ ___
 ## Mechanical parts
 
 ### __- Driving motor:__ Chihai 25-370K DC 12V (Gear Ratio 1:20)™
-The Chihai 25-370K DC 12V gear motor with a 1:20 reduction ratio was chosen as the robot’s drive motor because it provides a good balance between speed and torque. Its relatively high output speed allows the robot to move quickly, while the available torque is enough to handle the load during operation.
-
-The motor also works well with the robot’s power system and has a compact size, making it easy to fit into the chassis without adding too much weight. It is also compatible with the LEGO differential gear, allowing power to be transferred smoothly to the wheels and providing responsive handling.
-
-Overall, this motor was selected because it offers a practical combination of speed, torque, size, and reliability for the robot’s competition requirements.
+The Chihai 25-370K DC 12V gear motor with a 1:20 reduction ratio was chosen because it provides a good balance of speed and torque. Its compact size makes it easy to fit into the chassis without adding much weight, while its output is strong enough to drive the robot reliably. The motor also works well with the LEGO differential gear, providing smooth power transmission and responsive handling. Overall, it offers a practical combination of speed, torque, size, and reliability for competition use.
 
 ##### Electrical Specifications
 
@@ -158,18 +139,11 @@ Overall, this motor was selected because it offers a practical combination of sp
 
 
 ### __- Motor Drive Gear:__ LEGO Technic Gear 28 Tooth
-The 28-tooth motor drive gear was chosen to work directly with the 28-tooth differential gear, creating a 1:1 gear ratio. This allows power to be transferred smoothly from the motor to the drivetrain without changing the motor’s speed or torque at this stage.
+The 28-tooth motor drive gear connects directly to the 28-tooth differential gear, creating a 1:1 gear ratio. This allows power to transfer smoothly without changing the motor’s speed or torque. Using matching gears also simplifies the drivetrain, reduces alignment issues, and works seamlessly with LEGO Technic components. Overall, it provides a stable and efficient connection between the motor and differential.
 
-Using gears with the same number of teeth also keeps the drivetrain simple and helps reduce alignment issues and unnecessary friction. Since the 28-tooth gear is compatible with LEGO Technic components, it can be easily connected to the differential system.
-
-Overall, this gear provides a simple, stable, and efficient connection between the motor and the differential, helping the drivetrain operate smoothly and reliably.
 
 ### __- Differential Gear:__ LEGO Technic Differential Gear (28 teeth)
-The LEGO Technic Differential Gear (28 teeth) is used to transfer power from the motor to the two wheels while allowing each wheel to rotate at a different speed. This is especially important when the robot turns, since the inner and outer wheels need to travel different distances.
-
-Inside the differential, bevel gears distribute the motor’s rotation to both sides. When the robot moves straight, both wheels rotate at similar speeds. During a turn, the inner wheel can slow down while the outer wheel rotates faster, helping reduce wheel slip and making the robot easier to control.
-
-The 28-tooth outer gear also works well with other LEGO Technic gears, making it easy to connect with custom adapters and non-LEGO components. Overall, the differential improves the robot’s cornering, maneuverability, and drivetrain performance.
+The LEGO Technic Differential Gear (28 teeth) transfers power to the two wheels while allowing them to rotate at different speeds during turns. Its internal bevel gears distribute power smoothly, reducing wheel slip and improving control. The 28-tooth gear also connects easily with LEGO Technic and custom components, making it a reliable choice for the drivetrain and improving the robot’s cornering and maneuverability.
 
 ### - Driving Motor with Differential Gear
 After discussing the motor and differential gear and the reasons for selecting them, the next step is to evaluate the performance of the drivetrain when these two components are connected. This analysis focuses on determining the resulting speed and torque, which are important factors in understanding and improving the robot’s overall performance.
@@ -207,11 +181,7 @@ The following section presents the calculation methods used to determine the sys
 </ul>
 
 ### __- Servo:__ GEEKSERVO 2kg 360 Degrees Servo
-This servo is used to control the robot’s steering and works together with an ultrasonic sensor to support rotation and positioning. Since it is LEGO-compatible, it is easy to install and integrate into the robot. The servo can be securely mounted using LEGO studs through the holes on its sides, making assembly simple and convenient.
-
-Another useful feature is its dual output shafts, which allow two axles to be connected at the same time. This makes it possible to drive two wheels or gears or to use the servo in other mechanical assemblies. The internal gears are also designed to slip when the servo experiences excessive resistance instead of becoming completely stuck. This helps reduce the risk of damage to the servo and the control electronics.
-
-Overall, this servo provides a practical and reliable solution for the robot’s steering system while remaining easy to integrate with the LEGO-based mechanical structure.
+This servo controls the robot’s steering and works with the ultrasonic sensor for rotation and positioning. Its LEGO-compatible design makes it easy to mount using studs through the side holes. The dual output shafts allow two axles to be connected, while the internal gears can slip under excessive resistance to help protect the servo and electronics. Overall, it provides a simple, reliable, and easy-to-integrate solution for the steering system.
 
 The wires are a standard servo pinout - 
 -	Red - positive
@@ -230,8 +200,6 @@ The wires are a standard servo pinout -
 | Sliding current   | 450mA    |
 
 ### __- Wheel:__ Lego Tire 43.2 x 22 ZR and Wheel 30.4mm D. x 20mm with No Pin Holes and Reinforced Rim
-There are many different wheel options available, but this wheel was chosen because its size works well with the robot’s drivetrain. Wheels that are too small can reduce the robot’s speed because they cover less distance with each rotation. On the other hand, wheels that are too large require more torque, make acceleration slower, and can make the robot harder to control.
-
-The selected medium-sized wheel provides a good balance between speed, acceleration, and control. When combined with the chosen motor, it allows the robot to achieve a competitive ground speed while maintaining smooth handling and stable movement during tasks.
+This wheel was chosen because its size provides a good balance between speed, acceleration, and control. Smaller wheels reduce the distance traveled per rotation, while larger wheels require more torque and can make the robot harder to control. The selected medium-sized wheel works well with the chosen motor, allowing the robot to maintain a good ground speed while providing smooth and stable handling.
 
 ___
