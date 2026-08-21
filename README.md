@@ -7,9 +7,9 @@ This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Eng
 * `team-photos` - This folder contains photos of our team.
 * `robot-photos` - This folder contains six photos of the robot, showing it from all sides, as well as the top and bottom.
 * `video` - This folder contains a video.md file with links to videos demonstrating the vehicle in operation.
-* `schemes` - This folder contains schematic diagrams to illustrate ...
+* `schemes` - This folder contains schematic diagrams to illustrate ...!!!!
 * `src` - This folder contains the control software code for all components programmed for participation in the competition.
-* `models` - This folder contains all the 3D model files used to design and build robot. //change to mech
+* `mech` - ...!!!!
 * `other` - This folder contains additional files and resources related to our robot.
 * `LICENSE.md` - This file is the license and terms of use for the materials included in our project.
 * `README.md` - This file provides an overview of our team and robot, including the key details of or development process.
@@ -88,18 +88,51 @@ ___
 
 - [All 3D-printable models used for our robot can be found here](mech/models)
 
-## Component
-[Details of Each Component](https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/mech_README.md)
+## 3D Component
 
 // components' pic (summarize)
+
+[Details of Each 3D Component](https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/mech_README.md)
+
+
+### Expansion board/hat
+![Image of Expansion board/hat](image.jpg)
+- __DFRobot Pi’s OI Expansion HAT:__ The hat enhances the Pi by providing additional IO ports and compatibility with various sensors and modules
+- __Arduino R4 Motor Shield:__ An extension with motor driver to control the motor and add IO ports for servo
 ___
 
 # Power and Sensor Architecture
 
+### Sensors
+![Image of Sensors](image.jpg)
+- __Lidar (RPLiDAR C1):__ Laser scanner to scan the surroundings in 2D view, detect and avoid the walls, traffic signs and parking space
+- __Camera (3.6mm Raspberry Pi IR Camera):__ Capture the light from the environment with color 
+- __IMU (Gravity BNO055):__ Gyroscope and Compass module with 9-axis sensor making a very stable and reliable motion and heading tracking
+- __Touch Sensor (ZX-Switch01 by INEX):__ Switch to start the robot since the Arduino or the Pi doesn’t have a switch 
+- __Motor Encoder (CHP-20-GP180 Encoder):__ Using two sensors that reads magnetic pulse from a disk connected to the motor reading the speed and direction of the motor
+
+### Mechanical parts
+![Image of Mechanical parts](image.jpg)
+- __Motor(CHP-20-GP180):__ The motor connects to the rear drivetrains to move the robot forward or backwards. With an dual-phase encoder allowing precise degree movement  
+- __Servo(GEEKSERVO 360 Degrees Servo):__ Servo for steering
+
+### Electrical Components 
+![Image of Electrical Components ](image.jpg)
+- __On/Off Switch(SPST ON/OFF Switch):__ For cutting power from the battery to the robot
+- __Step-down(LM2596):__ The step-down is used to supply the Raspberry Pi with a 5V supply. Because the Pi is sensitive to Voltage fluctuations and electrical noise. We tune the output to 5.1V to compensate for cable and connector losses
+- __Quick Wire Connector__
+    - (PCT-21 Connector): This connector is for the gnd line combining all the negative current to the same spot
+    - (D1-2): For this robot’s power distribution system we use a single battery pack, that split into 2 separate branches, one to the step-down to power the Pi, and another one straight to the Arduino 
+- __Battery(Helix 1100 mah 11.1V 3s Lipo-Batt )__
+
+### Computing Components
+![Image of Computing Components](image.jpg)
+- __Raspberry Pi 5 (Main Board):__ Compute all the values from the Lidar,Camera,Imu to calculate the walking path and sends the driving command to the Aruduino
+- __Arduino r4 minima:__ Commands the driving motor and steering servo. It also calculates the signals from the encoder for precise movements. And it is connected to the starting button
 ___
 
 # Software Architecture and Obstacle Management
-info------
+
 
 ___
 
