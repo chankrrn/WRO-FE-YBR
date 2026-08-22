@@ -8,7 +8,20 @@
 ___
 
 ## Structural Prototypes
-info-----
+
+---first prototype pic---
+
+In our first prototype we use a 3D printed base with just a 1:1 gear ratio. We just wanted to test the motor and steering system.
+
+---second prototype pic---
+
+For the next version we added all the components(except the Lidar, because we went with a ultrasonic at first). We changed the driver gear to a 3D printed 21 tooth gear, changed the steering system to be an ackermann steering, and added all the bearings. The robot was usuable at that stage, but there are still some problems.
+
+---final ver pic---
+
+After we spot the problem with the robot, we then went and try to perfected it, the noticeable part that we added was the LiDAR and the second step-down(XL4015), we changed the gear again lowering the driver gear to a 16 tooth gear, we added more pillar connecting the back-section making it stronger and a rear wing as a handle, add some little changes to the layout of the parts.
+
+
 ___
 ## Final 3D Structure
 ### - Main Base
@@ -57,15 +70,15 @@ info ------
   </tr>
 </table>
 
-### - Gear Adapter
-The Gear Adapter is a custom part that connects the GM25 motor to the LEGO differential gear. Its center hole fits tightly onto the motor shaft to prevent slipping, while the two side holes allow LEGO Technic pins to secure it to the gear. This simple design allows the non-LEGO motor to work smoothly and reliably with the LEGO drivetrain.
+### - Driver Gear
+The Driver Gear is a custom 3D print 16 tooth gear that connects the CHP-20-GP180 motor to the LEGO differential gear. Its center hole fits tightly onto the motor shaft to prevent slipping.
 
 
-### - Motor Rack
-info ------
+### - Motor Bracket
+The Motor Mount is a 3D printed part. Even though it is made of plastic it provide exceptional strength and rigidity for securing the motors. The mount includes threaded holes, allowing screws to be fastened directly without the need for nuts, making the part both compact and easy to assemble.
 
 ### - Bearing Mount
-info ------
+The Rear Wheel Bearing Mount is designed to hold standard ball bearings that support the differential output shaft. The inner race of the bearing interfaces with the shaft through a custom sleeve, allowing smooth and low-friction rotation, while the outer race is securely fixed within the mount. This configuration keeps the rear axle properly aligned, prevents bending under load, and avoids the friction that would occur if the shaft were to rotate directly against 3D-printed surfaces.
 
 ### - Steering Mount
 info ------
@@ -139,37 +152,66 @@ ___
 
 ## Mechanical Parts
 
-### __- Driving motor:__ Chihai 25-370K DC 12V (Gear Ratio 1:20)™
+### __- Motor():__ CHP-20-GP180 DC 12V (Gear Ratio 1:20)™
 <image src="https://github.com/chankrrn/WRO-FE-YBR/blob/f7a4c0febed255ff74d3f7db9998b655cd9f77bb/other/DrivingMotor1.png" width = "400"> <image src="https://github.com/chankrrn/WRO-FE-YBR/blob/f7a4c0febed255ff74d3f7db9998b655cd9f77bb/other/DrivingMotor2.jpg" width = "500">
 
+We selected the **CHP-20GP-180 DC 12V gear motor** with a **1:19 gear ratio**. It has a dual-phase quadrature encoder, which gives us real-time feedback on speed and rotation. This allows the robot to control its position more accurately.
 
-The Chihai 25-370K DC 12V gear motor with a 1:20 reduction ratio was chosen because it provides a good balance of speed and torque. Its compact size makes it easy to fit into the chassis without adding much weight, while its output is strong enough to drive the robot reliably. The motor also works well with the LEGO differential gear, providing smooth power transmission and responsive handling. Overall, it offers a practical combination of speed, torque, size, and reliability for competition use.
+We chose the **1:19 ratio** instead of the 1:5 ratio because it provides much higher torque, even though it has a lower maximum speed of about **390 RPM**. The higher torque helps the robot move smoothly at low speeds and make more accurate steering and parking movements.
+
+In previous years, our seniors used normal DC motors without encoders and focused more on speed. However, they found that lower torque made the robot harder to control at low speeds, while the lack of an encoder made accurate parking difficult. Because of this, we decided to prioritize **torque, precision, and control over maximum speed**.
+
+We also chose this motor because we have already tested it in both our prototype and final robot. It has worked reliably without any problems, and it is easy for us to purchase and receive within a week.
+
+Overall, the motor gives us a good balance of **torque, speed, size, precision, and reliability** for the WRO Future Engineers competition.
 
 ##### Electrical Specifications
 
 | Specification     | Value    |
 |-------------------|----------|
-| Voltage           | 12V DC      |
+| Voltage           | 12V DC   |
+| No-Load Current   | ≤ 280 mA |
+| Rated Current     | ≤ 550 mA |
+| Stall Current     | ≤ 2.7 A  |
 
 ##### Mechanical Specifications
 
 | Specification     | Value    |
 |-------------------|----------|
-| RATIO             | 1: 20  |
-| no-load current(mA)    | ≤600   |
-| no-load speed(rpm)             | 980  |
-| rated torque(Kg.cm)    | 2.3   |
-| rated torque(N.m)             | 0.21  |
-| rated speed (rpm)             | 780  |
-| rated current (A)    | ≤2.7   |
-| stall current (A)             | ≤16.0  |
-| length of gearbox(L)    | 19.0   |
+| Gear Ratio        | 1:19     |
+| No-Load Speed     | ~780 RPM |
+| Rated Speed       | ~680 RPM |
+| Rated Torque      | 0.40 kg·cm (0.039 N·m) |
+| Stall Torque      | ≥ 2.0 kg·cm (0.196 N·m) |
+| No-Load Current   | ≤ 280 mA |
+| Rated Current     | ≤ 550 mA |
+| Stall Current     | ≤ 2.7 A  |
+| Gearbox Length    | 21.5 mm  |
+
+##### Encoder Specifications
+
+| Specification     | Value    |
+|-------------------|----------|
+| Type              | AB Dual-Phase Hall |
+| Resolution        | ~211 PPR |
+| Supply Voltage    | 3.3V / 5.0V DC |
+| Output            | Square Wave |   
 
 
-### __- Motor Drive Gear:__ LEGO Technic Gear 28 Tooth
+
+### __- Motor Drive Gear:__ 3D printed Gear 16 Tooth
 <image src = "https://github.com/chankrrn/WRO-FE-YBR/blob/f7a4c0febed255ff74d3f7db9998b655cd9f77bb/other/MotorDriveGear.png" width = "250">
 
-The 28-tooth motor drive gear connects directly to the 28-tooth differential gear, creating a 1:1 gear ratio. This allows power to transfer smoothly without changing the motor’s speed or torque. Using matching gears also simplifies the drivetrain, reduces alignment issues, and works seamlessly with LEGO Technic components. Overall, it provides a stable and efficient connection between the motor and differential.
+The 16-tooth motor drive gear connects directly to the 28-tooth differential gear, creating a 4:7 gear ratio. This makes the added torque but at a cost of speed.
+
+During the prototype stage, we used a **28:28 spur gear configuration**, giving us a **1:1 ratio**. Our initial goal was to maximize speed while keeping the drivetrain simple.
+
+However, testing showed that the robot did not have enough torque. It struggled to accelerate smoothly and was difficult to control at low speeds, which made steering corrections and autonomous navigation less consistent.
+
+For the second version, we first changed the gearbox to a **21:28 ratio**. We designed and 3D-printed a 21-tooth gear that could be mounted directly onto the motor shaft, making the drivetrain simpler and more rigid. This increased the torque and improved low-speed control and steering precision.
+
+Later in the final version, we changed the gearbox again to a **16:28 ratio** to further increase the output torque. Although this reduced the maximum speed, it gave the robot even better acceleration, stability, and low-speed control. After testing, we found that this setup gave us the best balance between speed and precision.
+
 
 
 ### __- Differential Gear:__ LEGO Technic Differential Gear (28 teeth)
@@ -184,40 +226,42 @@ After discussing the motor and differential gear and the reasons for selecting t
 
 The following section presents the calculation methods used to determine the system’s speed and torque, along with the results obtained from the analysis.
 
+
 - #### **Step 1: Calculate the gear ratio**
-<p>The gear ratio is determined by the ratio of the number of teeth on the input and output gears:</p>
+<p>The external gear ratio is determined by the ratio of the number of teeth on the input (driver) and output (driven) gears:</p>
 <div class="equation">
-    Gear Ratio = <sup>Number of teeth on input gear</sup> / <sub>Number of teeth on output gear</sub> = <sup>28</sup> / <sub>28</sub> = 1.0
+    External Gear Ratio = <sup>Number of teeth on driven gear</sup> / <sub>Number of teeth on driver gear</sub> = <sup>28</sup> / <sub>16</sub> = 1.75
 </div>
 
 - #### **Step 2: Calculate output RPM**
-<p>The output RPM is calculated based on the motor's rated speed and the gear ratio:</p>
+<p>The output RPM is calculated by applying the external gear reduction to the motor's rated speed (680 RPM for the 1:19 CHP-20GP-180):</p>
 <div class="equation">
-    Output RPM = Input RPM × Gear Ratio = 780 × 1.0 = 780 RPM
+    Output RPM = Motor Rated RPM / External Gear Ratio = 680 / 1.75 ≈ 389 RPM
 </div>
-<p>(Using the no-load speed would give approximately 980 RPM.)</p>
+<p>(Using the no-load speed of 780 RPM would give approximately 446 RPM.)</p>
 
 - #### **Step 3: Calculate output torque**
-<p>The torque decreases inversely proportional to the gear ratio. With a 1:1 ratio, the torque remains unchanged from the motor:</p>
+<p>The torque increases proportionally to the gear ratio. With a 1.75:1 reduction, the motor's rated torque (0.0392 N·m) is multiplied:</p>
 <div class="equation">
-    Output Torque = <sup>Input Torque</sup> / <sub>Gear Ratio</sub> = <sup>0.21</sup> / <sub>1.0</sub> = 0.21 N·m
+    Output Torque = Motor Torque × External Gear Ratio = 0.0392 × 1.75 ≈ 0.069 N·m
 </div>
 <p>Since the differential splits torque between two wheels, each wheel receives approximately half:</p>
 <div class="equation">
-    Per-wheel Torque ≈ 0.105 N·m
+    Per-wheel Torque ≈ 0.035 N·m
 </div>
 
 #### **Final Results:**
 <ul>
-    <li><strong>Output RPM @ differential</strong>: ~780 RPM (rated), ~980 RPM (no-load)</li>
-    <li><strong>Output Torque @ differential</strong>: ~0.21 N·m (≈ 2.3 kg·cm)</li>
-    <li><strong>Per-wheel Torque</strong>: ~0.105 N·m (≈ 1.05 kg·cm)</li>
-</ul>
+    <li><strong>Output RPM @ differential</strong>: ~389 RPM (rated), ~446 RPM (no-load)</li>
+    <li><strong>Output Torque @ differential</strong>: ~0.069 N·m (≈ 0.70 kg·cm)</li>
+    <li><strong>Per-wheel Torque</strong>: ~0.035 N·m (≈ 0.35 kg·cm)</li>
+</ul>   
+
 
 ### __- Servo:__ GEEKSERVO 2kg 360 Degrees Servo
 <image src="https://github.com/chankrrn/WRO-FE-YBR/blob/f7a4c0febed255ff74d3f7db9998b655cd9f77bb/other/servo.png" width = "400">
 
-This servo controls the robot’s steering and works with the ultrasonic sensor for rotation and positioning. Its LEGO-compatible design makes it easy to mount using studs through the side holes. The dual output shafts allow two axles to be connected, while the internal gears can slip under excessive resistance to help protect the servo and electronics. Overall, it provides a simple, reliable, and easy-to-integrate solution for the steering system.
+The GEEKSERVO has a good speed and torque, enough for steering the robot. This servo is compatible with LEGO, making it easy and convenient to build the robot by just putting studs in the hole on the side. For the reliability part we had use the servo since the first Future Engineering even and hasn't have any problem since then. Additionally, the gears inside these servos will 'slip' when the blocking load is too high instead of jamming, helping avoid damage to your servos and boards.
 
 The wires are a standard servo pinout - 
 -	Red - positive
@@ -241,33 +285,3 @@ The wires are a standard servo pinout -
 This wheel was chosen because its size provides a good balance between speed, acceleration, and control. Smaller wheels reduce the distance traveled per rotation, while larger wheels require more torque and can make the robot harder to control. The selected medium-sized wheel works well with the chosen motor, allowing the robot to maintain a good ground speed while providing smooth and stable handling.
 
 ___
-
-
-## Controller
-
-### __ - Main Board:__ Raspberry Pi 5 (8GB) from Raspberry Pi
-<img src = "https://github.com/pic.png" width = "400">
-
-The Raspberry Pi 5 (8GB) is the main processing unit of the robot, handling tasks such as camera processing, LiDAR data, SLAM, navigation, and real-time decision-making. It provides significantly more processing power than previous models while keeping a compact size, making it well suited for robotics. Its improved high-speed interfaces also allow it to work efficiently with cameras, sensors, and other high-bandwidth devices.
-
-| Specification | Value |
-|---------|---------|
-| **Main Board / SOC** | BCM2712 |
-| **Processor** | Quad-core 64-bit ARM Cortex-A76, 2.4 GHz, with cryptography extensions, 512 KB L2 per core + 2 MB shared L3  |
-| **Memory Options** | 1 GB, 2 GB, 4 GB, 8 GB LPDDR4X-4267 SDRAM |
-| **Wireless** | Dual-band Wi-Fi (2.4 GHz & 5 GHz, 802.11ac), Bluetooth 5.0 / BLE |
-| **Ethernet** | Gigabit Ethernet, with support for PoE+ via separate HAT |
-| **USB Ports** | 2 × USB 3.0, 2 × USB 2.0 |
-| **GPIO** | 40-pin header (fully backwards compatible) |
-| **Display Output** | 2 × micro-HDMI (dual 4Kp60 with HDR) |
-| **Camera Interface** | 2 × 4-lane MIPI CSI / DSI transceivers (i.e., supports two cameras or two displays) |
-| **Audio/Video** | 4-pole stereo audio and composite video port |
-| **Video Support** | H.265 (4kp60 decode), H.264 (1080p60 decode, 1080p30 encode) |
-| **Graphics** | OpenGL ES 3.1, Vulkan 1.0 |
-| **Storage** | Micro-SD card slot (supports high-speed SDR104) Raspberry Pi BD Also supports PCIe 2.0 x1 for NVMe SSD via HAT |
-| **Power Input** | 5V DC via USB-C (min 3A), 5V DC via GPIO (min 3A), Power over Ethernet (PoE with HAT) |
-| **Operating Temperature** | 0 – 50 °C ambient |
-
-## Interface Board — IO Expansion HAT for Raspberry Pi (DFR0566)
-
-## Motor Driver — L298N
