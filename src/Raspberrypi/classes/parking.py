@@ -421,166 +421,271 @@ class BayFrame:
 
 class ParkingController:
     """
-    Backs the robot into the bay and squares it up.
+    The four-step parallel park, as a phase machine.
 
-    Phases, each closed-loop and each with a timeout:
+        APPROACH  come down off the racing line to `stage_depth_mm`, slowly
+                  and with a short lookahead, holding parallel to the wall
+        ARC_IN    full lock toward the wall, reversing, until the yaw
+                  reaches `turn_deg`
+        STRAIGHT  wheels centred, reversing, until deep enough that the
+                  closing arc will finish at `park_depth_mm`
+        ARC_OUT   opposite full lock, still reversing, until square again
+        SETTLE    nudge along the bay if the landing was off centre
 
-        STAGE    still following the racing line - this returns no command, so
-                 the path follower keeps driving - until the robot has gone
-                 far enough PAST the bay to back into it
-        SWING    reverse at full lock toward the wall until the nose has swung
-                 `entry_deg` away from it
-        PLUNGE   reverse straight, tail first, until the axle is at parking
-                 depth
-        SQUARE   alternate short forward and reverse strokes, both at the lock
-                 that reduces yaw, until square. Short strokes and not one
-                 closing arc: a single arc sweeps the nose corner
-                 hypot(200, R + 60) from the final axle, which is 153mm at
-                 R=60 and 207mm at R=146 against a blade face 150mm away - it
-                 clips at BOTH plausible steering calibrations, so the design
-                 must not use one
-        SETTLE   nudge along the bay until centred, then stop
+    Every distance is a tunable, and the two that matter most are named for
+    what you can actually see on the mat: `stage_depth_mm` is how far the
+    robot sits off the outer wall before it starts, and
+    `stage_along_offset_mm` is how far PAST the far wall its rear axle sits.
+
+    GEOMETRY WARNING, at the measured lock this does not close. The two arcs
+    move the robot sideways by 2R(1-cos t), which at R=197mm is 115mm at 45
+    degrees, so the straight has to supply the rest of the depth - and the
+    longer that straight is, the further back the manoeuvre ends. Worse, the
+    closing arc sweeps the nose FORWARD: the front wall-side corner peaks
+    around 33 degrees of yaw, and clearing the far wall there needs the axle
+    159mm behind the bay centre, while the tail needs it no further back than
+    110mm. Those do not overlap, at any staging depth, turn angle, park depth
+    or end offset.
+
+    It closes when either lever moves: a lock of about 65 degrees (R=77mm)
+    clears by 8mm in a 300mm bay, or a bay of about 360mm clears at the
+    measured lock. Both are outside this file. Everything below is written so
+    that the day one of them changes, only numbers change.
 
     Never touches the motor: update() returns (steer, speed) and the task
     applies it, so `steer_command`/`speed` stay the single record of what the
     wheels were told and the odometry keeps working through the manoeuvre.
     """
 
-    STAGE, ENTRY, SQUARE, SETTLE, DONE, ABORTED = (
-        "stage", "entry", "square", "settle", "done", "aborted")
+    APPROACH, ARC_IN, STRAIGHT, ARC_OUT, SETTLE, DONE, ABORTED = (
+        "approach", "arc_in", "straight", "arc_out", "settle", "done", "aborted")
+    DRIVING = (ARC_IN, STRAIGHT, ARC_OUT, SETTLE)
 
-    def __init__(self, frame, bay_mm=NOMINAL_BAY_MM, entry_deg=55.0,
-                 park_depth_mm=90.0, stroke_mm=8.0, speed=45,
-                 turn_radius_mm=196.6, line_depth_mm=600.0,
-                 approach_mm=320.0, approach_speed=28, reach_mm=30.0,
-                 square_deg=8.0, centre_tolerance_mm=12.0, depth_slack_mm=35.0,
-                 wall_guard_mm=12.0, blade_guard_mm=10.0,
-                 flip_penalty_mm2=900.0, work_deg=30.0, yaw_arm_mm=YAW_ARM_MM,
-                 phase_timeout_s=20.0, max_strokes=60, stall_strokes=24):
+    def __init__(self, frame, bay_mm=NOMINAL_BAY_MM,
+                 turn_deg=45.0,
+                 stage_depth_mm=350.0,
+                 stage_along_offset_mm=None,
+                 park_depth_mm=105.0,
+                 end_offset_mm=0.0,
+                 straight_mm=None,
+                 turn_radius_mm=196.6,
+                 line_depth_mm=600.0,
+                 approach_mm=900.0,
+                 approach_speed=25,
+                 approach_lookahead_mm=200.0,
+                 approach_lean_deg=25.0,
+                 depth_gain=0.20,
+                 heading_gain=2.0,
+                 speed=25,
+                 square_deg=3.0,
+                 centre_tolerance_mm=15.0,
+                 wall_guard_mm=10.0,
+                 blade_guard_mm=6.0,
+                 guard_enabled=True,
+                 phase_timeout_s=25.0):
         self.frame = frame
         self.bay_mm = float(bay_mm)
-        self.entry_deg = float(entry_deg)
+        self.turn_deg = float(turn_deg)
+        self.stage_depth_mm = float(stage_depth_mm)
         self.park_depth_mm = float(park_depth_mm)
-        self.stroke_mm = float(stroke_mm)
+        self.end_offset_mm = float(end_offset_mm)
         self.turn_radius_mm = float(turn_radius_mm)
         self.line_depth_mm = float(line_depth_mm)
         self.approach_mm = float(approach_mm)
         self.approach_speed = int(approach_speed)
-        # How far ahead the guard is asked to look when sizing a stroke.
-        # Longer than a stroke, so the shuffle turns round before it runs out
-        # of room rather than at the moment it does.
-        self.reach_mm = float(reach_mm)
-        self.flip_penalty_mm2 = float(flip_penalty_mm2)
-        self.work_deg = float(work_deg)
-        self.yaw_arm_mm = float(yaw_arm_mm)
+        self.approach_lookahead_mm = float(approach_lookahead_mm)
+        self.approach_lean_deg = float(approach_lean_deg)
+        self.depth_gain = float(depth_gain)
+        self.heading_gain = float(heading_gain)
         self.speed = int(speed)
         self.square_deg = float(square_deg)
-        self.centre_tolerance_mm = float(centre_tolerance_mm)  # deadband on s
-        self.depth_slack_mm = float(depth_slack_mm)
+        self.centre_tolerance_mm = float(centre_tolerance_mm)
         self.wall_guard_mm = float(wall_guard_mm)
         self.blade_guard_mm = float(blade_guard_mm)
+        self.guard_enabled = bool(guard_enabled)
         self.phase_timeout_s = float(phase_timeout_s)
-        self.max_strokes = int(max_strokes)
-        self.stall_strokes = int(stall_strokes)
 
-        self.phase = self.STAGE
+        self.phase = self.APPROACH
         self.reason = None
-        self.strokes = 0
         self.s = self.d = self.theta = 0.0
         self._elapsed = 0.0
-        self._stroke_mm_done = 0.0
-        self._reversing = True
-        self._stroke = None          # the (direction, lock) being driven
-        self._best_cost = float('inf')
-        self._stale_strokes = 0
+        self._straight_done_mm = 0.0
 
-        # Where the axle has to finish for the body to sit centred, and how
-        # far past the bay to drive before backing in - both straight out of
-        # the geometry, see the module docstring.
-        self.s_target = -(BODY_FRONT_MM - BODY_REAR_MM) / 2.0
-        self.stage_s = self._stage_offset_mm(self.turn_radius_mm, self.line_depth_mm)
+        self.straight_mm, auto_offset = self.plan()
+        self.stage_along_offset_mm = (auto_offset if stage_along_offset_mm is None
+                                      else float(stage_along_offset_mm))
+        if straight_mm is not None:
+            self.straight_mm = float(straight_mm)
 
     # ------------------------------------------------------------------
-    def _stage_offset_mm(self, radius_mm=60.0, line_depth_mm=474.0):
+    # PLANNING
+    # ------------------------------------------------------------------
+    def plan(self):
         """
-        How far past the bay centre to stop before backing in.
+        The straight's length, and where the rear axle has to start.
 
-        The swing arc and the straight plunge each eat some of the distance
-        back to the bay; this is what is left over, so that the plunge ends
-        with the axle at the bay centre rather than short of it or past it.
+        Solved rather than tuned, from the two things the manoeuvre has to
+        achieve: end at `park_depth_mm`, and end with the body at
+        `end_offset_mm` along the bay.
+
+            depth   stage_depth - 2R(1-cos t) - L sin t = park_depth
+            along   stage_s     - 2R sin t     - L cos t = end_offset - 80
+
+        The offset is returned relative to the FAR wall's inner face, because
+        that is the thing you can see from outside the robot: zero means the
+        rear axle is level with it, which is where a driver would start.
+
+        I/O:
+            return: (straight_mm, stage_along_offset_mm)
         """
-        entry = math.radians(self.entry_deg)
-        # The descent runs all the way to parking depth, so the only thing to
-        # take off the top is what the swing itself already spent. The old
-        # form reserved a second R*(1-cos(entry)) for an unwinding arc that no
-        # longer exists; at the measured radius that was 70mm of depth the
-        # descent then had to hunt for, and it spent the bay's whole length
-        # doing it.
-        plunge = ((line_depth_mm - self.park_depth_mm
-                   - radius_mm * (1.0 - math.cos(entry)))
-                  / max(0.1, math.sin(entry)))
-        # Aim the descent at the axle position that centres the body AT THE
-        # ENTRY ANGLE, not at the parked one. They differ by 80*(1-cos(entry))
-        # - 34mm at 55 degrees - and using the parked value drops the robot
-        # that far off centre, which is most of the room it has.
-        #
-        # There is deliberately no arc-lag term here any more. It belonged to
-        # the single unwinding arc this used to end with, and biased the
-        # landing 66mm further back at the measured radius - far enough that
-        # the tail swung past the near blade and the shuffle could never
-        # reverse again.
-        landing = -(BODY_FRONT_MM - BODY_REAR_MM) / 2.0 * math.cos(entry)
-        return radius_mm * math.sin(entry) + plunge * math.cos(entry) + landing
+        turn = math.radians(self.turn_deg)
+        radius = self.turn_radius_mm
+        lift = 2.0 * radius * (1.0 - math.cos(turn))
+        straight = (self.stage_depth_mm - self.park_depth_mm - lift) / max(1e-3, math.sin(turn))
+        axle_end = self.end_offset_mm - (BODY_FRONT_MM - BODY_REAR_MM) / 2.0
+        stage_s = axle_end + 2.0 * radius * math.sin(turn) + straight * math.cos(turn)
+        return straight, stage_s - self.bay_mm / 2.0
+
+    @property
+    def stage_s_mm(self):
+        """Where the rear axle starts, in bay coordinates."""
+        return self.bay_mm / 2.0 + self.stage_along_offset_mm
+
+    def summary(self):
+        return (f"turn {self.turn_deg:.0f}deg  R {self.turn_radius_mm:.0f}mm  "
+                f"stage {self.stage_depth_mm:.0f}mm out, axle "
+                f"{self.stage_along_offset_mm:+.0f}mm past the far wall  "
+                f"straight {self.straight_mm:.0f}mm  park {self.park_depth_mm:.0f}mm")
 
     # ------------------------------------------------------------------
-    def update(self, pose, dt, max_steer=70.0):
+    # THE LOOP
+    # ------------------------------------------------------------------
+    def update(self, pose, dt, max_steer=40.0):
         """
         One tick of the manoeuvre.
 
         I/O:
             pose: current Pose, in field coordinates
             return: (steer_command, speed), or None while the path follower
-                    should stay in charge (STAGE) or the manoeuvre is over
+                    should stay in charge, or when the manoeuvre is over
         """
         if self.phase in (self.DONE, self.ABORTED):
             return None
-
         self.s, self.d, self.theta = self.frame.to_local(pose.x, pose.y, pose.heading)
         self._elapsed += dt
+        max_steer = float(max_steer)
 
-        if self.phase == self.STAGE:
-            # Let the racing line carry the robot past the bay, then creep the
-            # last stretch under our own power. At racing speed one tick is
-            # 8mm, and every millimetre of overshoot here lands straight on
-            # the tightest clearance in the whole manoeuvre - see
-            # _arc_lag_mm - so the approach is deliberately slow.
-            if self.s < self.stage_s - self.approach_mm:
-                return None
-            if self.s >= self.stage_s:
-                self._enter(self.ENTRY)
-                return (0.0, 0)
-            # Hold it parallel to the wall on the way in; the heading is what
-            # the swing arc is measured from.
-            return (-self.frame.wall_side * clamp(2.0 * self.theta,
-                                                  -max_steer, max_steer),
-                    self.approach_speed)
+        if self.phase == self.APPROACH:
+            return self._approach(dt, max_steer)
 
         if self._elapsed > self.phase_timeout_s:
             return self._abort(f"{self.phase} timed out after {self._elapsed:.1f}s")
-        breach = self._breach_mm()
-        if breach is not None:
-            return self._abort(breach)
+        if self.guard_enabled:
+            breach = self._breach_mm()
+            if breach is not None:
+                return self._abort(breach)
 
-        handler = {self.ENTRY: self._entry, self.SQUARE: self._square,
-                   self.SETTLE: self._settle}[self.phase]
-        return handler(dt, float(max_steer))
+        return {self.ARC_IN: self._arc_in, self.STRAIGHT: self._straight,
+                self.ARC_OUT: self._arc_out, self.SETTLE: self._settle}[self.phase](
+                    dt, max_steer)
 
+    # ------------------------------------------------------------------
+    # STEP 0 and 1 - get to the staging pose
+    # ------------------------------------------------------------------
+    def _approach(self, dt, max_steer):
+        """
+        Come down off the racing line to the staging pose, and stop there.
+
+        Two things happen at once, and both are step 0: the speed and the
+        lookahead are cut (see path_caps, which the task applies to the path
+        follower), and the line is left for a shallow slide in to
+        `stage_depth_mm`. The slide is a lean, not a turn - `approach_lean_deg`
+        caps how far off parallel it will go - so the robot arrives square,
+        which is what the first arc is measured from.
+        """
+        remaining = self.stage_s_mm - self.s
+        if remaining > self.approach_mm:
+            return None                      # the racing line still has it
+        if remaining <= 0.0:
+            self._enter(self.ARC_IN)
+            return (0.0, 0)
+
+        # Lean toward the staging depth, then hold that lean.
+        depth_error = self.d - self.stage_depth_mm       # + = still too far out
+        wanted = clamp(-self.depth_gain * depth_error,
+                       -self.approach_lean_deg, self.approach_lean_deg)
+        steer = clamp(self.heading_gain * (wanted - self.theta), -max_steer, max_steer)
+        # Forward travel, so the wheel goes the opposite way to the yaw it is
+        # asking for - see _command_for, which this is the proportional twin of.
+        return (-self.frame.wall_side * steer, self.approach_speed)
+
+    def path_caps(self):
+        """
+        What the path follower should be limited to right now, as
+        (speed, lookahead_mm). Either may be None.
+
+        This is step 0. A long lookahead is what makes the robot cut a corner,
+        and cutting the corner here means arriving at the staging point off
+        line and off square, which the rest of the manoeuvre has no way to
+        correct - every later step is an open arc measured from this pose.
+        """
+        if self.phase != self.APPROACH:
+            return (None, None)
+        if self.s < self.stage_s_mm - self.approach_mm:
+            return (None, None)
+        return (self.approach_speed, self.approach_lookahead_mm)
+
+    # ------------------------------------------------------------------
+    # STEPS 2, 3, 4
+    # ------------------------------------------------------------------
+    def _arc_in(self, dt, max_steer):
+        """Step 2: full lock toward the wall, reversing, until `turn_deg`."""
+        if self.theta >= self.turn_deg:
+            self._enter(self.STRAIGHT)
+            return (0.0, 0)
+        return (self._command_for(-1.0, 1.0 / self.turn_radius_mm, max_steer),
+                -self.speed)
+
+    def _straight(self, dt, max_steer):
+        """
+        Step 3: wheels centred, reversing, until the closing arc will finish
+        at parking depth.
+
+        Ended on DEPTH rather than on distance travelled. They are the same
+        thing if the first arc came out exactly at `turn_deg`, and they are
+        not if it did not - and the arc is the part most likely to be off,
+        because it is the one the servo's own lag distorts.
+        """
+        stop_at = self.park_depth_mm + self.turn_radius_mm * (
+            1.0 - math.cos(math.radians(max(1.0, self.theta))))
+        self._straight_done_mm += abs(self.speed) / 100.0 * 700.0 * dt
+        if self.d <= stop_at or self._straight_done_mm > 2.0 * self.straight_mm + 100.0:
+            self._enter(self.ARC_OUT)
+            return (0.0, 0)
+        return (0.0, -self.speed)
+
+    def _arc_out(self, dt, max_steer):
+        """Step 4: opposite lock, still reversing, until square."""
+        if self.theta <= self.square_deg:
+            self._enter(self.SETTLE)
+            return (0.0, 0)
+        return (self._command_for(-1.0, -1.0 / self.turn_radius_mm, max_steer),
+                -self.speed)
+
+    def _settle(self, dt, max_steer):
+        """A straight nudge along the bay, once it is square."""
+        error = self.s - self._centring_s_mm(self.theta)
+        if abs(error) <= self.centre_tolerance_mm:
+            self.phase = self.DONE
+            return (0.0, 0)
+        return (0.0, -self.speed if error > 0.0 else self.speed)
+
+    # ------------------------------------------------------------------
+    # HOUSEKEEPING
     # ------------------------------------------------------------------
     def _enter(self, phase):
         self.phase = phase
         self._elapsed = 0.0
-        self._stroke_mm_done = 0.0
-        self._stroke = None
 
     def _abort(self, reason):
         self.phase = self.ABORTED
@@ -588,293 +693,19 @@ class ParkingController:
         print(f"Parking aborted: {reason}")
         return (0.0, 0)
 
-    def _breach_mm(self):
-        """The clearance guard, applied to where the robot actually is."""
-        return self._breach_at(self.s, self.d, self.theta)
-
-    def _breach_at(self, s, d, theta):
-        """
-        What, if anything, the chassis would go through at (s, d, theta).
-
-        Kept free of `self`'s current pose so the shuffle can ask it about a
-        stroke it has not driven yet. That is the whole point: with the bay
-        barely bigger than the robot, the guard is not a last-resort abort but
-        the thing that decides how long each stroke may be.
-        """
-        half = self.bay_mm / 2.0
-        for cs, cd in self.frame.corners_local(s, d, theta):
-            if cd < self.wall_guard_mm:
-                return f"corner {self.wall_guard_mm - cd:.0f}mm inside the outer wall"
-            # A blade only exists within the bay's depth; outside it the robot
-            # is in open track and may overhang as far as it likes.
-            if cd <= WALL_LENGTH_MM and abs(cs) > half - self.blade_guard_mm:
-                return f"corner {abs(cs) - half + self.blade_guard_mm:.0f}mm into a bay wall"
-        return None
-
-    # ------------------------------------------------------------------
-    # Looking one stroke ahead
-    # ------------------------------------------------------------------
-    def _here(self):
-        return (self.s, self.d, self.theta)
-
-    def _roll(self, state, direction, kappa, distance_mm, steps=6):
-        """
-        Where a stroke would leave the chassis, in bay-local coordinates.
-
-        `kappa` is the yaw gained per millimetre TRAVELLED (not per millimetre
-        of signed displacement), so the caller picks a yaw direction and this
-        works out the wheel angle that delivers it - see _command_for. Doing it
-        that way keeps every sign convention in one place instead of spread
-        across the phases.
-        """
-        s, d, theta = state[0], state[1], math.radians(state[2])
-        step = distance_mm / steps
-        for _ in range(steps):
-            s += direction * math.cos(theta) * step
-            d += direction * math.sin(theta) * step
-            theta += kappa * step
-            yield s, d, math.degrees(theta)
-
-    def _room_mm(self, state, direction, kappa, limit_mm=None):
-        """How far this stroke can run from `state` before the guard stops it."""
-        limit = self.reach_mm if limit_mm is None else limit_mm
-        travelled = 0.0
-        steps = max(2, int(limit / 4.0))
-        for s, d, theta in self._roll(state, direction, kappa, limit, steps):
-            if self._breach_at(s, d, theta) is not None:
-                return travelled
-            travelled += limit / steps
-        return limit
-
-    def _after(self, state, direction, kappa, distance_mm):
-        """The state a stroke of `distance_mm` would end at."""
-        end = state
-        for end in self._roll(state, direction, kappa, distance_mm, steps=4):
-            pass
-        return end
-
-    def _cost(self, state):
-        """
-        How far a state is from being parked, in millimetres-squared.
-
-        The three axes are not equally tight and the weights say so: at the
-        worst yaw the bay leaves about 16mm along its length but 40mm in
-        depth, so `s` is worth roughly three times as much as `d`. Yaw is
-        converted to a length by `yaw_arm_mm`, which is what makes the
-        three commensurable at all - and it is the most delicate number
-        here. Too large and the shuffle buys degrees at any price, walking
-        itself out of the bay to square up in mid-air; too small and it
-        sits centred and never turns.
-        """
-        s, d, theta = state
-        along = s - self._centring_s_mm(theta)
-        deep = d - self.park_depth_mm
-        turned = math.radians(theta - self._yaw_goal_deg(d, theta)) * self.yaw_arm_mm
-        return along * along + 0.35 * deep * deep + turned * turned
-
-    def _yaw_goal_deg(self, d, theta):
-        """
-        The yaw the robot WANTS at this depth - which is not zero until the
-        depth is right.
-
-        A stroke moves the chassis in depth as sin(yaw), so a squared-up robot
-        cannot descend at all. Costing yaw straight to zero therefore walks
-        the shuffle into a corner: it spends the yaw first, arrives square
-        100mm too far out, and then has nothing left to steer with. Two
-        strokes of lookahead cannot see round that, because rebuilding the yaw
-        looks worse before it looks better.
-
-        Holding a working angle until the depth is close removes the trap
-        without needing a deeper search. The sign follows whichever way the
-        robot is already leaning, so this never asks it to swing through
-        square and back.
-
-        It fades in with the depth error rather than switching at a
-        threshold. A step here puts a cliff in the cost, and the search sat on
-        it and chattered: one side of the line wanted to square up, the other
-        wanted the yaw back, and the robot alternated every tick without
-        moving at all.
-        """
-        short = abs(d - self.park_depth_mm) / max(1.0, self.depth_slack_mm)
-        return math.copysign(self.work_deg * min(1.0, short),
-                             theta if theta else 1.0)
-
     def _command_for(self, direction, kappa, max_steer):
         """
-        The steering command that produces `kappa` while travelling in
-        `direction`. Reversing flips which way the wheels must point, and so
-        does having the wall on the other side, which is why this is derived
-        rather than written out per phase.
+        The steering command that produces `kappa` - yaw per millimetre
+        TRAVELLED - while moving in `direction`.
+
+        Reversing flips which way the wheels must point, and so does having
+        the wall on the other side, which is why this is derived once rather
+        than written out per phase.
         """
         if not kappa:
             return 0.0
         return (-math.copysign(1.0, kappa) * self.frame.wall_side
                 * direction * max_steer)
-
-    def _entry(self, dt, max_steer):
-        """
-        Back in: swing to the entry angle, then reverse straight down it.
-
-        This was one closed-loop descent when the robot turned inside 60mm,
-        because at that radius a control tick was 6 degrees of swing and there
-        was no entry angle precise enough to aim with. At the measured lock the
-        radius is 197mm, a tick is 1.7 degrees, and the arithmetic reverses:
-        the descent can no longer be steered onto a landing point at all
-        (unwinding from 197mm sweeps the nose straight through a blade,
-        whatever the gain), while the swing is now stoppable.
-
-        So the aim moved. Entry no longer tries to land centred - it only has
-        to get the tail into the bay without touching anything. Getting
-        CENTRED is the shuffle's job, and the shuffle can translate as well as
-        rotate, which a single arc cannot.
-        """
-        if self.d <= self._depth_target_mm():
-            self._enter(self.SQUARE)
-            self._reversing = True
-            return (0.0, 0)
-
-        building = self.theta < self.entry_deg
-        kappa = (1.0 / self.turn_radius_mm) if building else 0.0
-        need = 2.0 * abs(self.speed) / 100.0 * 700.0 * dt + 2.0
-        if self._room_mm(self._here(), -1.0, kappa) < need:
-            # Far enough in that the next bite would clip: hand over early
-            # rather than abort. The shuffle starts from wherever this got to.
-            self._enter(self.SQUARE)
-            self._reversing = True
-            return (0.0, 0)
-        return (self._command_for(-1.0, kappa, max_steer), -self.speed)
-
-    def _square(self, dt, max_steer):
-        """
-        Unwind the yaw with short strokes, each one run until the guard says
-        stop rather than to a fixed length.
-
-        Both directions of travel reduce the yaw, as long as the lock is set
-        to the one that unwinds it - so the direction is free to be used for
-        something else. Two things want it, and they are ranked:
-
-          * whether there is ROOM to go that way at all. At 197mm of turning
-            radius the bay holds about 8mm of clearance at its tightest, and a
-            fixed stroke length either wastes most of the room or drives
-            through a blade. Asking the guard how far it can go turns that
-            8mm into the control law instead of a tripwire.
-          * where the robot sits ALONG the bay, which is the tight axis: the
-            bay is 200mm deep against a 120mm-wide robot, so depth has about
-            +/-40mm of room, while at the worst yaw `s` has 16mm.
-
-        Room wins, because a stroke that cannot be driven is not a choice.
-        """
-        if (abs(self.theta) <= self.square_deg
-                and abs(self.d - self.park_depth_mm) <= self.depth_slack_mm):
-            self._enter(self.SETTLE)
-            return (0.0, 0)
-        if self.strokes >= self.max_strokes:
-            return self._abort(f"still {self.theta:.0f}deg off square after "
-                               f"{self.strokes} strokes")
-        # A limit cycle looks exactly like work from the inside - strokes tick
-        # up, the wheels move - so progress is measured against the cost
-        # rather than against the stroke count.
-        cost = self._cost(self._here())
-        if cost < self._best_cost - 25.0:
-            self._best_cost, self._stale_strokes = cost, self.strokes
-        elif self.strokes - self._stale_strokes >= self.stall_strokes:
-            return self._abort(f"shuffle stopped gaining {self.theta:.0f}deg off "
-                               f"square, {self.d - self.park_depth_mm:+.0f}mm of depth")
-
-        # Two ticks plus a little, because a stroke is committed for a whole
-        # tick before this runs again and the servo does not move instantly.
-        # Checking room only when the stroke ENDS is what put a corner 3mm
-        # into a blade: room was 8mm, the stroke ran 14.
-        tick = abs(self.speed) / 100.0 * 700.0 * dt
-        need = 2.0 * tick + 2.0
-        self._stroke_mm_done += tick
-        cornered = (self._stroke is not None
-                    and self._room_mm(self._here(), *self._stroke) < need)
-        if self._stroke is None or self._stroke_mm_done >= self.stroke_mm or cornered:
-            # When the guard is what ended the stroke, ask the replacement
-            # for a little more than the bare minimum. Accepting anything
-            # merely legal let the two directions take turns being blocked,
-            # flipping every tick and travelling nothing: 130 strokes for 0mm.
-            # Only a little, though - around 27 degrees the bay is down to 8mm
-            # of wiggle per end, and that is exactly where the shuffle needs
-            # its shortest strokes.
-            choice = self._choose_stroke(need * 1.5 if cornered else need)
-            if choice is None:
-                return self._abort(f"shuffle stuck {self.theta:.0f}deg off square, "
-                                   f"{self.d - self.park_depth_mm:+.0f}mm of depth to go")
-            if self._stroke is not None and choice[0] != self._stroke[0]:
-                # A stroke is a CHANGE OF DIRECTION, not a change of plan.
-                # The room check above re-plans most ticks, so counting plans
-                # burned the whole stroke budget before the robot had moved.
-                self.strokes += 1
-            if choice != self._stroke:
-                self._stroke_mm_done = 0.0
-            self._stroke = choice
-        direction, kappa = self._stroke
-        self._reversing = direction < 0.0
-        return (self._command_for(direction, kappa, max_steer),
-                -self.speed if self._reversing else self.speed)
-
-    def _choose_stroke(self, need_mm):
-        """
-        The (direction, lock) that gets closest to parked, two strokes out.
-
-        Depth and yaw cannot be handled one at a time, which is what the
-        earlier fixed-lock shuffle got wrong: it always chose the lock that
-        unwound the yaw, so the yaw was spent long before the depth was, and
-        the robot squared up 100mm too far out with no yaw left to descend on
-        (a stroke moves the chassis in depth as sin(yaw), so at 8 degrees off
-        square there is almost nothing left to steer with). Choosing the lock
-        as well lets a stroke trade one against the other.
-
-        Two strokes rather than one because the shuffle is a pair of moves by
-        nature - a stroke that helps on its own is often the one that leaves
-        nowhere to go next. Six options each way is 36 rollouts, a few hundred
-        microseconds, and it removes the whole class of stall.
-        """
-        locks = (0.0, 1.0 / self.turn_radius_mm, -1.0 / self.turn_radius_mm)
-        here = -1.0 if self._reversing else 1.0
-        best = None
-        for direction in (1.0, -1.0):
-            for kappa in locks:
-                room = self._room_mm(self._here(), direction, kappa)
-                if room < need_mm:
-                    continue
-                first = self._after(self._here(), direction, kappa,
-                                    min(room, self.reach_mm))
-                horizon = None
-                for way in (1.0, -1.0):
-                    for lock in locks:
-                        room2 = self._room_mm(first, way, lock)
-                        if room2 < need_mm:
-                            continue
-                        end = self._after(first, way, lock, min(room2, self.reach_mm))
-                        cost = self._cost(end)
-                        horizon = cost if horizon is None else min(horizon, cost)
-                if horizon is None:
-                    horizon = self._cost(first)
-                # Changing direction costs a stop, a servo sweep and the
-                # backlash in between, so it has to be worth something.
-                score = horizon + (self.flip_penalty_mm2 if direction != here else 0.0)
-                if best is None or score < best[0]:
-                    best = (score, (direction, kappa))
-        return None if best is None else best[1]
-
-
-    def _s_target_mm(self):
-        """
-        Where the axle should be RIGHT NOW, for the body's middle to sit over
-        the middle of the bay at the current yaw.
-
-        Not a constant. The axle is not in the middle of the robot - it is
-        80mm behind it - so as the robot turns, the axle position that centres
-        the body swings by 80*cos(yaw). Aiming at the parked value throughout
-        leaves the body offset by up to that much exactly while it is turning
-        through its widest footprint, which is where the bay has only 16mm to
-        spare per end. Tracking the yaw instead keeps the clearance balanced
-        at every angle.
-        """
-        return self._centring_s_mm(self.theta)
 
     @staticmethod
     def _centring_s_mm(theta_deg):
@@ -882,42 +713,63 @@ class ParkingController:
         return (-(BODY_FRONT_MM - BODY_REAR_MM) / 2.0
                 * math.cos(math.radians(theta_deg)))
 
-    def _depth_target_mm(self):
+    def _breach_mm(self):
+        return self._breach_at(self.s, self.d, self.theta)
+
+    def _breach_at(self, s, d, theta):
         """
-        How deep the axle should be: all the way, while the yaw is still high.
+        What, if anything, the chassis would go through at (s, d, theta).
 
-        This used to stop the descent short by R*(1-cos t), to leave room for
-        an unwinding arc to spend. There is no such arc any more, and at the
-        measured radius that reservation was 100mm - which stranded the robot
-        at exactly the yaw where the bay is tightest.
-
-        The robot's footprint ALONG the bay is 240*cos(t) + 120*sin(t), which
-        peaks at 268mm around 27 degrees and falls to 246mm by 50. In a 300mm
-        bay that is the difference between 8mm of wiggle per end and 27mm. So
-        the depth has to be won while the yaw is still high, and the tight
-        angles crossed afterwards by rotating on the spot rather than by
-        trying to translate through them.
+        A separating-axis test against each wall's real 10mm-thick box, not a
+        corner-in-box test. The difference matters here: the way this
+        manoeuvre touches a wall is the rear EDGE grazing the far wall's top
+        outer corner as the tail swings in, and every corner of the robot is
+        somewhere else entirely when that happens.
         """
-        return self.park_depth_mm
+        half = self.bay_mm / 2.0
+        body = list(self.frame.corners_local(s, d, theta))
+        if min(c[1] for c in body) < self.wall_guard_mm:
+            return (f"corner {self.wall_guard_mm - min(c[1] for c in body):.0f}mm "
+                    f"inside the outer wall")
+        guard = self.blade_guard_mm
+        for sign in (-1.0, 1.0):
+            near = sign * half
+            far = sign * (half + WALL_THICKNESS_MM)
+            box = (min(near, far) - guard, max(near, far) + guard,
+                   -guard, WALL_LENGTH_MM + guard)
+            if self._overlaps(body, box):
+                return f"chassis is through the bay wall at s={near:+.0f}"
+        return None
 
-
-    def _settle(self, dt, max_steer):
-        error = self.s - self._s_target_mm()
-        if abs(error) <= self.centre_tolerance_mm:
-            self.phase = self.DONE
-            return (0.0, 0)
-        # Square already, so this is a straight nudge along the bay.
-        return (0.0, -self.speed if error > 0.0 else self.speed)
+    @staticmethod
+    def _overlaps(body, box):
+        """Separating-axis test: rotated rectangle against an axis-aligned box."""
+        corners = [(box[0], box[2]), (box[1], box[2]),
+                   (box[1], box[3]), (box[0], box[3])]
+        axes = [(1.0, 0.0), (0.0, 1.0)]
+        for i in range(2):
+            ex = body[i + 1][0] - body[i][0]
+            ey = body[i + 1][1] - body[i][1]
+            length = math.hypot(ex, ey)
+            if length:
+                axes.append((-ey / length, ex / length))
+        for ax in axes:
+            a = [p[0] * ax[0] + p[1] * ax[1] for p in body]
+            b = [p[0] * ax[0] + p[1] * ax[1] for p in corners]
+            if max(a) <= min(b) or min(a) >= max(b):
+                return False
+        return True
 
     # ------------------------------------------------------------------
     @property
     def active(self):
-        return self.phase not in (self.STAGE, self.DONE, self.ABORTED)
+        """True when the manoeuvre, rather than the path, owns the wheels."""
+        return self.phase in self.DRIVING
 
     @property
     def finished(self):
         return self.phase in (self.DONE, self.ABORTED)
 
     def status_line(self):
-        return (f"park {self.phase} s={self.s:+.0f} d={self.d:.0f} "
-                f"yaw={self.theta:+.0f}deg strokes={self.strokes}")
+        return (f"park {self.phase:8} s={self.s:+7.1f} d={self.d:6.1f} "
+                f"yaw={self.theta:+6.1f}")
