@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 from classes.task_context import TaskContext
+from tasks.base_task import DEFAULT_MAX_RUNTIME_S
 from utils.task_config import TaskConfig
 
 # OpenCV defaults to one worker per core, and on a 4-core Pi 5 a round is
@@ -36,8 +37,14 @@ def build_parser(description):
                         help="start the lidar even if the task does not require it")
     parser.add_argument("--no-camera", action="store_true",
                         help="skip the camera even if the task requires it")
-    parser.add_argument("--max-runtime", type=float, default=180.0,
-                        help="stop after N seconds (default: 180, the WRO limit)")
+    parser.add_argument("--no-drive", action="store_true",
+                        help="never spin the drive motor: the steering servo still "
+                             "follows the real control loop, so you can push the robot "
+                             "round by hand and watch it steer (no time limit unless "
+                             "--max-runtime says otherwise)")
+    parser.add_argument("--max-runtime", type=float, default=None,
+                        help="stop after N seconds (default: 180, the WRO limit; "
+                             "no limit under --no-drive)")
     parser.add_argument("--motor-port", default=None,
                         help="Arduino serial port (default: autodetect)")
     parser.add_argument("--lidar-port", default=None,
@@ -80,6 +87,11 @@ def run_task(task_class, argv=None):
     """
     args = build_parser(f"Run the {task_class.name} round").parse_args(argv)
     config = load_config(task_class, args)
+    # Pushing the robot round by hand takes as long as it takes; being cut off
+    # at the WRO limit mid-lap is not what --no-drive is for.
+    max_runtime = args.max_runtime
+    if max_runtime is None:
+        max_runtime = None if args.no_drive else DEFAULT_MAX_RUNTIME_S
 
     if args.dry_run:
         return dry_run(task_class, config)
@@ -101,10 +113,11 @@ def run_task(task_class, argv=None):
         motor_port=args.motor_port,
         lidar_port=args.lidar_port,
         start_pose=args.start_pose,
+        no_drive=args.no_drive,
     )
 
     with context:
-        task = task_class(context, config=config, max_runtime_s=args.max_runtime)
+        task = task_class(context, config=config, max_runtime_s=max_runtime)
         return task.run()
 
 

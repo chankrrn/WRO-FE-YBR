@@ -24,6 +24,10 @@ class TaskContext:
         use_lidar   - LidarManager (RPLidar C1 on USB)
         use_camera  - CameraManager + ObjectSolver (final round pillars)
 
+    `no_drive` keeps every subsystem exactly as it is but stops the drive
+    motor ever turning, so a round can be walked through by hand - see
+    MotorManager.drive_enabled.
+
     Usage:
         with TaskContext(debug=True) as context:
             context.motor.forward(55)
@@ -32,15 +36,17 @@ class TaskContext:
 
     def __init__(self, debug=False, ascii_debug=False, use_lidar=False, use_camera=False,
                  laps_goal=3, motor_port=None, lidar_port=None,
-                 start_pose=None):
+                 start_pose=None, no_drive=False):
         self.debug = debug
         self.ascii_debug = ascii_debug
         self.use_lidar = use_lidar
         self.use_camera = use_camera
         self.start_pose = start_pose
+        self.no_drive = no_drive
 
         self.board = BoardManager(debug=debug)
-        self.motor = MotorManager(port=motor_port, debug=debug)
+        self.motor = MotorManager(port=motor_port, debug=debug,
+                                  drive_enabled=not no_drive)
         self.compass = CompassManager(debug=debug)
         self.ultra = UltraServoManager(self.board, debug=debug)
         self.lights = LightSensorManager(self.board, debug=debug)
