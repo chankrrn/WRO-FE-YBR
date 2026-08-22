@@ -1,4 +1,5 @@
 import math
+import threading
 from dataclasses import dataclass
 
 import cv2
@@ -99,6 +100,18 @@ class ObjectSolver:
         self.image_height = image_height or ImageTransformUtils.PIC_HEIGHT
         self.horizontal_crop_offset_px = horizontal_crop_offset_px
 
+        # Debug canvases drawn by detect() and waiting to be put on screen.
+        # detect() runs on VisionManager's thread (classes/vision_manager.py)
+        # and HighGUI is main-thread only: an imshow() from a worker thread
+        # does not raise on OpenCV 5's Qt backend, it prints
+        #     QMetaObject::invokeMethod: No such method GuiReceiver::showImage
+        # once per frame and drops the picture. So detect() only renders, and
+        # show_debug() - called from the thread that owns the windows - is
+        # what displays.
+        self._debug_frames = {}
+        self._debug_lock = threading.Lock()
+        self._open_windows = set()
+
     def set_debug(self, enabled):
         self.debug = enabled
 
@@ -118,7 +131,7 @@ class ObjectSolver:
             objects.extend(self._find_objects_in_mask(mask, color))
 
         if self.debug:
-            self._show_debug(objects, display_image)
+            self._render_debug(objects, display_image)
 
         return objects
 
@@ -178,10 +191,37 @@ class ObjectSolver:
     # DEBUG VISUALIZATION
     # ========================================================================
 
-    def _show_debug(self, objects, display_image):
+    def _render_debug(self, objects, display_image):
+        """Draws both debug views and parks them for the next show_debug()."""
+        frames = {"Object Solver - Top Down": self._render_top_down(objects)}
         if display_image is not None:
-            cv2.imshow("Object Solver - Camera", self._render_camera_overlay(objects, display_image))
-        cv2.imshow("Object Solver - Top Down", self._render_top_down(objects))
+            frames["Object Solver - Camera"] = self._render_camera_overlay(objects, display_image)
+        with self._debug_lock:
+            self._debug_frames = frames
+
+    def show_debug(self):
+        """
+        Puts the last detect()'s debug views on screen.
+
+        MAIN THREAD ONLY, and it needs a cv2.waitKey() after it to paint -
+        same contract as NavigationManager.show_debug(). The round's debug
+        loop provides both (tasks/path_task.py).
+
+        I/O:
+            return: True if there was a new frame to show
+        """
+        with self._debug_lock:
+            frames, self._debug_frames = self._debug_frames, {}
+        for window_name, canvas in frames.items():
+            cv2.imshow(window_name, canvas)
+            self._open_windows.add(window_name)
+        return bool(frames)
+
+    def close_debug(self):
+        """Closes whatever show_debug() opened. Main thread, same as show."""
+        for window_name in self._open_windows:
+            cv2.destroyWindow(window_name)
+        self._open_windows.clear()
 
     @staticmethod
     def _render_camera_overlay(objects, display_image):

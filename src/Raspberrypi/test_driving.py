@@ -75,6 +75,9 @@ class SimMotor:
         self.current_speed = 0
         self.current_angle = 0.0
         self.commands = 0
+        # The simulated chassis always drives; the flag exists because
+        # PathDrivingTask asks the motor whether it does (see --no-drive).
+        self.drive_enabled = True
 
     def forward(self, speed):
         self.current_speed = speed

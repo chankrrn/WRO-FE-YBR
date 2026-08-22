@@ -30,9 +30,9 @@ wheelbase_mm = 165.0
 # Shorter than qualification: the line moves sideways around each pillar, and a
 # long lookahead cuts the corner off that move and clips the block. Too short
 # and the robot weaves - raise it until it stops, then stop.
-lookahead_base_mm = 165.0
+lookahead_base_mm = 300.0
 lookahead_per_speed_mm = 2.5
-lookahead_min_mm = 50.0
+lookahead_min_mm = 300.0
 lookahead_max_mm = 400.0
 
 # Inside a bend the lookahead is additionally capped at this fraction of the
@@ -47,8 +47,8 @@ corner_lookahead_fraction = 0.60
 # mid-turn). Reported max_road_wheel_deg = 48.5 (robot turns 21% MORE than
 # 40.0 assumed); the calibrator also reads 4-9% low by design, so rounded up
 # from 48.5 rather than used as-is.
-max_road_wheel_deg = 50.0
-max_steer_command = 50.0
+max_road_wheel_deg = 70.0
+max_steer_command = 70.0
 rear_axle_offset_mm = 0.0
 
 # Measured with test_steering.py --lag: true response time is ~0.35s to 63%,
@@ -71,7 +71,7 @@ lag_compensation_s = 0.15
 # ---------------------------------------------------------------------------
 
 # Gap between the robot's BODY and the pillar's near face as it goes past.
-clearance_mm = 140.0
+clearance_mm = 220.0
 
 # Half the robot's own width (centerline to its widest point - wheels,
 # mudguards, whatever sticks out furthest). This is a MEASUREMENT, not a
@@ -79,7 +79,7 @@ clearance_mm = 140.0
 # with a ruler if unsure. Pure pursuit steers the centerline, so without this
 # the robot's actual body comes clearance_mm MINUS this value from the
 # pillar, not clearance_mm.
-robot_half_width_mm = 160.0
+robot_half_width_mm = 60.0
 
 # Independent extra padding per colour, on top of clearance_mm. Keep this
 # small: clearance_mm(90) + robot_half_width_mm(150) + this + 25 must stay
@@ -87,23 +87,23 @@ robot_half_width_mm = 160.0
 # clamped short - a value here bigger than ~25 was doing exactly that to
 # RED's dodge. If RED still needs padding after retesting, raise
 # wall_clearance_mm's room (lower it) rather than pushing this past the fit.
-red_extra_clearance_mm = 80.0
+red_extra_clearance_mm = 0.0
 green_extra_clearance_mm = 0.0
 
 # How far before a pillar the line starts easing across.
-approach_mm = 600.0
+approach_mm = 800.0
 
 # How far past a pillar to keep the offset (easing back out, not holding
 # then snapping - see _smoothstep in task.py) so the tail of the robot
 # clears it before returning to the line.
-past_mm = 450.0
+past_mm = 200.0
 
 # Real gap from the robot's BODY to the wall/centre block, never mind how
 # large clearance_mm's dodge wants to be. The true wall's position is exactly
 # known field geometry (no detection uncertainty, unlike a pillar), so this
 # can run tighter than clearance_mm - but not 0; pose tracking still has
 # noise.
-wall_clearance_mm = 10.0
+wall_clearance_mm = 80.0
 
 [steer]
 # How fast the steering command may move, in command units per second. This is

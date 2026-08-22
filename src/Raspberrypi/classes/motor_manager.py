@@ -25,7 +25,7 @@ USB_ID_HINTS = ("Arduino", "UNO")
 # The Arduino resets when the port is opened and prints a banner when ready.
 ARDUINO_BOOT_S = 2.0
 
-MAX_STEER_DEG = 50
+MAX_STEER_DEG = 70
 STEER_SMOOTHING_WINDOW = 5
 
 # drive() skips the serial round-trip when nothing has meaningfully changed.
@@ -57,12 +57,21 @@ class MotorManager:
     full 0.1s timeout in the bad one, mid-corner, for a line nobody was going
     to look at. drive_distance() and wait_for_start() still read, because for
     those the reply IS the answer.
+
+    With `drive_enabled=False` the speed field of every message is forced to
+    zero on the way out (see _send), which is the one place all of them pass
+    through - steering, stops and queued moves included.
     """
 
-    def __init__(self, port=None, baudrate=DEFAULT_BAUD, debug=False):
+    def __init__(self, port=None, baudrate=DEFAULT_BAUD, debug=False, drive_enabled=True):
         self.port = port or self.autodetect_port()
         self.baudrate = baudrate
         self.debug = debug
+        # False (--no-drive) means the steering servo still does everything it
+        # normally would, but every command leaves the Pi with speed 0 - so
+        # the round can be walked through by hand, pushing the robot along
+        # while watching the wheels answer the real control loop.
+        self.drive_enabled = drive_enabled
 
         self.serial = None
         self.current_speed = 0
@@ -93,6 +102,8 @@ class MotorManager:
         banner = self.serial.readline().decode(errors="ignore").strip()
         if self.debug:
             print(f"[motor] {self.port} @ {self.baudrate}, arduino says: {banner!r}")
+        if not self.drive_enabled:
+            print("  DRIVE MOTOR DISABLED - steering only, push the robot by hand")
         self.current_speed = 0
         self.current_angle = 0
         self.steering_history.clear()
@@ -124,6 +135,8 @@ class MotorManager:
     def _send(self, angle, speed, distance=0, wait_for_reply=True):
         if self.serial is None:
             raise RuntimeError("MotorManager.start() must be called first")
+        if not self.drive_enabled:
+            speed = 0
         try:
             self.serial.write(f"{int(angle)},{int(speed)},{int(distance)}\n".encode())
         except serial.SerialTimeoutException:
@@ -233,10 +246,17 @@ class MotorManager:
         than trusting a single readline() bounded by the port's 0.1s timeout,
         so this stays correct for moves longer than that timeout. Returns None
         if "t" never arrives within max_wait seconds.
+
+        With the drive motor disabled the move cannot happen at all, so it
+        only steers and reports the move as done - waiting would just park the
+        caller for max_wait seconds on a "t" that is never coming.
         """
         angle = self.current_angle if angle is None else angle
         self.current_angle = angle
         self.current_speed = speed
+        if not self.drive_enabled:
+            self.steer(angle)
+            return DONE_REPLY
         # Clear the backlog BEFORE sending, or a stale "t" left over from an
         # earlier move reads as this one finishing the instant it starts.
         try:

@@ -364,7 +364,17 @@ class PathDrivingTask(Task):
             self.show_debug()
 
     def _travelled(self, dt):
-        """Distance covered since the last tick, from the commanded speed."""
+        """
+        Distance covered since the last tick, from the commanded speed.
+
+        Zero with the drive motor disabled (--no-drive): the commanded speed
+        then says nothing about how fast a hand is pushing the robot, and
+        feeding the filter motion the wheels never made walks the pose away
+        from where the robot really is. The lidar carries it instead, at scan
+        rate rather than tick rate.
+        """
+        if not self.context.motor.drive_enabled:
+            return 0.0
         full_speed = float(self.setting("startup.mm_per_s_at_full"))
         return self.speed / 100.0 * full_speed * dt
 
@@ -607,6 +617,8 @@ class PathDrivingTask(Task):
         super().finish()
         if self._debug_view is not None:
             self._debug_view.close()
+        if self.context.object_solver is not None:
+            self.context.object_solver.close_debug()
         if self.calibrator is not None:
             print(self.calibrator.report())
         print(f"{self.laps_done:.2f} laps driven "
@@ -622,17 +634,31 @@ class PathDrivingTask(Task):
         return (f"[{self.elapsed:5.1f}s] lap {self.laps_done:4.2f}/{self.laps_goal}  "
                 f"({pose.x / 10:+6.1f},{pose.y / 10:+6.1f})cm  "
                 f"off-line {self.lateral / 10:+5.1f}cm  "
-                f"{self.pursuit.status_line()}  speed={self.speed}  "
+                f"{self.pursuit.status_line()}  speed={self.speed}"
+                f"{'(off)' if not self.context.motor.drive_enabled else ''}  "
                 f"conf={pose.confidence:.2f}")
 
     def show_debug(self):
         """
         Field view with the racing line and the pursuit target drawn on. ESC
         (window mode) ends the round, same as any other stop reason.
+
+        Also the one place the object solver's two windows get painted: its
+        detect() runs on the vision thread, which must not touch HighGUI, so
+        it only renders (see ObjectSolver.show_debug). They go up before the
+        field view, so DebugView's cv2.waitKey() paints all three at once.
         """
         if self._debug_view is None:
             self._debug_view = DebugView(self.context.nav,
                                          ascii_mode=self.context.ascii_debug)
+        solver = self.context.object_solver
+        if solver is not None and solver.debug:
+            # ascii mode means there is no window loop to pump them - and no
+            # waitKey either, so anything already up has to come down.
+            if self._debug_view.ascii_mode:
+                solver.close_debug()
+            else:
+                solver.show_debug()
         if not self._debug_view.show(draw=self._draw_overlay):
             self._stop_reason = self._stop_reason or "debug window closed (ESC)"
 
