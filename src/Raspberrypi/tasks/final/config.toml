@@ -47,8 +47,8 @@ corner_lookahead_fraction = 0.60
 # mid-turn). Reported max_road_wheel_deg = 48.5 (robot turns 21% MORE than
 # 40.0 assumed); the calibrator also reads 4-9% low by design, so rounded up
 # from 48.5 rather than used as-is.
-max_road_wheel_deg = 54.4
-max_steer_command = 60.0
+max_road_wheel_deg = 50.0
+max_steer_command = 50.0
 rear_axle_offset_mm = 0.0
 
 # Measured with test_steering.py --lag: true response time is ~0.35s to 63%,
