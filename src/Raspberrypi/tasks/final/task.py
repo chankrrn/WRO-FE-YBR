@@ -95,11 +95,14 @@ class FinalTask(PathDrivingTask):
                       f"blocks.wall_clearance_mm.")
 
     def step(self):
-        # The camera pipeline costs far more than a control tick, so detection
-        # runs on its own slower cadence. The block map is what the steering
-        # reads, and that persists between frames.
-        if self.tick % CAMERA_EVERY_N_TICKS == 0:
-            self._update_detections()
+        # Detection normally runs on VisionManager's thread and this does
+        # nothing - the steering reads nav.blocks, which persists between
+        # frames, not the current frame. The inline path is the fallback for
+        # when the thread could not be started at all; it is what the round
+        # used to do every other tick, and it costs the tick it runs on.
+        if self.context.vision is None:
+            if self.tick % CAMERA_EVERY_N_TICKS == 0:
+                self._update_detections()
         super().step()
 
     def _update_detections(self):
@@ -243,7 +246,10 @@ class FinalTask(PathDrivingTask):
     # ========================================================================
 
     def status(self):
-        return f"{super().status()}  {self.context.nav.blocks.summary()}"
+        line = f"{super().status()}  {self.context.nav.blocks.summary()}"
+        if self.context.vision is not None:
+            line = f"{line}  {self.context.vision.status_line()}"
+        return line
 
     def _draw_overlay(self, canvas, to_px):
         """The plain racing line plus the bent one the robot is actually on."""
