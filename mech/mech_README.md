@@ -9,15 +9,39 @@ ___
 
 ## Structural Prototypes
 
----first prototype pic---
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/main/mech/models/Ver1.png" width="400">
+    </td>
+  </tr>
+</table>
 
 In our first prototype we use a 3D printed base with just a 1:1 gear ratio. We just wanted to test the motor and steering system.
 
----second prototype pic---
+
+
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/main/mech/models/Ver2.png" width="400">
+    </td>
+  </tr>
+</table>
 
 For the next version we added all the components(except the Lidar, because we went with a ultrasonic at first). We changed the driver gear to a 3D printed 21 tooth gear, changed the steering system to be an ackermann steering, and added all the bearings. The robot was usuable at that stage, but there are still some problems.
 
----final ver pic---
+
+
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/main/mech/models/Ver Final.png" width="400">
+    </td>
+  </tr>
+</table>
 
 After we spot the problem with the robot, we then went and try to perfected it, the noticeable part that we added was the LiDAR and the second step-down(XL4015), we changed the gear again lowering the driver gear to a 16 tooth gear, we added more pillar connecting the back-section making it stronger and a rear wing as a handle, add some little changes to the layout of the parts.
 
