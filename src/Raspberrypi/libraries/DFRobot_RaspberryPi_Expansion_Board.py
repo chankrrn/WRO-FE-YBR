@@ -274,7 +274,10 @@ class DFRobot_Expansion_Board_Servo():
     if 0 <= angle <= 180:
       self._board.set_pwm_duty(id, (0.5 + (float(angle) / 90.0)) / 20 * 100)
 
-import smbus
+try:
+  import smbus
+except ImportError:
+  import smbus2 as smbus
 
 class DFRobot_Expansion_Board_IIC(DFRobot_Expansion_Board):
 

@@ -53,7 +53,7 @@ def run_synthetic_check():
 
 
 def run_live():
-    from Raspberrypi.camera_manager import CameraManager
+    from camera_manager import CameraManager
 
     camera_manager = CameraManager()
     solver = ObjectSolver(debug=True)

@@ -315,7 +315,7 @@ def sweep(key, values):
 
     from tasks.cli import load_config
     from tasks.qualification.task import QualificationTask
-    import Raspberrypi.test_driving as td
+    import test_driving as td
 
     print(f"\nSimulated sweep of {key} (2 laps, 2 placements each)\n")
     print(f"{key:>22} {'off-line rms':>13} {'worst clearance':>17}  ok")

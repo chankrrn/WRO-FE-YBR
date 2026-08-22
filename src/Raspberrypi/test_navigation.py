@@ -308,7 +308,7 @@ def start_camera(args, nav):
     if not args.camera:
         return None, None
     try:
-        from Raspberrypi.camera_manager import CameraManager
+        from camera_manager import CameraManager
         from classes.object_solver import ObjectSolver
 
         camera = CameraManager()
