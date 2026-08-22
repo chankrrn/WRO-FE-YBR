@@ -899,7 +899,13 @@ class NavigationManager:
             for block in context.nav.blocks.confirmed():
                 plan_around(block.x, block.y)
         """
-        return self.blocks.observe(self.get_pose(extrapolate=False), detections)
+        # max_age_s=None deliberately: this is called from whichever thread
+        # runs the camera, and the default would let it trigger a full filter
+        # update - predict/correct/resample, all mutating the particle arrays -
+        # concurrently with the control loop doing the same thing. The block
+        # map wants the last MEASURED pose anyway, not a freshly computed one.
+        return self.blocks.observe(
+            self.get_pose(max_age_s=None, extrapolate=False), detections)
 
     def get_position_m(self):
         """(x, y) in meters from the field center - the short form of get_pose()."""

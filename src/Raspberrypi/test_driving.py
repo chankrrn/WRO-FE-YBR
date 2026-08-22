@@ -262,6 +262,9 @@ class SimContext:
         # The obstacle round checks these before touching the camera.
         self.camera = None
         self.object_solver = None
+        # No camera means no vision thread; the round falls back to its inline
+        # detection path, which with no camera does nothing at all.
+        self.vision = None
 
     def wait_for_start(self):
         pass
