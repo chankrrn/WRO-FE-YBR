@@ -205,6 +205,11 @@ class PathDrivingTask(Task):
         self._warn_if_lookahead_unusable()
 
         pose = self._wait_for_localization()
+        # Only now: everything the camera maps before the filter converges is
+        # rejected on the way in, so there is nothing to gain by looking
+        # earlier and a core to save by not.
+        if context.vision is not None:
+            context.vision.resume()
         self.direction = self.path.direction_for(pose)
         self._warn_if_started_outside_a_zone(pose)
         self.progress, self.lateral = self.path.project(pose.x, pose.y, self.direction)

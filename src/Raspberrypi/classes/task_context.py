@@ -55,6 +55,7 @@ class TaskContext:
         self.lidar = None
         self.camera = None
         self.object_solver = None
+        self.vision = None
         self._lidar_port = lidar_port
 
         self._gpio = None
@@ -85,6 +86,10 @@ class TaskContext:
             steps.append(("Camera", self._init_camera))
         # Last: it needs the compass anchored and the lidar already spinning.
         steps.append(("Navigation", self._init_nav))
+        if self.use_camera:
+            # After Navigation, not with Camera: the vision thread reads the
+            # filter's pose, so the filter has to be seeded before it runs.
+            steps.append(("Vision", self._start_vision))
 
         print("=" * 70)
         for index, (name, init) in enumerate(steps, start=1):
@@ -100,6 +105,10 @@ class TaskContext:
         """Safe to call twice, and safe to call after a failed startup."""
         print("\nShutting down...")
         self.motor.stop_and_close()
+        # Before the camera: the thread is holding it.
+        if self.vision is not None:
+            self.vision.stop()
+            self.vision = None
         # self.ultra.stop()
         self.nav.stop()
         if self.lidar is not None:
@@ -191,6 +200,27 @@ class TaskContext:
             self.camera = None
             self.object_solver = None
             print(f"  WARNING: camera unavailable ({e!r}) - continuing without it")
+
+    def _start_vision(self):
+        """
+        Puts the detection pipeline on its own thread.
+
+        It starts paused - see VisionManager - and the round resumes it once
+        the filter has localized, because a detection placed with a pose that
+        has not converged is thrown away anyway.
+        """
+        from classes.vision_manager import VisionManager
+
+        if self.camera is None or self.object_solver is None:
+            print("  no camera - pillars will not be mapped")
+            return
+        try:
+            self.vision = VisionManager(self.camera, self.object_solver, self.nav,
+                                        debug=self.debug).start()
+        except Exception as e:
+            self.vision = None
+            print(f"  WARNING: vision thread unavailable ({e!r}) - the round will "
+                  f"detect inline instead")
 
     # ========================================================================
     # SHARED HELPERS

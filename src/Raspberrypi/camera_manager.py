@@ -63,9 +63,20 @@ class CameraManager:
     def configure_camera(self):
         sensor_mode = self.picam2.sensor_modes[1]
         sensor_width, sensor_height = sensor_mode["size"]
-        config = (self.picam2.create_still_configuration(
+        # A VIDEO configuration, not a still one. A still config allocates a
+        # single buffer and runs the ISP in its highest-quality mode, so every
+        # capture_array() waits out a whole frame with nothing queued behind
+        # it - which is exactly the wrong trade for a stream of frames that
+        # only ever gets thresholded into colour masks.
+        #
+        # The raw size stays pinned to sensor_modes[1]. That is what fixes the
+        # sensor mode, and the sensor mode is what ObjectSolver's measured
+        # CAPTURED_HORIZONTAL_FOV_DEG describes - let libcamera pick its own
+        # and every distance the pillar solver reports is quietly wrong.
+        config = (self.picam2.create_video_configuration(
         raw={"size":(sensor_width,sensor_height)},
-        main={"format":'RGB888',"size": (ImageTransformUtils.CAMERA_PIC_WIDTH, ImageTransformUtils.CAMERA_PIC_HEIGHT)}))
+        main={"format":'RGB888',"size": (ImageTransformUtils.CAMERA_PIC_WIDTH, ImageTransformUtils.CAMERA_PIC_HEIGHT)},
+        buffer_count=4))
         self.picam2.configure(config)
         
         self.configure_video_output()
