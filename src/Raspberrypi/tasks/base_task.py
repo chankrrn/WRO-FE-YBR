@@ -1,8 +1,22 @@
 import time
 
-# Nothing in the control loop blocks, so without a sleep it would spin the ADC
-# and the serial link far faster than either can answer.
-LOOP_DELAY_S = 0.02
+# Target control PERIOD, not a delay to add on top of the work. The loop
+# sleeps until the next deadline, so a tick that took 5ms and a tick that took
+# 15ms are followed by different sleeps and arrive at the same cadence.
+#
+# It matters more than pacing usually does, because dt is not just a schedule
+# here - it is an input. PathDrivingTask._travelled(dt) turns it into the
+# distance fed to the particle filter's motion model, and _limit_steer_rate
+# turns it into how far the servo may move. Sleeping a fixed 20ms AFTER the
+# work made the period 20ms + however long the tick ran, so an expensive tick
+# both arrived late and told the filter it had driven further than it had.
+LOOP_PERIOD_S = 0.02
+
+# How far behind the schedule may fall before the loop resyncs instead of
+# trying to catch up. Catching up means running ticks back to back with no
+# sleep, which for a control loop is worse than the lateness: the robot has
+# not moved any further, so the extra ticks re-steer on the same pose.
+MAX_LAG_S = LOOP_PERIOD_S
 
 # WRO gives 3 minutes per attempt; stopping ourselves is tidier than being
 # stopped mid-corner with the motor still driving.
@@ -33,6 +47,12 @@ class Task:
         self.status_every = status_every
         self.tick = 0
         self.start_time = None
+        # Ticks that ran longer than LOOP_PERIOD_S. Reported at the end -
+        # a loop that overran most of its ticks is not running at the rate
+        # everything downstream was tuned for, and that should not be
+        # something you have to guess at from the outside.
+        self.overruns = 0
+        self.worst_tick_ms = 0.0
 
     # ========================================================================
     # OVERRIDE THESE
@@ -84,15 +104,28 @@ class Task:
         completed = False
         try:
             self.setup()
+            next_tick_at = time.monotonic()
             while not self.is_finished():
                 if self.timed_out:
                     print(f"Time limit ({self.max_runtime_s}s) reached - stopping.")
                     break
                 self.tick += 1
+                started_at = time.monotonic()
                 self.step()
                 if self.status_every and self.tick % self.status_every == 0:
                     print(self.status())
-                time.sleep(LOOP_DELAY_S)
+
+                self.worst_tick_ms = max(self.worst_tick_ms,
+                                         (time.monotonic() - started_at) * 1000.0)
+                next_tick_at += LOOP_PERIOD_S
+                now = time.monotonic()
+                if now > next_tick_at + MAX_LAG_S:
+                    # Far enough behind that catching up would mean a burst of
+                    # zero-sleep ticks. Give up the lost time and resync.
+                    self.overruns += 1
+                    next_tick_at = now
+                else:
+                    time.sleep(max(0.0, next_tick_at - now))
             else:
                 completed = True
         except KeyboardInterrupt:
@@ -103,6 +136,9 @@ class Task:
             except Exception as e:
                 print(f"WARNING: finish() failed: {e!r}")
 
+        rate = self.tick / self.elapsed if self.elapsed else 0.0
         print(f"{self.name}: {'completed' if completed else 'stopped early'} "
-              f"after {self.elapsed:.1f}s")
+              f"after {self.elapsed:.1f}s  "
+              f"({self.tick} ticks, {rate:.1f}Hz, worst tick "
+              f"{self.worst_tick_ms:.1f}ms, {self.overruns} overran)")
         return completed
