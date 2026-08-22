@@ -107,8 +107,8 @@ ___
 
 ### Mechanical parts
 ![Image of Mechanical parts](image.jpg)
-- __Motor(CHP-20-GP180):__ The motor connects to the rear drivetrains to move the robot forward or backwards. With an dual-phase encoder allowing precise degree movement  
-- __Servo(GEEKSERVO 360 Degrees Servo):__ Servo for steering
+- __Motor(CHP-20-GP180):__ The motor connects to the rear drivetrains to move the robot forward or backwards.
+- __Servo(GEEKSERVO 2kg 360 Degrees Servo):__ Servo for steering
 
 ### Expansion board/hat
 ![Image of Expansion board/hat](image.jpg)
@@ -121,7 +121,7 @@ ___
 ### Sensors
 ![Image of Sensors](image.jpg)
 - __Lidar (RPLiDAR C1):__ Laser scanner to scan the surroundings in 2D view, detect and avoid the walls, traffic signs and parking space
-- __Camera (3.6mm Raspberry Pi IR Camera):__ Capture the light from the environment with color 
+- __Camera (3.6mm Raspberry Pi IR Camera):__ Use to detect and identify traffic signs and parking spaces by the color
 - __IMU (Gravity BNO055):__ Gyroscope and Compass module with 9-axis sensor making a very stable and reliable motion and heading tracking
 - __Touch Sensor (ZX-Switch01 by INEX):__ Switch to start the robot since the Arduino or the Pi doesn’t have a switch 
 - __Motor Encoder (CHP-20-GP180 Encoder):__ Using two sensors that reads magnetic pulse from a disk connected to the motor reading the speed and direction of the motor
@@ -129,23 +129,24 @@ ___
 
 ### Electrical Components 
 ![Image of Electrical Components ](image.jpg)
-- __On/Off Switch(SPST ON/OFF Switch):__ For cutting power from the battery to the robot
+- __On/Off Switch(SPST ON/OFF Switch 2 Pin Rocker Switch DC 125/250V):__ For cutting power from the battery to the robot
 - __Step-down(LM2596):__ The step-down is used to supply the Raspberry Pi with a 5V supply. Because the Pi is sensitive to Voltage fluctuations and electrical noise. We tune the output to 5.1V to compensate for cable and connector losses
+- - __Step-down(XL4015):__ The step-down is used to supply the Arduino with a 11V supply. Because the motor will vary in speed and torque related to the voltage of the battery. We tune the output to 11.1V to compensate for cable and connector losses
 - __Quick Wire Connector__
     - (PCT-21 Connector): This connector is for the gnd line combining all the negative current to the same spot
-    - (D1-2): For this robot’s power distribution system we use a single battery pack, that split into 2 separate branches, one to the step-down to power the Pi, and another one straight to the Arduino 
-- __Battery(Helix 1100 mah 11.1V 3s Lipo-Batt )__
+    - (D1-2): For this robot’s power distribution system we use a single battery pack, that split into 2 separate branches, one to the LM2596 step-down to power the Pi, and another one to the XL4015 step-down and to the Arduino Motor Shield
+- __Battery(Helix 1100 mah 11.1V 3s Lipo-Battery )__ A 3 cells Battery to power the robot
 
 ### Computing Components
 ![Image of Computing Components](image.jpg)
-- __Raspberry Pi 5 (Main Board):__ Compute all the values from the Lidar,Camera,Imu to calculate the walking path and sends the driving command to the Aruduino
+- __Raspberry Pi 5 (Main Board):__ Compute all the values from the LiDAR,Camera,Imu to calculate the walking path and sends the driving command to the Aruduino
 - __Arduino r4 minima:__ Commands the driving motor and steering servo. It also calculates the signals from the encoder for precise movements. And it is connected to the starting button
 
 ___
 
 # System Thinking and Engineering Decisions
-why chose this/that 
-___
+
+
 
 # Build/Compile/Upload Instructions
 build instruction (optional)
