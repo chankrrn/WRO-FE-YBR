@@ -26,6 +26,7 @@ though ObjectSolver talks centimeters - the conversion happens once, on the way
 in, so nothing downstream has to remember which unit it is holding.
 """
 import math
+import threading
 import time
 from dataclasses import dataclass, field
 
@@ -199,32 +200,46 @@ class BlockMap:
         self.observations = 0
         self.rejected = 0
 
+        # The map is WRITTEN by whoever runs the camera and READ by the
+        # control loop, and those stop being the same thread once detection
+        # moves off the control loop. observe() appends to _blocks mid-frame
+        # and rebinds it at the end, and mutates a Block's hits/x/y in place -
+        # so an unguarded reader can see a half-applied frame, or a block
+        # whose is_confirmed flips underneath it. Reentrant because the public
+        # readers call each other (summary -> confirmed).
+        self._lock = threading.RLock()
+
     # ========================================================================
     # READING
     # ========================================================================
 
     def all(self):
         """Every tracked block, confirmed or not."""
-        return list(self._blocks)
+        with self._lock:
+            return list(self._blocks)
 
     def confirmed(self):
         """Blocks seen enough times to steer on."""
-        return [block for block in self._blocks if block.is_confirmed]
+        with self._lock:
+            return [block for block in self._blocks if block.is_confirmed]
 
     def nearest(self, x, y, color=None, confirmed_only=True):
         """Closest tracked block to a point, or None."""
-        candidates = self.confirmed() if confirmed_only else self._blocks
-        if color is not None:
-            candidates = [block for block in candidates if block.color == color]
-        if not candidates:
-            return None
-        return min(candidates, key=lambda b: math.hypot(b.x - x, b.y - y))
+        with self._lock:
+            candidates = self.confirmed() if confirmed_only else list(self._blocks)
+            if color is not None:
+                candidates = [block for block in candidates if block.color == color]
+            if not candidates:
+                return None
+            return min(candidates, key=lambda b: math.hypot(b.x - x, b.y - y))
 
     def clear(self):
-        self._blocks = []
+        with self._lock:
+            self._blocks = []
 
     def __len__(self):
-        return len(self._blocks)
+        with self._lock:
+            return len(self._blocks)
 
     # ========================================================================
     # MAPPING
@@ -247,17 +262,21 @@ class BlockMap:
             return []
 
         camera_x, camera_y = self.camera_position(pose)
-        seen = []
-        for detection in detections or ():
-            point = self._to_field(pose, camera_x, camera_y, detection)
-            if point is None:
-                self.rejected += 1
-                continue
-            seen.append(self._merge(detection.color, *point))
+        # One frame lands as one atomic change: a reader sees the map either
+        # before or after it, never with half the detections merged and the
+        # miss count not yet applied.
+        with self._lock:
+            seen = []
+            for detection in detections or ():
+                point = self._to_field(pose, camera_x, camera_y, detection)
+                if point is None:
+                    self.rejected += 1
+                    continue
+                seen.append(self._merge(detection.color, *point))
 
-        self.observations += len(seen)
-        self._count_misses(pose, camera_x, camera_y, seen)
-        return seen
+            self.observations += len(seen)
+            self._count_misses(pose, camera_x, camera_y, seen)
+            return seen
 
     def camera_position(self, pose):
         """Where the lens is in field coordinates, given the robot's pose."""
@@ -374,7 +393,7 @@ class BlockMap:
             scale: pixels per mm, so the squares come out life-size
         """
         half = BLOCK_SIZE_MM / 2.0
-        for block in self._blocks:
+        for block in self.all():
             color = COLOR_BGR.get(block.color, (200, 200, 200))
             corners = to_px(block.x - half, block.y + half), to_px(block.x + half, block.y - half)
             if block.is_confirmed:
@@ -402,15 +421,17 @@ class BlockMap:
         return canvas
 
     def summary(self):
-        counts = {color: 0 for color in COLOR_BGR}
-        for block in self.confirmed():
-            counts[block.color] = counts.get(block.color, 0) + 1
-        pending = len(self._blocks) - len(self.confirmed())
+        with self._lock:
+            counts = {color: 0 for color in COLOR_BGR}
+            confirmed = self.confirmed()
+            for block in confirmed:
+                counts[block.color] = counts.get(block.color, 0) + 1
+            pending = len(self._blocks) - len(confirmed)
         return (f"{counts.get(Color.GREEN, 0)} green  {counts.get(Color.RED, 0)} red  "
                 f"({pending} pending, {self.rejected} rejected)")
 
     def debug_text(self):
         lines = [f"blocks    {self.summary()}"]
-        lines.extend(f"  {block}" for block in sorted(self._blocks,
+        lines.extend(f"  {block}" for block in sorted(self.all(),
                                                       key=lambda b: (b.color.value, b.x)))
         return "\n".join(lines)
