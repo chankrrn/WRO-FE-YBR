@@ -14,7 +14,7 @@ This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Eng
 * `LICENSE.md` - This file is the license and terms of use for the materials included in our project.
 * `README.md` - This file provides an overview of our team and robot, including the key details of or development process.
 
-  
+
 ### README's Content
 * [Our team](#our-team)
 * [Our Robot](#our-robot)
@@ -22,7 +22,7 @@ This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Eng
 * [Power and Sensor Architecture](#power-and-sensor-architecture)
 * [Software Architecture and Obstacle Management](#software-architecture-and-obstacle-management)
 * [System Thinking and Engineering Decisions](#system-thinking-and-engineering-decisions)
-* [Build/Compile/Upload Instructions](#build/compile/upload-instructions)
+* [Build/Compile/Upload Instructions](#build-compile-upload-instructions)
 ___
 
 # Our Team
@@ -48,18 +48,20 @@ ___
 Meet [Robot Name], our compact yet powerful robot, built to take on every challenge with confidence.
 
 ![Image](image.jpg)
+
 <table>
   <tr>
-    <td><img src="image1.jpg" alt="Image 1" width="200"/></td>
-    <td><img src="image2.jpg" alt="Image 2" width="200"/></td>
-    <td><img src="image3.jpg" alt="Image 3" width="200"/></td>
+    <td align="center"><strong>Top View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/top.jpg" width="300"></td>
+    <td align="center"><strong>Front View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/front.jpg" width="300"></td>
+    <td align="center"><strong>Left View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/left.jpg" width="300"></td>
   </tr>
   <tr>
-    <td><img src="image4.jpg" alt="Image 4" width="200"/></td>
-    <td><img src="image5.jpg" alt="Image 5" width="200"/></td>
-    <td><img src="image6.jpg" alt="Image 6" width="200"/></td>
+    <td align="center"><strong>Bottom View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/bottom.jpg" width="300"></td>
+    <td align="center"><strong>Back View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/back.jpg" width="300"></td>
+    <td align="center"><strong>Right View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/right.jpg" width="300"></td>
   </tr>
 </table>
+
 
 ### Performance Video
   - Test: [Run Test](video/RunTest_video.md) 
@@ -88,12 +90,25 @@ ___
 
 - [All 3D-printable models used for our robot can be found here](mech/models)
 
-## 3D Component
+## Mobility Management
 
-// components' pic (summarize)
+// components' pic (+summarize detail)
+
+- __Dimension:__
+- __Drive Motor:__
+- __Steering Motor:__
+- __3D-Printed Structures:__
+- __Customized Mounts:__
+- __Steering__
+- __Wheels__
+- 
 
 [Details of Each 3D Component](https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/mech_README.md)
 
+### Mechanical parts
+![Image of Mechanical parts](image.jpg)
+- __Motor(CHP-20-GP180):__ The motor connects to the rear drivetrains to move the robot forward or backwards. With an dual-phase encoder allowing precise degree movement  
+- __Servo(GEEKSERVO 360 Degrees Servo):__ Servo for steering
 
 ### Expansion board/hat
 ![Image of Expansion board/hat](image.jpg)
@@ -111,10 +126,6 @@ ___
 - __Touch Sensor (ZX-Switch01 by INEX):__ Switch to start the robot since the Arduino or the Pi doesn’t have a switch 
 - __Motor Encoder (CHP-20-GP180 Encoder):__ Using two sensors that reads magnetic pulse from a disk connected to the motor reading the speed and direction of the motor
 
-### Mechanical parts
-![Image of Mechanical parts](image.jpg)
-- __Motor(CHP-20-GP180):__ The motor connects to the rear drivetrains to move the robot forward or backwards. With an dual-phase encoder allowing precise degree movement  
-- __Servo(GEEKSERVO 360 Degrees Servo):__ Servo for steering
 
 ### Electrical Components 
 ![Image of Electrical Components ](image.jpg)
@@ -129,17 +140,19 @@ ___
 ![Image of Computing Components](image.jpg)
 - __Raspberry Pi 5 (Main Board):__ Compute all the values from the Lidar,Camera,Imu to calculate the walking path and sends the driving command to the Aruduino
 - __Arduino r4 minima:__ Commands the driving motor and steering servo. It also calculates the signals from the encoder for precise movements. And it is connected to the starting button
-___
-
-# Software Architecture and Obstacle Management
-
 
 ___
 
 # System Thinking and Engineering Decisions
+why chose this/that 
 ___
 
 # Build/Compile/Upload Instructions
+build instruction (optional)
+___
+
+# Software Architecture and Obstacle Management
+info การทำงาน^แนวคิด + Flow chart
 ___
 
 # Conclusion and Result
