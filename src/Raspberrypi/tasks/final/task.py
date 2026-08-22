@@ -107,14 +107,17 @@ class FinalTask(PathDrivingTask):
         if context.object_solver is None or context.camera is None:
             return
         try:
-            context.camera.capture_image()
-            context.camera.transform_image()
+            # capture_for_blocks(), not capture_image() + transform_image():
+            # this round reads the HSV frame and nothing else, and the full
+            # pipeline costs ~19ms a frame to produce ~1.6ms of answer. The
+            # display copy is only worth taking when the solver is going to
+            # draw on it.
+            hsv = context.camera.capture_for_blocks(
+                with_display=context.object_solver.debug)
+            if hsv is None:
+                return
             context.nav.observe_blocks(context.object_solver.detect(
-                context.camera.hsv_image, display_image=context.camera.display_image))
-            # transform_image() is what fills in display_image - nothing else
-            # in the round ever calls this, so without it release_video() was
-            # finalizing an empty file every run.
-            # context.camera.add_frame_to_video()
+                hsv, display_image=context.camera.display_image))
         except Exception as e:
             print(f"WARNING: detection failed: {e!r}")
 
