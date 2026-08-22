@@ -36,7 +36,7 @@ from classes.field_map import FieldMap
 from classes.navigation_manager import NavigationManager, Pose
 from classes.racing_line import RacingLine
 from tasks.cli import load_config
-from Raspberrypi.test_navigation import SimCompass, SimLidar
+from test_navigation import SimCompass, SimLidar
 
 # ============================================================================
 # Simulated robot

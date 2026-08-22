@@ -180,7 +180,7 @@ class TaskContext:
         print(f"  pose: {pose}")
 
     def _init_camera(self):
-        from Raspberrypi.camera_manager import CameraManager
+        from camera_manager import CameraManager
         from classes.object_solver import ObjectSolver
 
         try:

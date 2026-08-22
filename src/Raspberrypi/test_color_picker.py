@@ -67,7 +67,7 @@ def run_image(path):
 
 
 def run_live():
-    from Raspberrypi.camera_manager import CameraManager
+    from camera_manager import CameraManager
 
     camera_manager = CameraManager()
     camera_manager.start_camera()
