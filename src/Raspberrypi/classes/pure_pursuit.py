@@ -155,6 +155,29 @@ class PurePursuit:
         self.last_command = command
         return command
 
+    def set_road_wheel_command(self, command):
+        """
+        Records a steering command that did NOT come from steering().
+
+        The parking manoeuvre drives the wheels itself, but the odometry still
+        has to know what they are doing: PathDrivingTask._turned() reads
+        last_road_wheel_deg to dead-reckon yaw between lidar scans. Without
+        this the filter is told the robot went straight through every arc of
+        the park, and the pose walks away exactly where it is needed most.
+
+        Exactly the inverse of the conversion at the end of steering(), so
+        both paths dead-reckon off the same calibration.
+
+        I/O:
+            command: steering command in MotorManager units
+            return: the road-wheel angle it corresponds to, in degrees
+        """
+        command = clamp(command, -self.max_steer_command, self.max_steer_command)
+        self.last_command = command
+        self.last_road_wheel_deg = (command / self.max_steer_command
+                                    * self.max_road_wheel_deg)
+        return self.last_road_wheel_deg
+
     # ========================================================================
     # LIMITS
     # ========================================================================
