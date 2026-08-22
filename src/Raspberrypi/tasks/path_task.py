@@ -144,6 +144,7 @@ class PathDrivingTask(Task):
         self.target = None
 
         self._last_tick_at = None
+        self._front_mm = None        # forward lidar clearance, refreshed per tick
         self._lost_since = None
         self._stop_reason = None
         self._blocked_since = None
@@ -318,6 +319,10 @@ class PathDrivingTask(Task):
         now = time.monotonic()
         dt = 0.0 if self._last_tick_at is None else now - self._last_tick_at
         self._last_tick_at = now
+        # Once per tick, before anything asks. Both the stop test and the
+        # speed ramp want it, and two reads inside one tick can disagree
+        # about what is in front of the robot.
+        self._front_mm = self._measure_front_clearance()
 
         # Report BOTH how far we drove and how far we turned. The filter uses
         # them to predict with, and get_pose() uses them to carry the last
@@ -561,7 +566,22 @@ class PathDrivingTask(Task):
         return base + (corner - base) * sharpness
 
     def _front_clearance_mm(self):
-        """Closest lidar return in the forward sector, or None if it is blind."""
+        """
+        Closest lidar return in the forward sector this tick, or None if it is
+        blind. Measured once per tick by step() - see _measure_front_clearance.
+        """
+        return self._front_mm
+
+    def _measure_front_clearance(self):
+        """
+        Reads the forward sector out of the lidar.
+
+        Called once a tick and cached, because _reverse_out and _choose_speed
+        both want the answer and each call copies the whole 360-slot scan out
+        from under the lidar thread's lock and re-applies the staleness mask.
+        Correctness, not just cost: the two are deciding whether to stop and
+        how fast to go, and they should be deciding it about the same frame.
+        """
         lidar = self.context.lidar
         if lidar is None:
             return None
