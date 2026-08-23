@@ -1,170 +1,370 @@
+# WRO-FE-YBR
 
-# Welcome to YBR's Documentation!
-This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Engineers competition. It includes an overview of our team, our robot, and the development process behind our competition entry.
+## YBR — WRO 2026 Future Engineers
 
-# Content
+Welcome to **YBR's documentation** for the **WRO 2026 Future Engineers** competition.
 
-### File's Content
-* `team-photos` - This folder contains photos of our team.
-* `robot-photos` - This folder contains six photos of the robot, showing it from all sides, as well as the top and bottom.
-* `video` - This folder contains a video.md file with links to videos demonstrating the vehicle in operation.
-* `schemes` - !!!
-* `src` - This folder contains the control software code for all components programmed for participation in the competition.
-* `mech` - This folder contains mechanical design files, including 3D models, PNG image files of the models, and other documentation related to the robot's mechanical management and structure.
-* `elec` - This folder contains electrical design files, including circuit diagrams, wiring documentation, and information about the electrical components used in the robot.
-* `other` - This folder contains additional files and resources related to our robot.
-* `LICENSE.md` - This file is the license and terms of use for the materials included in our project.
-* `README.md` - This file provides an overview of our team and robot, including the key details of or development process.
+We are a three-member team from the **Science–Mathematics English Program at Yothinburana School, Thailand**. Our project is an autonomous self-driving vehicle designed to navigate the WRO Future Engineers competition field using a combination of computer vision, distance sensing, orientation feedback, motor control, and autonomous decision-making.
 
+This repository contains our robot's mechanical design, electrical and sensing architecture, software, CAD files, wiring documentation, and development records.
 
-### README's Content
-* [Our team](#our-team)
+---
+
+# Contents
+
+* [Our Team](#our-team)
 * [Our Robot](#our-robot)
 * [Mobility and Mechanical Design](#mobility-and-mechanical-design)
 * [Power and Sensor Architecture](#power-and-sensor-architecture)
 * [Software Architecture and Obstacle Management](#software-architecture-and-obstacle-management)
 * [System Thinking and Engineering Decisions](#system-thinking-and-engineering-decisions)
-* [Build/Compile/Upload Instructions](#build-compile-upload-instructions)
-___
+* [Build / Compile / Upload](#build--compile--upload)
+* [Repository Structure](#repository-structure)
+
+---
 
 # Our Team
-We are YBR, a team from the Science–Mathematics English Program at Yothinburana School, Thailand. Our team consists of three students: Chanakarn Yimsakul, Peradon Nimsongprasert, and Thanphisit Sakulvitulthai, with our mentor, Punnapon Tanasnitikul. Brought together by our interest in robotics, we enjoy learning, solving problems, and turning our ideas into working solutions through every competition. 
 
-![Image](image.jpg)
-<table>
-  <tr>
-    <td><img src="image1.jpg" alt="Image 1" width="200"/></td>
-    <td><img src="image2.jpg" alt="Image 2" width="200"/></td>
-  </tr>
-</table>
+We are **YBR**, a team from the Science–Mathematics English Program at Yothinburana School, Thailand.
 
-### 1. Peradon Nimsongprasert
-   - Role
-### 2. Chanakarn Yimsakul
-   - Role
-### 3. Thanphisit Sakulvitulthai
-   - Role
-___
+Our team consists of three students:
+
+* **Peradon Nimsongprasert**
+* **Chanakarn Yimsakul**
+* **Thanphisit Sakulvitulthai**
+
+Our mentor is **Punnapon Tanasnitikul**.
+
+We were brought together by our interest in robotics and enjoy learning, solving problems, and turning our ideas into working systems through competition.
+
+### Team Roles
+
+> Roles are described according to each member's contribution to the development process.
+
+| Member                    | Main Responsibility |
+| ------------------------- | ------------------- |
+| Peradon Nimsongprasert    | [ADD ROLE]          |
+| Chanakarn Yimsakul        | [ADD ROLE]          |
+| Thanphisit Sakulvitulthai | [ADD ROLE]          |
+
+---
 
 # Our Robot
-Meet [Robot Name], our compact yet powerful robot, built to take on every challenge with confidence.
 
-![Image](image.jpg)
+## Overview
 
-<table>
-  <tr>
-    <td align="center"><strong>Top View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/top.jpg" width="300"></td>
-    <td align="center"><strong>Front View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/front.jpg" width="300"></td>
-    <td align="center"><strong>Left View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/left.jpg" width="300"></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>Bottom View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/bottom.jpg" width="300"></td>
-    <td align="center"><strong>Back View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/back.jpg" width="300"></td>
-    <td align="center"><strong>Right View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/right.jpg" width="300"></td>
-  </tr>
-</table>
+Our robot is a compact four-wheeled autonomous vehicle designed for the WRO Future Engineers challenge.
 
+The robot combines:
 
-### Performance Video
-  - Test: [Run Test](video/RunTest_video.md) 
-  - Challenge 1: [Open Challenge Round](https://www.example.com)
-  - Challenge 2: [Obstacle Challenge Round](https://www.example.com)
+* A Raspberry Pi 5 for high-level computation
+* An Arduino UNO R4 Minima for low-level motor and steering control
+* A DC geared motor with encoder for drivetrain control
+* A servo motor for steering
+* LiDAR for distance and environmental information
+* A camera for visual detection
+* An IMU for orientation and heading information
+* A start button for autonomous competition operation
 
-___
+The final robot has an approximate dimension of:
+
+**230 × 140 × 130 mm**
+
+The complete mechanical and electrical design is documented in the `mech` and `elec` directories.
+
+---
+
+## Robot Photos
+
+The `robot-photos` directory contains photographs of the robot from multiple directions, including top and bottom views.
+
+[Add robot photos here.]
+
+---
+
+## Performance Videos
+
+### Test Run
+
+[Add test video link]
+
+### Open Challenge
+
+[Add Open Challenge video link]
+
+### Obstacle Challenge
+
+[Add Obstacle Challenge video link]
+
+---
 
 # Mobility and Mechanical Design
 
 ## Robot Design
 
-### Overview
-// Add video animation expplain everything about the robot and how they work
+Our vehicle uses a four-wheel automotive-style configuration with a dedicated drivetrain and steering mechanism.
 
-// Or add vdo explain all the component of the robot and find somewhere new to put the vdo above
+The main mechanical design includes:
 
-<table align="center">
-  <tr>
-    <td align="center">
-      <img src="https://github.com/ThanyawutII/Essent1/blob/main/Screenshot%202025-11-24%20113020.png" width="500">
-      <p><a href="https://github.com/Book2009/YB-SUNFLOWER/blob/main/3DModels/Main%20Base.stl" target="_blank">Click here to view the 3D model.</a></p>
-    </td>
-  </tr>
-</table>
+* **Drive Motor:** CHP-20GP-180 DC geared motor with dual-phase encoder
+* **Steering:** GEEKSERVO 2 kg 360° servo
+* **Wheels:** LEGO Tire 43.2 × 22 ZR and 30.4 mm reinforced-rim wheel
+* **3D-Printed Structures:** Custom components designed and produced for our vehicle
 
-- [All 3D-printable models used for our robot can be found here](mech/models)
+Detailed CAD models and mechanical documentation can be found in the `mech` directory.
 
-## Mobility Management
+[Add robot overview image / 3D model image here.]
 
-// components' pic (+summarize detail)
+---
 
-<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage1.png" width="700" height="400">
+## Drivetrain Philosophy
 
-<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage2.png" width="700" height="400">
+One of our main mechanical design decisions was to prioritize **precision, stability, and controllability over maximum speed**.
 
-<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage3.png" width="700" height="400">
+We selected a higher gear ratio to provide more available torque. Although this reduces maximum speed, the additional torque allows the robot to move more reliably at low speed and improves control during precise maneuvers.
 
-<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage4.png" width="700" height="400">
+During prototype testing, we found that insufficient torque made low-speed movement and acceleration from a stop difficult to control. This led us to further optimize the drivetrain and gearbox.
 
-<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/6b0eed2ec69b003c0b4ab057b13127d00ccb34aa/other/ComponentsImage5.png" width="700" height="400">
+---
 
-- __Dimension:__ 230 x 140 x 130 mm
-- __Drive Motor:__ CHP-20GP-180 motor with encoder
-- __Steering Motor:__ GEEKSERVO 2kg 360 Degrees Servo
-- __Wheels:__ Lego Tire 43.2 x 22 ZR and Wheel 30.4mm D. x 20mm with No Pin Holes and Reinforced Rim
-- __3D Structures:__
-[Details of Each 3D Component](https://github.com/chankrrn/WRO-FE-YBR/blob/main/mech/mech_README.md#final-3d-structure)
+## Motor Selection
 
-### Mechanical parts
-![Image of Mechanical parts](image.jpg)
-- __Motor(CHP-20-GP180):__ The motor connects to the rear drivetrains to move the robot forward or backwards.
-- __Servo(GEEKSERVO 2kg 360 Degrees Servo):__ Servo for steering
+We selected the **CHP-20GP-180**, a brushed DC motor with a dual-phase quadrature encoder.
 
-### Expansion board/hat
-![Image of Expansion board/hat](image.jpg)
-- __DFRobot Pi’s OI Expansion HAT:__ The hat enhances the Pi by providing additional IO ports and compatibility with various sensors and modules
-- __Arduino R4 Motor Shield:__ An extension with motor driver to control the motor and add IO ports for servo
-___
+The encoder allows us to measure motor rotation and provides feedback for more precise motor control.
+
+We considered two gearbox configurations:
+
+| Gear Ratio | Maximum Speed |
+| ---------- | ------------: |
+| 1:5        |      1350 RPM |
+| 1:19       |       390 RPM |
+
+We selected the **1:19 configuration** because our design philosophy prioritizes torque, precision, and stability over maximum speed.
+
+---
+
+## Gearbox Development
+
+During the prototype stage, we used a **28:28 gearbox**, giving a **1:1 ratio**.
+
+Testing showed that the available torque was too low for our desired low-speed behavior. The robot struggled to accelerate smoothly from a stop and was difficult to control accurately at low speeds.
+
+For the final design, we developed a custom **3D-printed 21-tooth gear** that could connect directly to the motor without requiring the additional gear adapter used in the prototype.
+
+The final gearbox uses a **21:28 ratio**.
+
+Although the change appears relatively small, testing showed a significant improvement in low-speed controllability and overall precision.
+
+Detailed mechanical development and CAD files are available in:
+
+[`mech/mech_README.md`](mech/mech_README.md)
+
+---
 
 # Power and Sensor Architecture
 
-### Sensors
-![Image of Sensors](image.jpg)
-- __Lidar (RPLiDAR C1):__ Laser scanner to scan the surroundings in 2D view, detect and avoid the walls, traffic signs and parking space
-- __Camera (3.6mm Raspberry Pi IR Camera):__ Use to detect and identify traffic signs and parking spaces by the color
-- __IMU (Gravity BNO055):__ Gyroscope and Compass module with 9-axis sensor making a very stable and reliable motion and heading tracking
-- __Touch Sensor (ZX-Switch01 by INEX):__ Switch to start the robot since the Arduino or the Pi doesn’t have a switch 
-- __Motor Encoder (CHP-20-GP180 Encoder):__ Using two sensors that reads magnetic pulse from a disk connected to the motor reading the speed and direction of the motor
+The robot uses a combination of distance sensing, computer vision, orientation sensing, encoder feedback, and a physical start button.
 
+## Sensors
 
-### Electrical Components 
-![Image of Electrical Components ](image.jpg)
-- __On/Off Switch(SPST ON/OFF Switch 2 Pin Rocker Switch DC 125/250V):__ For cutting power from the battery to the robot
-- __Step-down(LM2596):__ The step-down is used to supply the Raspberry Pi with a 5V supply. Because the Pi is sensitive to Voltage fluctuations and electrical noise. We tune the output to 5.1V to compensate for cable and connector losses
-- - __Step-down(XL4015):__ The step-down is used to supply the Arduino with a 11V supply. Because the motor will vary in speed and torque related to the voltage of the battery. We tune the output to 11.1V to compensate for cable and connector losses
-- __Quick Wire Connector__
-    - (PCT-21 Connector): This connector is for the gnd line combining all the negative current to the same spot
-    - (D1-2): For this robot’s power distribution system we use a single battery pack, that split into 2 separate branches, one to the LM2596 step-down to power the Pi, and another one to the XL4015 step-down and to the Arduino Motor Shield
-- __Battery(Helix 1100 mah 11.1V 3s Lipo-Battery )__ A 3 cells Battery to power the robot
+### RPLiDAR C1
 
-### Computing Components
-![Image of Computing Components](image.jpg)
-- __Raspberry Pi 5 (Main Board):__ Compute all the values from the LiDAR,Camera,Imu to calculate the walking path and sends the driving command to the Aruduino
+The LiDAR provides 2D distance measurements around the robot and is used to obtain information about walls, traffic signs, and the parking area.
 
-- __Arduino r4 minima:__ Commands the driving motor and steering servo. It also calculates the signals from the encoder for precise movements. And it is connected to the starting button
+### Raspberry Pi Night Vision Camera
 
-[Click here to view the electrical management system and components in detail](https://github.com/chankrrn/WRO-FE-YBR/blob/55f09c5e80ac297334fd639a8d67b9b5a7db58ad/elec/elec_README.md)
-___
+The camera is used for visual detection, including identification of colored traffic signs and parking-related visual information.
+
+### Gravity BNO055 IMU
+
+The BNO055 provides orientation and heading information and is used to support stable motion and heading control.
+
+### Motor Encoder
+
+The CHP-20GP-180 encoder provides feedback about motor rotation, speed, and direction.
+
+### ZX-Switch01
+
+The external switch is used as the robot's competition start button.
+
+---
+
+## Computing Architecture
+
+### Raspberry Pi 5
+
+The Raspberry Pi 5 is the main high-level computing platform.
+
+It processes information from the LiDAR, camera, and IMU and determines the robot's navigation and driving commands.
+
+### Arduino UNO R4 Minima
+
+The Arduino UNO R4 Minima performs lower-level control of:
+
+* Drive motor
+* Steering servo
+* Encoder feedback
+* Start button
+
+This separation allows high-level processing and low-level motor control to be handled independently.
+
+---
+
+## Power Architecture
+
+Our electrical system is powered by a **Helix 1100 mAh 11.1 V 3S LiPo battery**.
+
+The battery supply is divided into separate regulated power branches for the computing system and the motor/control system.
+
+### Raspberry Pi Branch
+
+The Raspberry Pi is supplied through an **LM2596 step-down converter**.
+
+The output is tuned to approximately **5.1 V** to compensate for voltage losses through wiring and connectors.
+
+### Motor / Control Branch
+
+The motor-side system uses an **XL4015 step-down converter** and an **L298P Motor Shield** connected to the Arduino UNO R4 Minima.
+
+The purpose of separating the power branches is to reduce the effect of motor current changes on the Raspberry Pi and improve system stability.
+
+Detailed electrical architecture, wiring, power calculations, component information, and calibration methods are documented in:
+
+[`elec/elec_README.md`](elec/elec_README.md)
+
+---
+
+# Software Architecture and Obstacle Management
+
+The robot's software is divided between high-level processing on the Raspberry Pi and low-level control on the Arduino UNO R4 Minima.
+
+The Raspberry Pi processes sensor information and determines the robot's navigation behavior.
+
+The Arduino receives control commands and handles the drivetrain, steering, encoder feedback, and start sequence.
+
+The final software architecture and obstacle-management strategy are documented in:
+
+[`src/`](src/)
+
+and will be described in greater detail in:
+
+[`software/software_README.md`](software/software_README.md)
+
+[Add software architecture diagram / state machine here.]
+
+---
 
 # System Thinking and Engineering Decisions
 
+Our robot was developed as a complete system rather than as independent mechanical, electrical, and software components.
 
+Mechanical, electrical, and software decisions affect one another.
 
-# Build/Compile/Upload Instructions
-build instruction (optional)
-___
+For example:
 
-# Software Architecture and Obstacle Management
-info การทำงาน^แนวคิด + Flow chart
-___
+* The drivetrain gear ratio affects acceleration, low-speed control, and the behavior required from the software.
+* Sensor selection determines what information is available to the navigation system.
+* Power distribution affects the reliability of the Raspberry Pi and motor system.
+* Encoder feedback allows the control system to use motor movement information for more precise operation.
+* The computing architecture determines how sensor data can be processed and converted into control commands.
 
-# Conclusion and Result
-summarize + future dev
+One of our main design philosophies was to prioritize **precision, stability, and repeatability over maximum speed**.
+
+This philosophy influenced the selection of the drivetrain gear ratio, motor configuration, gearbox design, sensor architecture, and control strategy.
+
+The development process was iterative. We built prototypes, tested them, identified problems, and modified the design based on the observed behavior of the robot.
+
+Detailed engineering decisions are documented throughout the `mech`, `elec`, and software documentation.
+
+---
+
+# Build / Compile / Upload
+
+## Hardware
+
+The robot requires the following main hardware:
+
+* Raspberry Pi 5
+* Arduino UNO R4 Minima
+* DFRobot Pi OI Expansion HAT
+* L298P Motor Shield
+* CHP-20GP-180 DC geared motor with encoder
+* GEEKSERVO steering servo
+* RPLiDAR C1
+* Raspberry Pi Camera
+* BNO055 IMU
+* ZX-Switch01
+* 11.1 V 3S LiPo battery
+* LM2596 step-down converter
+* XL4015 step-down converter
+
+## Source Code
+
+The robot's source code is stored in:
+
+[`src/`](src/)
+
+## Mechanical Files
+
+Mechanical design files and 3D-printable components are stored in:
+
+[`mech/`](mech/)
+
+## Electrical Files
+
+Electrical diagrams and documentation are stored in:
+
+[`elec/`](elec/)
+
+and:
+
+[`schemes/`](schemes/)
+
+> Detailed build, configuration, and upload instructions will be added as the final development environment is documented.
+
+---
+
+# Repository Structure
+
+```text
+WRO-FE-YBR/
+│
+├── elec/
+│   └── elec_README.md
+│
+├── mech/
+│   ├── models/
+│   └── mech_README.md
+│
+├── other/
+│
+├── robot-photos/
+│
+├── schemes/
+│   ├── README.md
+│   ├── Schematic Diagram.png
+│   └── Wiring Diagram.png
+│
+├── src/
+│
+├── team-photos/
+│
+├── video/
+│
+├── LICENSE.md
+└── README.md
+```
+
+---
+
+# Conclusion
+
+YBR's WRO Future Engineers robot was developed through an iterative engineering process combining mechanical design, electronics, sensing, and software.
+
+Our main design philosophy is to prioritize **precision, stability, reliability, and repeatability** rather than maximizing a single performance factor such as top speed.
+
+The documentation in this repository records the design and development of the robot and provides the technical resources required to understand and reproduce the system.
+
+As development continues, additional testing results, software documentation, and final competition materials will be added to the repository.
+****
