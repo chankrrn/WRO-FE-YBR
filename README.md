@@ -111,9 +111,8 @@ ___
 - __Steering Motor:__ GEEKSERVO 2kg 360 Degrees Servo
 - __Wheels:__ Lego Tire 43.2 x 22 ZR and Wheel 30.4mm D. x 20mm with No Pin Holes and Reinforced Rim
 
-- 
 
-[Details of Each 3D Component](https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/mech_README.md)
+[Details of Each 3D Component](https://github.com/chankrrn/WRO-FE-YBR/blob/main/mech/mech_README.md)
 
 ### Mechanical parts
 ![Image of Mechanical parts](image.jpg)
