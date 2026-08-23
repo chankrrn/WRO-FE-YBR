@@ -103,8 +103,7 @@ ___
 
 <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage4.png" width="700" height="400">
 
-<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage5.png" width="700" height="400">
-
+<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/6b0eed2ec69b003c0b4ab057b13127d00ccb34aa/other/ComponentsImage5.png" width="700" height="400">
 
 - __Dimension:__ 230 x 140 x 130 mm
 - __Drive Motor:__ CHP-20GP-180 motor with encoder
