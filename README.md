@@ -51,6 +51,19 @@ We were brought together by our interest in robotics and enjoy learning, solving
 
 # Our Robot
 
+<table>
+  <tr>
+    <td align="center"><strong>Top View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/top.jpg" width="300"></td>
+    <td align="center"><strong>Front View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/front.jpg" width="300"></td>
+    <td align="center"><strong>Left View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/left.jpg" width="300"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Bottom View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/bottom.jpg" width="300"></td>
+    <td align="center"><strong>Back View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/back.jpg" width="300"></td>
+    <td align="center"><strong>Right View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/right.jpg" width="300"></td>
+  </tr>
+</table>
+
 ## Overview
 
 Our robot is a compact four-wheeled autonomous vehicle designed for the WRO Future Engineers challenge.
