@@ -284,9 +284,74 @@ Holds the XL4015 Step-down on top of the Uno motor shield
 
 
 ### - 3D Printer
-  - __Printer name:__ info ------
-  - __Filament :__ info-----
+- #### **3D Printer**: Bambu Lab H2D by Bambu Lab
 
+<image src=https://github.com/chankrrn/WRO-FE-YBR/blob/main/other/X2D.png width = "400">
+
+The **Bambu Lab H2D** was selected for manufacturing our robot parts because it provides high printing speed, accuracy, and a large build volume. Its heated chamber and high-temperature hotend make it suitable for engineering materials such as ABS and fiber-reinforced filaments. These features allow us to produce strong and accurate parts while reducing printing time, which is useful when developing and testing multiple robot prototypes.
+
+##### General Specifications
+
+| Specification | Value |
+|---|---|
+| Build Volume | 325 × 320 × 325 mm³ (Single Nozzle) |
+| Dual-Nozzle Build Volume | 300 × 320 × 325 mm³ |
+| Hotend | All-Metal |
+| Nozzle | 0.4 mm Hardened Steel Included |
+| Maximum Nozzle Temperature | 350°C |
+| Filament Diameter | 1.75 mm |
+| Maximum Toolhead Speed | 1000 mm/s |
+| Maximum Acceleration | 20,000 mm/s² |
+| Maximum Chamber Temperature | 65°C |
+| Maximum Heatbed Temperature | 120°C |
+| Supported Nozzle Sizes | 0.2, 0.4, 0.6, 0.8 mm |
+
+##### Physical Dimensions
+
+| Specification | Value |
+|---|---|
+| H2D Dimensions | 492 × 514 × 626 mm³ |
+| Net Weight | 31 kg |
+
+##### Build Plate Specifications
+
+| Specification | Value |
+|---|---|
+| Build Plate | Flexible Steel Plate |
+| Included Build Plate | Textured PEI Plate |
+| Supported Build Plates | Textured PEI, Smooth PEI |
+| Maximum Heatbed Temperature | 120°C |
+| Heated Chamber | Up to 65°C |
+
+The H2D's heated chamber and high-temperature nozzle make it well suited to printing ABS and fiber-reinforced materials.
+
+<hr>
+
+- #### **Filament**: Bambu Lab ABS and Bambu Lab ABS-GF
+
+<image src=https://github.com/chankrrn/WRO-FE-YBR/blob/main/other/ABS-GF.jpg width = "350"> <image src=https://github.com/chankrrn/WRO-FE-YBR/blob/main/other/ABS%20Olive.jpg width = "350">
+
+We use **two types of Bambu Lab filament: ABS and ABS-GF (glass-fiber reinforced ABS)**. We selected these materials because our robot parts need to be strong, durable, and resistant to heat and impact.
+
+**Bambu Lab ABS** provides a good balance of toughness and strength, making it suitable for general structural and mechanical parts. And it gives a smooth texture prints unlike the rough texture of the Glass-Fiber.
+
+**Bambu Lab ABS-GF** contains glass fibers that increase stiffness and dimensional stability, also making it easier to print. This makes it useful for parts that need greater rigidity and resistance to deformation.
+
+We use **ABS** where there are contact mechanical movement between them or some parts that isn't hard to print or need more flexibility, while **ABS-GF is used for parts that require greater stiffness and dimensional stability**. This allows us to choose the most suitable material for each part instead of using one material for the entire robot.
+
+##### Filament Specifications
+
+| Specification | Bambu Lab ABS | Bambu Lab ABS-GF |
+|---|---:|---:|
+| Material | ABS | Glass-Fiber Reinforced ABS |
+| XY Impact Strength | 39.3 kJ/m² | 14.5 kJ/m² |
+| XY Bending Strength | 62 MPa | 68 MPa |
+| XY Bending Modulus | 1880 MPa | 2860 MPa |
+| Z Impact Strength | 7.4 kJ/m² | 5.3 kJ/m² |
+| HDT @ 0.45 MPa | 87°C | 99°C |
+| Filament Diameter | 1.75 mm | 1.75 mm |
+
+The material data shows that ABS-GF is **stiffer and has higher heat resistance**, while ABS provides higher impact toughness. Therefore, we select between the two depending on the mechanical requirements of each robot part.
 ___
 
 ## Mechanical Choices
