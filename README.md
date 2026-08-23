@@ -1,3 +1,4 @@
+
 # Welcome to YBR's Documentation!
 This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Engineers competition. It includes an overview of our team, our robot, and the development process behind our competition entry.
 
@@ -105,13 +106,11 @@ ___
 <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage5.png" width="700" height="400">
 
 
-- __Dimension:__
-- __Drive Motor:__
-- __Steering Motor:__
-- __3D-Printed Structures:__
-- __Customized Mounts:__
-- __Steering__
-- __Wheels__
+- __Dimension:__ 230 x 140 x 130 mm
+- __Drive Motor:__ CHP-20GP-180 motor with encoder
+- __Steering Motor:__ GEEKSERVO 2kg 360 Degrees Servo
+- __Wheels:__ Lego Tire 43.2 x 22 ZR and Wheel 30.4mm D. x 20mm with No Pin Holes and Reinforced Rim
+
 - 
 
 [Details of Each 3D Component](https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/mech_README.md)
