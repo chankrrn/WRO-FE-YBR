@@ -153,6 +153,8 @@ During prototype testing, we found that insufficient torque made low-speed movem
 
 ## Motor Selection
 
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/a1ab7c62-66f1-469f-9876-43a2f6fce361" />
+
 We selected the **CHP-20GP-180**, a brushed DC motor with a dual-phase quadrature encoder.
 
 The encoder allows us to measure motor rotation and provides feedback for more precise motor control.
@@ -169,6 +171,8 @@ We selected the **1:19 configuration** because our design philosophy prioritizes
 ---
 
 ## Gearbox Development
+
+<image src=https://github.com/chankrrn/WRO-FE-YBR/blob/main/mech/models/Powertrains.png width = "800">
 
 During the prototype stage, we used a **28:28 gearbox**, giving a **1:1 ratio**.
 
