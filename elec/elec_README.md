@@ -1,74 +1,85 @@
 # Electrical Design Approach
 
-#### Content
-* [Electrical Planning](#electrical-planning)
-* [Power Budget](#power-budget)
-* [Electrical Components](#electrical-components)
-  * [Controller](#controller)
-  * [Sensors](#sensors)
-  * [Power Management and Distribution](#power-management-and-distribution)
-* [Wiring Reference Table](#wiring-reference-table)
-* [Calibration Methods](#calibration-methods)
-* [Testing & Iteration Log](#testing--iteration-log)
-* [References / Datasheets](#references--datasheets)
+This document describes the electrical and sensing architecture of our WRO Future Engineers 2026 robot. It explains the main controllers, sensors, power distribution, wiring, calibration methods, and the reasoning behind our electrical design choices.
+
+Our electrical design follows the same overall philosophy as the rest of the robot: **prioritize stability, reliability, and predictable control over unnecessary complexity**.
+
+## Content
+
+- [Electrical Planning](#electrical-planning)
+- [Power Budget](#power-budget)
+- [Electrical Components](#electrical-components)
+  - [Controller](#controller)
+  - [Sensors](#sensors)
+  - [Power Management and Distribution](#power-management-and-distribution)
+- [Wiring Reference Table](#wiring-reference-table)
+- [Calibration Methods](#calibration-methods)
+- [Testing & Iteration](#testing--iteration)
+- [References / Datasheets](#references--datasheets)
 
 ---
 
 ## Electrical Planning
 
-*[Insert Block Diagram / Power Architecture Diagram here — a logical overview showing all power rails and data buses]*
+Our robot uses a single **11.1 V 3S LiPo battery** as its main power source. The electrical system is then divided into separate regulated branches for the computing system and the motor/control system.
 
+### High-Level Electrical Architecture
+
+```text
+[11.1 V 3S LiPo Battery]
+           │
+      [Main Switch]
+           │
+     [Power Distribution]
+        ┌──┴───────────────┐
+        │                  │
+ [LM2596 → 5 V]     [XL4015 → Motor-side supply]
+        │                  │
+ [Raspberry Pi 5]   [L298P Motor Shield]
+        │                  │
+   ┌────┼────┐       ┌─────┴─────┐
+   │    │    │       │           │
+ Camera LiDAR IMU   DC Motor   Steering Servo
+   │    │    │
+  CSI  UART I²C
+        
+ Arduino UNO R4 Minima
+        │
+        └── Low-level motor, steering, and start-button control
 ```
-[Battery 11.1V 3S] → [SPST Switch] → [PCT-21 splitter (+) / D1-2 splitter (-)]
-                                            │
-                        ┌───────────────────┴───────────────────┐
-                        │                                       │
-                 [LM2596 → 5V]                          [XL4015 → motor-side supply]
-                        │                                       │
-                 [Raspberry Pi 5]                        [L298P Motor Driver]
-                        │                                       │
-              [IO Expansion HAT (I2C)]                  [DC Motor] [Servo]
-                   │         │
-            [IMU: I2C]  [LiDAR: UART]
-                   │
-            [Camera: MIPI-CSI, direct to Pi]
-            [Touch Sensor: GPIO, connected to Arduino UNO R4 Minima through the L298P Shield]
-```
 
-*(Add a short paragraph explaining why the system is divided into two branches (Pi and Motor) — the reason is to prevent motor current spikes from affecting the Pi 5)*
+The system is divided into two main power branches. The Raspberry Pi branch uses the **LM2596** to provide a dedicated 5 V rail for the Raspberry Pi and its peripherals. The motor/control branch uses the **XL4015** for the L298P motor-control system and Arduino.
 
-The robot's electrical system uses a single battery pack and divides the circuit into two independent branches through PCT-21 (positive) and D1-2 (negative):
-- **Branch 1**: Through LM2596 → supply the Raspberry Pi 5 and its 5V peripherals. The IMU is connected through the IO Expansion HAT.
-- **Branch 2**: Through XL4015 → supply the L298P Motor Shield and Arduino UNO R4 Minima. The shield controls the drive motor and steering system.
+We selected this arrangement because motor operation can produce larger current changes than the computing and sensing system. Keeping the computing supply on its own regulated branch reduces the likelihood that motor-related voltage fluctuations will affect the Raspberry Pi and helps the two parts of the system operate more reliably.
 
-Reason for separating the circuits: The Raspberry Pi 5 is sensitive to voltage fluctuations. If it shares a power supply with the motors, the high current spikes during starting and braking could cause the Pi to reset or become unstable. Separating the circuits allows both systems to operate independently and more reliably.
+The detailed schematic and wiring diagrams are stored in the [`schemes`](../schemes/) directory.
 
 ---
 
 ## Power Budget
 
-| Component                        |              Voltage |            Current (typ./peak) | Power Source           |
-| -------------------------------- | -------------------: | -----------------------------: | ---------------------- |
-| **Raspberry Pi 5 (8GB)**         |                   5V |             **5A recommended** | LM2596                 |
-| **IO Expansion HAT (DFR0566)**   |                   5V |              **Not specified** | Pi header              |
-| **Camera (OV5647 Night Vision)** |                   5V |                 **200–250 mA** | From Pi (CSI)          |
-| **RPLiDAR C1**                   |                   5V |                     **230 mA** | From Pi / HAT          |
-| **IMU (BNO055 + BMP280)**        |               3.3–5V |                       **5 mA** | IO Expansion HAT (I2C) |
-| **Arduino UNO R4 Minima**        |                   5V |              **Not specified** | L298P Shield           |
-| **L298P Motor Shield**           | 5V logic / 12V motor |           **Up to 2A/channel** | XL4015                 |
-| **DC Gear Motor (CHP-20GP-180)** |                  12V |  **550 mA rated / 2.7A stall** | Through L298P          |
-| **Steering Servo**               |                 4.8V | **70 mA rated / 900 mA stall** | Through L298P          |
-| **Touch Sensor (ZX-Switch01)**   |                   5V |                     **~10 mA** | L298P Shield           |
-| **Total (Pi Branch)**            |                   5V |   **~0.495A + Pi consumption** | LM2596                 |
-| **Total (Motor/Arduino Branch)** | **12V motor / 4.8V servo** | **Up to ~3.61A load** | XL4015 / regulated servo supply |
+The following table summarizes the electrical loads identified during our design process. Values are based on the component information used by the team.
 
-
+| Component | Voltage | Current (typ./peak) | Power Source |
+|---|---:|---:|---|
+| Raspberry Pi 5 (8GB) | 5 V | 5 A recommended | LM2596 |
+| IO Expansion HAT (DFR0566) | 5 V | Not specified | Pi header |
+| Camera (OV5647 Night Vision) | 5 V | 200–250 mA | From Pi |
+| RPLiDAR C1 | 5 V | 230 mA | From Pi / HAT |
+| IMU (BNO055 + BMP280) | 3.3–5 V | 5 mA | IO Expansion HAT (I²C) |
+| Arduino UNO R4 Minima | 5 V | Not specified | L298P Shield |
+| L298P Motor Shield | 5 V logic / 12 V motor | Up to 2 A/channel | XL4015 |
+| DC Gear Motor (CHP-20GP-180) | 12 V | 550 mA rated / 2.7 A stall | Through L298P |
+| Steering Servo | 4.8 V | 70 mA rated / 900 mA stall | Through L298P |
+| Touch Sensor (ZX-Switch01) | 5 V | ~10 mA | L298P Shield |
 
 ### Power Supply Evaluation
 
-Total (**Motor/Arduino Branch**): The drive motor and steering servo can reach about 3.6A combined at their listed stall currents. The XL4015 IC is specified for up to 5A output in its reference application, so the current capacity is sufficient on paper. However, the actual module temperature, wiring, and servo supply voltage should also be checked during testing.
+For the motor/control branch, the listed stall values of the drive motor and steering servo give a combined worst-case figure of approximately **3.6 A**. The XL4015 is rated for up to 5 A output, so the selected converter provides current capacity above this listed figure. Actual temperature, wiring losses, and operating conditions should still be considered during testing.
 
-Total (**Pi Branch**): The known external peripherals require about 0.495A, excluding the Raspberry Pi 5 and the small load of the IO Expansion HAT. The LM2596 is rated up to 2A without a heatsink or 3A with a heatsink, so it is sufficient for the listed peripherals. However, the Raspberry Pi 5 itself can require more power under heavy workload, so the actual Pi input voltage should be monitored during testing.
+For the Raspberry Pi branch, the known external peripherals listed above require approximately **0.495 A**, excluding the Raspberry Pi itself and the small load of the IO Expansion HAT. The LM2596 is specified for up to 2 A without a heatsink and up to 3 A with a heatsink. Because the Raspberry Pi can require substantially more power under heavy workloads, the team treats the Pi's actual supply voltage as an important reliability consideration.
+
+The power budget therefore influenced our architecture: the motor and computing systems were intentionally supplied through separate regulated branches rather than treating all loads as one undivided supply.
 
 ---
 
@@ -78,36 +89,35 @@ Total (**Pi Branch**): The known external peripherals require about 0.495A, excl
 
 #### Raspberry Pi 5 (8GB)
 
-<img width="400" height="209" alt="PI_5_TOP_SC1111-SC1112-removebg-preview" src="https://github.com/user-attachments/assets/1af362a4-25ec-4275-a146-2a4feac70d3b" />
+The **Raspberry Pi 5 (8GB)** serves as the main high-level processing unit of the robot. It is responsible for computationally demanding tasks such as camera processing, LiDAR data processing, navigation logic, and real-time decision-making.
 
-The Raspberry Pi 5 (8GB) serves as the main processing unit of the robot. It functions like a high-performance mini computer, capable of handling advanced and computationally intensive tasks such as camera processing, LiDAR data analysis, SLAM, navigation algorithms, and real-time decision-making. Compared to previous generations, the Raspberry Pi 5 provides a major leap in CPU, GPU, and I/O performance, making it ideal for robotics applications that require fast data throughput and reliable multitasking.
-
-We use this board because it delivers significantly higher processing power in the same compact form factor, while also providing improved interfaces for high-bandwidth devices such as multiple cameras, high-speed sensors, and NVMe storage.
+We selected the Raspberry Pi 5 because it provides substantially higher processing capability in a compact form factor, while also providing the interfaces required by our sensors and camera system.
 
 | Specification | Value |
 |---|---|
-| Main Board / SOC | BCM2712 |
+| Main SoC | BCM2712 |
 | Processor | Quad-core 64-bit ARM Cortex-A76, 2.4 GHz |
 | Memory | 8 GB LPDDR4X-4267 SDRAM |
-| Wireless | Dual-band Wi-Fi, Bluetooth 5.0 / BLE |
-| USB Ports | 2 × USB 3.0, 2 × USB 2.0 |
+| Wireless hardware | Dual-band Wi-Fi, Bluetooth 5.0 / BLE |
+| USB | 2 × USB 3.0, 2 × USB 2.0 |
 | GPIO | 40-pin header |
 | Camera Interface | 2 × 4-lane MIPI CSI/DSI |
-| Power Input | 5V DC via USB-C; 5V/5A recommended for high-power peripherals |
-| Operating Temp | 0 – 50 °C |
+| Power Input | 5 V DC via USB-C; 5 V/5 A recommended for high-power peripherals |
+| Operating Temperature | 0–50 °C |
 
+Wireless hardware is not used as part of the robot's competition control system.
 
 #### Arduino UNO R4 Minima
 
-<img width="384" height="302" alt="Base_Plate_2" src="https://github.com/user-attachments/assets/c5f7f517-4b05-47f0-8574-c1c684fa60dc" />
+The **Arduino UNO R4 Minima** is used as the low-level controller for the motor-control system. It receives control commands and handles the drive motor, steering, and start-button functions.
 
-The Arduino UNO R4 Minima is the low-level controller for the motor shield. It receives control commands and handles the drive motor, steering, and start button. It uses a 32-bit Renesas RA4M1 Arm Cortex-M4 running at 48 MHz and operates at 5V. It provides 14 digital I/O pins and 6 analog inputs. Arduino specifies a maximum of 8mA per GPIO pin, so higher-current devices such as motors and servos must be powered through an appropriate driver or external supply.
+Using a separate low-level controller allows the time-sensitive motor and steering functions to remain separate from the higher-level processing performed on the Raspberry Pi.
 
 | Specification | Value |
 |---|---|
 | Main MCU | Renesas RA4M1 |
 | Processor | 32-bit Arm Cortex-M4, 48 MHz |
-| Operating Voltage | 5V |
+| Operating Voltage | 5 V |
 | Digital I/O | 14 |
 | Analog Inputs | 6 |
 | Flash Memory | 256 kB |
@@ -115,44 +125,44 @@ The Arduino UNO R4 Minima is the low-level controller for the motor shield. It r
 | EEPROM | 8 kB |
 | DAC | 12-bit |
 | USB | USB-C |
-| VIN Input | 6–24V |
+| VIN Input | 6–24 V |
 | Maximum GPIO Current | 8 mA per pin |
+
+Higher-current devices such as the motor and steering servo are therefore controlled through the motor driver / appropriate power path rather than directly from an Arduino GPIO pin.
 
 #### IO Expansion HAT for Raspberry Pi (DFR0566)
 
-<img width="250" height="250" alt="io-expansion-hat-pins-expander-fur-raspberry-pi-4b-3b-3b-2b-dfrobot-dfr0566-removebg-preview" src="https://github.com/user-attachments/assets/a29f7909-610b-44b7-afcc-4de5def7b2dd" />
+The **DFR0566 IO Expansion HAT** provides an organized interface between the Raspberry Pi and the connected sensors. In our final system, the IMU is connected through the HAT using I²C, while the camera and LiDAR are connected directly to the Raspberry Pi.
 
-The IO Expansion HAT acts as the interface between the Raspberry Pi and the IMU. In our final system, the camera and LiDAR are connected directly to the Raspberry Pi, while the IMU is connected through the HAT using I2C. This keeps the sensor wiring organized and allows the Raspberry Pi to focus on the main navigation and vision tasks.
+This arrangement keeps the sensor wiring organized while allowing the Raspberry Pi to access the different interfaces required by the sensing system.
 
 | Specification | Value |
 |---|---|
-| Supported Platforms | Pi 2B/3B/3B+/4B/Zero/Zero W/**Pi 5** |
+| Supported Platforms | Pi 2B/3B/3B+/4B/Zero/Zero W/Pi 5 |
 | I/O Ports | 24 (Gravity-compatible) |
 | Analog Inputs | 6 (via ADS7830 ADC) |
 | Communication to Pi | I²C |
-| Output Voltage | 5V regulated |
+| Output Voltage | 5 V regulated |
 | Port Type | Gravity 3-pin (VCC–GND–Signal) |
 | Dimensions | 65 × 56 mm |
 
-Note : Electrically, signals travel directly from the Pi5 GPIO through the HAT (which only serves as a breakout and does no processing) to the sensors — the schematic is shown as a straight line for clarity, but physically, they are connected via the screw terminals of the HAT.
+Electrically, the HAT acts as an interface/breakout between the Pi and the connected sensors; it does not perform the main sensor-processing task itself.
 
 #### Motor Driver — L298P
 
-<img width="319" height="255" alt="Base Plate (3)" src="https://github.com/user-attachments/assets/7d54c34e-01eb-4127-bd80-576e9743afe8" />
+We selected the **L298P Motor Shield** as the motor-control interface between the Arduino and the drive/steering actuators. It provides PWM-based motor control and supports up to 2 A per channel according to the component information used in our design.
 
-We selected the L298P Motor Shield because it provides two independent motor channels and can control motor speed using PWM. The L298P version supports up to 2A per channel. The shield is mounted directly on the Arduino UNO R4 Minima, which sends the control signals. In our robot, the shield is responsible for the drive motor and steering system. The Raspberry Pi does not directly drive the motor; the Arduino handles the low-level motor control.
+The Raspberry Pi does not directly drive the motor. Instead, the Raspberry Pi handles higher-level processing while the Arduino and L298P handle the lower-level actuator control.
 
 ---
 
-### Sensors
+## Sensors
 
-#### Camera — Raspberry Pi Night Vision Camera Module
+### Camera — Raspberry Pi Night Vision Camera Module
 
-<img width="225" height="225" alt="Raspberry_Pi_Night_Vision_Camera_Module" src="https://github.com/user-attachments/assets/e4574859-169e-4746-80ae-535abb8f1b72" />
+The **Raspberry Pi Night Vision Camera Module** is the main vision sensor of the robot. It connects directly to the Raspberry Pi through the MIPI-CSI interface for image acquisition and processing.
 
-The Raspberry Pi Night Vision Camera Module is used as the main vision system of our robot. It connects directly to the Raspberry Pi through the MIPI-CSI interface, allowing high-speed image transmission for real-time processing. The built-in infrared capability ensures that the camera can maintain consistent brightness detection even under uneven lighting conditions, which is especially useful when competing abroad where lighting environments may differ from local testing. Its compact size and fixed-focus lens make it stable, lightweight, and easy to mount on our adjustable camera mechanism.
-
-Thanks to its direct connection to the Raspberry Pi, the camera provides low-latency image data, enabling fast color detection, line tracking, and environmental inspection during autonomous operation.
+The camera was selected because its compact form factor, fixed-focus lens, and infrared capability make it suitable for mounting on our adjustable camera mechanism and for obtaining visual information during autonomous operation.
 
 | Specification | Value |
 |---|---|
@@ -163,13 +173,17 @@ Thanks to its direct connection to the Raspberry Pi, the camera provides low-lat
 | Interface | MIPI CSI |
 | Field of View | ~60° |
 
-**Placement & Justification**: The camera is mounted on the robot's adjustable camera mechanism. The final mounting angle and height should be recorded from the completed robot, together with the distance at which the camera must detect the field features needed for autonomous decisions.
+### Placement and Justification
 
-#### LiDAR — RPLiDAR C1
+The camera is mounted on the robot's adjustable camera mechanism. The mechanism allows its position to be adjusted during development so that the field features required by the software can be captured within the camera's field of view.
 
-<img width="275" height="312" alt="Base Plate (2)" src="https://github.com/user-attachments/assets/363b72bd-1b27-47d6-9b02-e501cb8f3dfe" />
+The final competition configuration is shown in the robot photographs and wiring documentation in this repository.
 
-The RPLIDAR C1 was selected as the primary distance measurement sensor of the robot because it provides 360° scanning with a reliable detection range in a compact design. This makes it ideal for mapping the environment, detecting obstacles, and assisting in navigation during competition tasks. By connecting the LiDAR directly to the Raspberry Pi, the system can process scan data in real time with minimal latency. The wide field of view ensures continuous situational awareness, while the lightweight and low-power design makes it easy to integrate into the chassis without adding unnecessary load.
+### LiDAR — RPLiDAR C1
+
+The **RPLiDAR C1** was selected as the primary distance-measurement sensor because it provides **360° scanning** in a compact package. This gives the robot access to distance information from many directions while navigating the field.
+
+The LiDAR is connected to the Raspberry Pi, allowing its scan data to be processed together with camera and IMU information.
 
 | Specification | Value |
 |---|---|
@@ -181,133 +195,216 @@ The RPLIDAR C1 was selected as the primary distance measurement sensor of the ro
 | Accuracy | ±30 mm |
 | Weight | 110 g |
 
-Note : RPLiDAR C1 connects to Raspberry Pi 5 via its official USB-to-Serial adapter board (CP210x-based). The LiDAR's 5-pin cable plugs directly into the adapter, and a USB-C to USB-A cable connects the adapter to the Pi5. Power for the LiDAR is supplied through this same USB connection — no separate wiring required.
+The LiDAR is mounted at the front of the robot so that it can observe walls and traffic-sign locations ahead of the vehicle while still providing a wide angular view around the robot.
 
-**Placement & Justification**: The LiDAR is mounted at the front of the robot to see the traffic sign and the walls besides 
+The RPLiDAR C1 connects to the Raspberry Pi 5 through its official USB-to-Serial adapter board. Power is also supplied through this USB connection.
 
-#### Gyro/Compass — Gravity: 10 DOF IMU AHRS (BNO055 + BMP280)
+### Gyro/Compass — Gravity: 10 DOF IMU AHRS (BNO055 + BMP280)
 
-<img width="282" height="239" alt="Base Plate (1)" src="https://github.com/user-attachments/assets/6aebe20a-8b49-4d5e-88c0-de4ecb98ac19" />
+The **Gravity: 10 DOF IMU AHRS** uses the BNO055 as the main inertial/orientation sensor and also includes a BMP280 pressure sensor.
 
-The Gravity: 10 DOF IMU AHRS was chosen as the gyroscope and compass module in the years before we used the ZX-IMU, which suffered from significant drift and instability. The BNO055 integrates a 9-axis sensor with onboard sensor fusion, providing absolute orientation data without the need for complex external algorithms, while the BMP280 adds barometric pressure sensing. This combination delivers highly stable and reliable motion tracking, minimizing drift over time and ensuring consistent heading information.
+This module was selected after our earlier experience with the **ZX-IMU**, which suffered from drift and instability. The BNO055 provides onboard sensor fusion and orientation information, reducing the amount of external processing required to obtain heading information.
 
 | Specification | Value |
 |---|---|
-| Operating Voltage | 3.3–5V DC |
+| Operating Voltage | 3.3–5 V DC |
 | Operating Current | 5 mA |
-| Interface | Gravity-I2C |
-| Gyroscope Range | ±125°/s ~ ±2000°/s |
-| Accelerometer Range | ±2g ~ ±16g |
-| Operating Temp | -40℃ ~ 80℃ |
+| Interface | Gravity-I²C |
+| Gyroscope Range | ±125°/s to ±2000°/s |
+| Accelerometer Range | ±2 g to ±16 g |
+| Operating Temperature | −40 °C to 80 °C |
 
+The IMU is connected to the Raspberry Pi through the IO Expansion HAT using I²C.
 
-#### Touch Sensor — ZX-Switch01 (start button)
+### Motor Encoder
 
-<img width="225" height="225" alt="zx-switch01-removebg-preview" src="https://github.com/user-attachments/assets/99c64a13-ecc5-4a32-ac4a-9c2f3bff4b2a" />
+The **CHP-20GP-180** drive motor includes a dual-phase encoder. Encoder feedback is used to obtain information about motor rotation and to support more precise closed-loop control of the drivetrain.
 
-This button provides an easier way to start the robot, since the controller board does not come with a built-in start switch. The switch is mounted to the frame externally using a bolt.
+The encoder is therefore part of the electrical sensing and control system as well as the mechanical drivetrain.
 
-**Justification**: The ZX-Switch01 is used as the robot's separate start button. It is mounted externally on the robot and connected to the Arduino UNO R4 Minima through the L298P Motor Shield. This keeps the start control separate from the main power switch. The team should verify the final placement against the current WRO rulebook before submission.
+### Touch Sensor — ZX-Switch01 (Start Button)
+
+The **ZX-Switch01** is used as the robot's dedicated Start button. It is mounted externally on the robot using a bolt and is connected to the Arduino UNO R4 Minima through the L298P Shield.
+
+This keeps the competition Start function separate from the main power switch: the main switch powers the robot, while the Start button begins the programmed autonomous action.
 
 ---
 
-### Power Management and Distribution
+## Power Management and Distribution
 
-<img width="225" height="225" alt="Base Plate" src="https://github.com/user-attachments/assets/3f017ab3-2606-470e-a74c-f4c3dae3f330" />
+### On/Off Switch — SPST ON/OFF Switch
 
-#### On/Off Switch — SPST ON/OFF Switch (2-Pin Rocker, DC 125/250V)
-This switch cuts power from the battery to the robot. Competition rules require the robot to be completely switched off before being placed on the field — this switch fulfills that requirement. Wiring: the positive wire (red) is soldered to one side of the switch as input, another red wire is soldered to the opposite side as output to the Quick Wire Connectors(D1-2) and to the two step-down the negative wire(black) from the battery goes directly into QuickWire Connector(PCT-21).
+The SPST switch is used as the robot's main power switch. It disconnects the battery supply from the rest of the electrical system so that the vehicle can be placed on the field in a fully powered-off state before the start procedure.
 
-#### Step-down — LM2596 (5V rail for Raspberry Pi)
+The switch and power-distribution connectors form the first stage of the electrical system before the supply is divided into the regulated branches.
 
-<img width="229" height="111" alt="Base_Plate_1" src="https://github.com/user-attachments/assets/d62499c4-07ea-47a9-8e7a-30bdff275bd4" />
+### Step-down Converter — LM2596 (5 V rail for Raspberry Pi)
 
-The LM2596 step-down converter supplies the Raspberry Pi with a dedicated 5V power rail. Since the Pi is sensitive to voltage fluctuations and electrical noise, relying on the same power source as the motors could cause sudden resets or instability. By using this compact module exclusively for the Pi, we ensure a stable supply unaffected by high current changes elsewhere in the system. The output is tuned to around 5.1V to compensate for cable and connector losses, providing a consistent 5.0V input to the Pi during operation.
+The **LM2596** supplies the Raspberry Pi branch with a dedicated regulated voltage.
 
-| Specification | Value |
-|---|---|
-| Input voltage | DC 4.5–40V |
-| Output voltage | DC 1.25–37V (adjustable) |
-| Output current | Up to 2A (no heatsink), 3A (w/ heatsink) |
-| Conversion efficiency | Up to 92% |
-| Module dimension | ~43 × 21 × 14 mm |
-
-#### Step-down — XL4015 (motor rail)
-
-<img width="304" height="241" alt="Base Plate (4)" src="https://github.com/user-attachments/assets/561e79c4-24cd-4e73-b7fe-db215647ee76" />
-
-The XL4015 is used as the motor-side step-down converter. It separates the higher-current drivetrain supply from the Raspberry Pi power rail, reducing the effect of motor current changes on the main computer. We tune the step-down output voltage to 11.1V enough for the motor to move at a consistent rate until the battery current goes below 11.
+We use this converter so that the computing system does not rely directly on the changing battery voltage. The output is adjusted to approximately **5.1 V** to account for voltage losses through cables and connectors and to maintain a stable supply for the Pi during operation.
 
 | Specification | Value |
 |---|---|
-| Input voltage | DC 4.0 ~ 38V |
-| Output voltage | DC 1.25V ~ 36V continuously adjustable |
-| Output current | Max 5A |
-| Conversion efficiency | Up to about 96% |
+| Input Voltage | DC 4.5–40 V |
+| Output Voltage | DC 1.25–37 V, adjustable |
+| Output Current | Up to 2 A without heatsink; 3 A with heatsink |
+| Conversion Efficiency | Up to 92% |
+| Module Dimension | ~43 × 21 × 14 mm |
 
-#### Quick Wire Connectors — PCT-21 & D1-2
+### Step-down Converter — XL4015 (motor-side rail)
 
-<img width="171" height="137" alt="Base Plate (5)" src="https://github.com/user-attachments/assets/2529546a-ded3-4136-80fb-f92123666ed4" />
-<img width="182" height="182" alt="Base Plate (6)" src="https://github.com/user-attachments/assets/8f00207b-2bcd-4f0c-af6d-97b3e6a41a15" />
+The **XL4015** is used for the motor/control branch. It provides the regulated supply used by the motor-control system and separates the higher-current drivetrain path from the Raspberry Pi power branch.
 
-The robot's power distribution system is built around a single battery pack, split into two branches to supply both the Raspberry Pi and the motor shield. The positive pole connects through the **D1-2** connector, dividing into multiple outputs — one to each step-down converter. The negative pole is handled by the **PCT-21** connector, providing a secure and stable ground reference split between the converters. This arrangement ensures both control logic and drivetrain receive isolated, stable power from the same battery source, while the connectors simplify wiring, improve safety, and make the system easier to maintain.
-
-#### Battery — Helix 1100mah 11.1V 3-Cell LiPo Battery
-
-<img width="290" height="283" alt="Base Plate (7)" src="https://github.com/user-attachments/assets/61516fcc-801f-4f5d-ba00-c3992b7bb2f4" />
-
-The robot uses an 11.1V 3-cell LiPo battery.
+The output is adjusted for the drivetrain supply used by our robot.
 
 | Specification | Value |
 |---|---|
-| Voltage | 11.1V (3S) |
+| Input Voltage | DC 4.0–38 V |
+| Output Voltage | DC 1.25–36 V, adjustable |
+| Output Current | Max. 5 A |
+| Conversion Efficiency | Up to about 96% |
+
+### Quick Wire Connectors — PCT-21 & D1-2
+
+The robot uses quick-wire connectors as part of the battery power-distribution system. They allow the single battery supply to be distributed to the main regulated branches while keeping the wiring compact and easier to maintain.
+
+The exact connector-to-wire assignments are documented in the wiring diagram in [`schemes`](../schemes/).
+
+### Battery — Helix 1100 mAh 11.1 V 3-Cell LiPo
+
+The robot uses a **Helix 1100 mAh 11.1 V 3-cell LiPo battery**.
+
+| Specification | Value |
+|---|---|
+| Voltage | 11.1 V (3S) |
 | Capacity | 1100 mAh |
-| Discharge rate | 30C |
-| Charging current | Up to 5C |
+| Discharge Rate | 30C |
+| Charging Current | Up to 5C |
 | Connector | Dean-type |
 
-**Reason for selection**: The 3S battery provides a nominal 11.1V supply and a fully charged voltage of 12.6V. Perfect to drive the motor and with a 1100mah capacity it can power the robot for a long enough time. We chose this battery with its compact size and the availability of it, we can order it and receive it in 3 days.
+We selected this battery because its 11.1 V nominal output is appropriate for our overall electrical architecture, while its compact size, available capacity, and availability made it practical for our robot.
 
 ---
 
 ## Wiring Reference Table
 
+The wiring below summarizes the principal electrical connections in the final architecture. The detailed physical routing should be read together with the wiring and schematic diagrams in the `schemes` directory.
+
 | From | To | Pin / Port | Function |
 |---|---|---|---|
-| LiPo Battery (+) | PCT-21 | — | Splits the positive power rail |
-| LiPo Battery (–) | D1-2 | — | Splits the ground rail |
-| PCT-21 out 1 | SPST Switch | — | Power ON/OFF control |
-| SPST Switch | LM2596 IN+ | — | 5V rail input |
-| SPST Switch | XL4015 IN+ | — | Motor rail input |
+| LiPo Battery | Power distribution | — | Main battery supply |
+| Power distribution | SPST Switch | — | Main power ON/OFF |
+| SPST Switch | LM2596 IN+ | — | Input to Pi power branch |
+| SPST Switch | XL4015 IN+ | — | Input to motor/control branch |
 | LM2596 OUT | Raspberry Pi 5 | USB-C | Main computing power |
-| Pi 5 GPIO/I2C | IO Expansion HAT | Gravity I2C | Sensor bus |
-| IO HAT | IMU (BNO055) | I2C | Orientation data |
-| Pi 5 | RPLiDAR C1 | UART | Distance scan data |
-| Pi 5 | Camera | MIPI-CSI | Vision |
-| XL4015 OUT | L298P | VIN / motor supply | Motor power |
-| L298P | DC Gear Motor | Motor output channel | Drive motor power and control |
-| Arduino UNO R4 Minima / L298P Shield | Steering Servo | PWM / servo output | Steering control |
-| Arduino UNO R4 Minima / L298P Shield | ZX-Switch01 | GPIO | Start button |
+| Pi 5 | IO Expansion HAT | GPIO / I²C | Sensor interface |
+| IO Expansion HAT | IMU (BNO055) | I²C | Orientation data |
+| Pi 5 | RPLiDAR C1 | USB / serial adapter | Distance-scan data |
+| Pi 5 | Camera | MIPI-CSI | Vision data |
+| XL4015 OUT | L298P | VIN / motor supply | Motor-side power |
+| L298P | DC Gear Motor | Motor output | Drive motor power and control |
+| Arduino UNO R4 Minima / L298P | Steering Servo | PWM / servo output | Steering control |
+| Arduino UNO R4 Minima / L298P | ZX-Switch01 | GPIO | Start button |
+| Drive Motor | Encoder input | Dual-phase encoder | Motor feedback |
 
-*(This table is very important for Criterion 5: Reproducibility — complete it with every actual connection from the wiring diagram)*
+The exact pin-level mapping used by the final software should be kept synchronized with the source code in the `src` directory.
 
 ---
 
 ## Calibration Methods
 
-- **Camera**: Set red/green/lane color thresholds during setup using representative field images. Record the final threshold values used by the program and recalibrate if the competition lighting is significantly different.
-- **IMU**: Keep the robot stationary at startup and perform the sensor's required calibration before autonomous movement. Record the final heading/offset procedure used by the program.
-- **LiDAR**: Use the manufacturer's usable range as the initial limit, then verify the minimum and maximum reliable distances on the actual competition field before final testing.
+Calibration is used to make sensor readings consistent enough for the robot's autonomous-control system to use them reliably.
 
+### Camera
+
+Before operation, the red/green/lane color thresholds used by the vision system are set using representative images of the field. The final threshold values used by the program should be kept consistent with the competition setup.
+
+### IMU
+
+The robot is kept stationary during startup so that the required IMU initialization/calibration can be performed before autonomous movement. The heading/offset procedure used by the final software is kept consistent with the robot's starting procedure.
+
+### LiDAR
+
+The manufacturer's usable range is used as the initial reference. The robot's software then uses the distance measurements required by the navigation system for wall and object detection.
+
+### Encoder
+
+Encoder feedback is used by the motor-control system to track motor rotation. The encoder is part of the drivetrain feedback loop and therefore supports more precise control than an open-loop drive command alone.
+
+---
+
+## Testing & Iteration
+
+Our electrical design was developed together with the rest of the robot rather than being fixed before the mechanical and software systems were tested.
+
+One important design consideration was the interaction between the motor system and the Raspberry Pi. Motor loads can change much more rapidly than the computing load, so the electrical architecture was deliberately changed to use separate regulated power branches for the computing and motor/control systems.
+
+Another important iteration involved the sensing system. We previously used a **ZX-IMU**, but experienced significant drift and instability. We therefore selected the **BNO055-based IMU** for the final sensing architecture because it provides onboard sensor fusion and more stable orientation information.
+
+The electrical design also evolved as the physical robot was assembled. Connector choices, wiring layout, and sensor interfaces were organized around the final mechanical structure so that components could be accessed and maintained without unnecessary wiring complexity.
+
+### Current Engineering Decisions
+
+| Area | Decision | Reason |
+|---|---|---|
+| Computing power | Separate regulated branch for Raspberry Pi | Reduce sensitivity to motor-related voltage changes |
+| Motor/control power | Separate regulated branch | Support higher-current actuator loads |
+| IMU | BNO055-based module | Replace earlier ZX-IMU after drift/instability issues |
+| Vision | Raspberry Pi camera via MIPI-CSI | Direct connection to main computer for image processing |
+| Distance sensing | RPLiDAR C1 | 360° distance scanning in a compact package |
+| Start control | Separate physical button | Keep competition start action distinct from the main power switch |
+
+> **Documentation note:** Quantitative test measurements will only be included where they were actually recorded by the team. We do not invent measurements that were not taken during development.
+
+---
+
+## Electrical Design Considerations and Failure Modes
+
+The electrical system was designed with several potential failure modes in mind.
+
+### Power instability
+
+A voltage disturbance in the computing branch could interrupt Raspberry Pi operation and therefore stop high-level navigation. Our main mitigation is the separate regulated power branch for the Raspberry Pi.
+
+### Motor-related current changes
+
+Motor startup, acceleration, braking, and high-load conditions can create larger electrical demands than normal operation. The motor/control branch was therefore given its own regulator and current-capable distribution path.
+
+### Sensor reliability
+
+Sensor readings can be affected by environmental conditions, wiring, mounting, and calibration. For this reason, calibration is part of the setup process rather than treating raw sensor values as automatically reliable.
+
+### Wiring and connector reliability
+
+The robot contains multiple sensors, actuators, controllers, and power converters in a compact chassis. The wiring architecture uses structured distribution and dedicated interfaces so that connections can be traced and maintained more easily.
 
 ---
 
 ## References / Datasheets
 
-- Raspberry Pi 5: https://www.raspberrypi.com/products/raspberry-pi-5/
-- Arduino UNO R4 Minima: https://docs.arduino.cc/hardware/uno-r4-minima
-- IO Expansion HAT DFR0566: https://wiki.dfrobot.com/dfr0566
-- RPLiDAR C1: https://www.slamtec.com/en/C1
-- BNO055 + BMP280: https://www.dfrobot.com/product-2258.html
-- L298P Motor Shield: https://wiki.dfrobot.com/dri0017/
-- XL4015: https://www.xlsemi.com/datasheet/XL4015-5A-36V-DC-DC-Converter.pdf
+The following official or component references were used during the electrical design:
+
+- **Raspberry Pi 5:** https://www.raspberrypi.com/products/raspberry-pi-5/
+- **Arduino UNO R4 Minima:** https://docs.arduino.cc/hardware/uno-r4-minima
+- **IO Expansion HAT DFR0566:** https://wiki.dfrobot.com/dfr0566
+- **RPLiDAR C1:** https://www.slamtec.com/en/C1
+- **BNO055 + BMP280:** https://www.dfrobot.com/product-2258.html
+- **L298P Motor Shield:** https://wiki.dfrobot.com/dri0017/
+- **XL4015:** https://www.xlsemi.com/datasheet/XL4015-5A-36V-DC-DC-Converter.pdf
+
+---
+
+## Final Electrical Configuration Summary
+
+The final electrical architecture combines a Raspberry Pi 5 for high-level processing, an Arduino UNO R4 Minima for low-level actuator control, and a sensor suite consisting of a camera, LiDAR, IMU, and motor encoder.
+
+A single 11.1 V 3S LiPo battery supplies the robot, while the electrical architecture separates the computing and motor/control loads into regulated branches. This was chosen to improve power stability while keeping the system compact and maintainable.
+
+The key electrical design decisions were therefore driven by three priorities:
+
+1. **Stable power for computing and sensing**
+2. **Reliable control of motors and steering**
+3. **Useful and consistent sensor feedback for autonomous navigation**
+
+Together, these decisions form the electrical foundation for the robot's mechanical and software systems.
