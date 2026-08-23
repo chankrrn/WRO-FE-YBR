@@ -134,6 +134,8 @@ The IO Expansion HAT acts as the interface between the Raspberry Pi and the IMU.
 | Port Type | Gravity 3-pin (VCC–GND–Signal) |
 | Dimensions | 65 × 56 mm |
 
+Note : Electrically, signals travel directly from the Pi5 GPIO through the HAT (which only serves as a breakout and does no processing) to the sensors — the schematic is shown as a straight line for clarity, but physically, they are connected via the screw terminals of the HAT.
+
 #### Motor Driver — L298P
 
 <img width="319" height="255" alt="Base Plate (3)" src="https://github.com/user-attachments/assets/7d54c34e-01eb-4127-bd80-576e9743afe8" />
