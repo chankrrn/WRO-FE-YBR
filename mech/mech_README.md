@@ -356,10 +356,11 @@ ___
 
 ## Mechanical Choices
 
-### - Wheel Choice
-### - Steering System
-### - Differential (Rear Wheels)
-### - Dimensions Choice
+### - Motor Choice
+### - Gear Box System
+### - Differential
+### - Servo
+### - Wheels
 ___
 
 ## Mechanical Parts
@@ -455,7 +456,7 @@ Later in the final version, we changed the gearbox again to a **16:28 ratio** to
 The LEGO Technic Differential Gear (28 teeth) transfers power to the two wheels while allowing them to rotate at different speeds during turns. Its internal bevel gears distribute power smoothly, reducing wheel slip and improving control. The 28-tooth gear also connects easily with LEGO Technic and custom components, making it a reliable choice for the drivetrain and improving the robot’s cornering and maneuverability.
 
 ### - Driving Motor with Differential Gear
-<image src="https://github.com/chankrrn/WRO-FE-YBR/blob/f7a4c0febed255ff74d3f7db9998b655cd9f77bb/other/DrivingMotor-DiffGear.png" width = "500">
+<image src=https://github.com/chankrrn/WRO-FE-YBR/blob/main/mech/models/Powertrains.png width = "800">
 
 After discussing the motor and differential gear and the reasons for selecting them, the next step is to evaluate the performance of the drivetrain when these two components are connected. This analysis focuses on determining the resulting speed and torque, which are important factors in understanding and improving the robot’s overall performance.
 
@@ -517,6 +518,9 @@ The wires are a standard servo pinout -
 ### __- Wheel:__ Lego Tire 43.2 x 22 ZR and Wheel 30.4mm D. x 20mm with No Pin Holes and Reinforced Rim
 <image src = "https://github.com/chankrrn/WRO-FE-YBR/blob/f7a4c0febed255ff74d3f7db9998b655cd9f77bb/other/wheel1.png" width = "200"> <image src = "https://github.com/chankrrn/WRO-FE-YBR/blob/f7a4c0febed255ff74d3f7db9998b655cd9f77bb/other/wheel2.png" width = "200">
 
-This wheel was chosen because its size provides a good balance between speed, acceleration, and control. Smaller wheels reduce the distance traveled per rotation, while larger wheels require more torque and can make the robot harder to control. The selected medium-sized wheel works well with the chosen motor, allowing the robot to maintain a good ground speed while providing smooth and stable handling.
+This wheel was chosen because its size provides a good balance between speed, acceleration, and control. Smaller wheels cover less distance per rotation, which can limit the robot’s speed, while larger wheels require more torque and can make the robot harder to control. Therefore, we selected a medium-sized wheel that allows the robot to maintain a good ground speed while providing smooth and stable handling.
+
+The wheel size also works well with our chosen motor and drivetrain configuration. It provides enough ground clearance and speed without placing excessive torque demands on the motor. This combination allows the robot to accelerate smoothly, make accurate steering corrections, and maintain stable movement during autonomous tasks.
+
 
 ___
