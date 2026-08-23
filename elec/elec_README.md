@@ -179,6 +179,8 @@ The RPLIDAR C1 was selected as the primary distance measurement sensor of the ro
 | Accuracy | ±30 mm |
 | Weight | 110 g |
 
+Note : RPLiDAR C1 connects to Raspberry Pi 5 via its official USB-to-Serial adapter board (CP210x-based). The LiDAR's 5-pin cable plugs directly into the adapter, and a USB-C to USB-A cable connects the adapter to the Pi5. Power for the LiDAR is supplied through this same USB connection — no separate wiring required.
+
 **Placement & Justification**: The LiDAR is mounted at the front of the robot to see the traffic sign and the walls besides 
 
 #### Gyro/Compass — Gravity: 10 DOF IMU AHRS (BNO055 + BMP280)
