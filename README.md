@@ -8,9 +8,10 @@ This documentation present [Robot Name], YBR's robot for the WRO 2026 Future Eng
 * `team-photos` - This folder contains photos of our team.
 * `robot-photos` - This folder contains six photos of the robot, showing it from all sides, as well as the top and bottom.
 * `video` - This folder contains a video.md file with links to videos demonstrating the vehicle in operation.
-* `schemes` - This folder contains schematic diagrams to illustrate ...!!!!
+* `schemes` - !!!
 * `src` - This folder contains the control software code for all components programmed for participation in the competition.
-* `mech` - ...!!!!
+* `mech` - This folder contains mechanical design files, including 3D models, PNG image files of the models, and other documentation related to the robot's mechanical management and structure.
+* `elec` - This folder contains electrical design files, including circuit diagrams, wiring documentation, and information about the electrical components used in the robot.
 * `other` - This folder contains additional files and resources related to our robot.
 * `LICENSE.md` - This file is the license and terms of use for the materials included in our project.
 * `README.md` - This file provides an overview of our team and robot, including the key details of or development process.
@@ -109,9 +110,8 @@ ___
 - __Drive Motor:__ CHP-20GP-180 motor with encoder
 - __Steering Motor:__ GEEKSERVO 2kg 360 Degrees Servo
 - __Wheels:__ Lego Tire 43.2 x 22 ZR and Wheel 30.4mm D. x 20mm with No Pin Holes and Reinforced Rim
-
-
-[Details of Each 3D Component](https://github.com/chankrrn/WRO-FE-YBR/blob/main/mech/mech_README.md)
+- __3D Structures:__
+[Details of Each 3D Component](https://github.com/chankrrn/WRO-FE-YBR/blob/main/mech/mech_README.md#final-3d-structure)
 
 ### Mechanical parts
 ![Image of Mechanical parts](image.jpg)
@@ -148,8 +148,10 @@ ___
 ### Computing Components
 ![Image of Computing Components](image.jpg)
 - __Raspberry Pi 5 (Main Board):__ Compute all the values from the LiDAR,Camera,Imu to calculate the walking path and sends the driving command to the Aruduino
+
 - __Arduino r4 minima:__ Commands the driving motor and steering servo. It also calculates the signals from the encoder for precise movements. And it is connected to the starting button
 
+[Click here to view the electrical management system and components in detail](https://github.com/chankrrn/WRO-FE-YBR/blob/55f09c5e80ac297334fd639a8d67b9b5a7db58ad/elec/elec_README.md)
 ___
 
 # System Thinking and Engineering Decisions
