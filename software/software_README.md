@@ -350,7 +350,7 @@ extra on red only, easing across from 600 mm before and holding until 450 mm pas
 
 ## Parking
 
-The parking steps are fixed. We landed on the 4 steps parking maneuver:
+The parking steps are fixed. We landed on the 4 steps parking manoeuvre:
 1. Position the robot so that the back of the robot align with the parking walls.
 2. Turn and move backwards into the parking space
 3. Move backwards straight
@@ -471,9 +471,6 @@ reading the control loop first.
 
 ## What We Would Do Next
 
-* **Finish the parking manoeuvre.** The position tracking it needs already works; the manoeuvre is what
-  is missing.
-* **Delete the legacy code path** — the biggest source of confusion for a first-time reader.
 * **Keep proper run statistics.** We tuned by watching, and the simulator gave us steering numbers, but
   we never kept a disciplined success-rate log on the mat.
 * **Use the wheel encoder for odometry.** The Arduino already counts ticks; the Pi currently estimates
