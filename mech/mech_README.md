@@ -315,7 +315,7 @@ Overall, the motor gives us a good balance of **torque, speed, size, precision, 
 <table align="center">
   <tr>
     <td align="center">
-      <img src="(https://github.com/chankrrn/WRO-FE-YBR/blob/main/other/DrivingMotor3.jpg)" width="400">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/main/other/DrivingMotor3.jpg" width="600">
     </td>
   </tr>
 </table>
@@ -363,7 +363,14 @@ The wires are a standard dc dual-phase encoder pinout -
 
 
 ### __- Motor Drive Gear:__ 3D printed Gear 16 Tooth
-<image src = "https://github.com/chankrrn/WRO-FE-YBR/blob/f7a4c0febed255ff74d3f7db9998b655cd9f77bb/other/MotorDriveGear.png" width = "250">
+
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/GearAdapter.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/GearAdapter.stl">Click here to view the 3D model.</a></p>
+    </td>
+  </tr>
+</table>
 
 The 16-tooth motor drive gear connects directly to the 28-tooth differential gear, creating a 4:7 gear ratio. This makes the added torque but at a cost of speed.
 
