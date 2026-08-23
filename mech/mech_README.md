@@ -58,7 +58,7 @@ ___
   </tr>
 </table>
 
-The Main Base is the robot’s main structural layer, supporting the Raspberry Pi 5, steering servo, and drive motors. Mounting the Raspberry Pi 5 low helps reduce the robot’s overall height, simplify cable routing, and keep the camera’s view clear. The base also keeps the servo and motors properly aligned for balanced weight distribution, while connection points allow the upper layer to be securely attached and maintain a stable structure.
+The Main Base is the robot’s main structural layer, supporting the Battery, Uno R4, steering servo, and drive motors. Mounting the battery, servo, and drive motor low helps keeps the servo and motors properly aligned for balanced weight distribution, while connection points allow the upper layer to be securely attached and maintain a stable structure.
 
 
 
@@ -72,7 +72,7 @@ The Main Base is the robot’s main structural layer, supporting the Raspberry P
   </tr>
 </table>
 
-info ------
+This plate holds most of the electrical components hence the name. It holds a step-down(LM2596), both Quick Wire Connectors (PCT-21 & D1-2), the power switch, and the start button switch. And also act as a base for the Pi Base
 
 ### - Supporting Base 2 (Uno Base)
 <table align="center">
@@ -84,6 +84,8 @@ info ------
   </tr>
 </table>
 
+The Uno also is also connected to the motor shield, and the second step-down(XL4015)
+
 ### - Supporting Base 3 (Raspberry Pi Base)
 <table align="center">
   <tr>
@@ -93,6 +95,8 @@ info ------
     </td>
   </tr>
 </table>
+
+The Pi also have the I/O HAT and the camera on top of it. And it was the pillar holder for the wing
 
 ### - Driver Gear (Gear Adapter)
 <table align="center">
@@ -242,10 +246,7 @@ The Camera Positioning Mechanism allows the camera’s height and angle to be ea
   - __Camera Arm:__
   - __Camera Arm Connector:__
 
-### - Ultrasonic Sensor Mount
-info ------
-
-### - Lidar Mount
+### - Lidar and IMU mount
 <table align="center">
   <tr>
     <td align="center">
@@ -255,7 +256,7 @@ info ------
   </tr>
 </table>
 
-The LiDAR Mount is designed to hold the LiDAR sensor securely in the right position for accurate operation. It has a recessed center area that allows the mount to sit directly above the gyro module without getting in the way. The mounting tabs on both sides help attach the plate firmly to the support structure, while the rounded top provides a stable surface for the LiDAR. This design also keeps the sensor’s field of view clear, allowing it to scan effectively.
+The LiDAR Mount is designed to hold the LiDAR sensor securely in the right position for accurate operation. It has a recessed center area that allows the mount to sit directly above the gyro module without getting in the way. The mounting tabs on both sides help attach the plate firmly to the support structure, while the rounded top provides a stable surface for the LiDAR. This design also keeps the sensor’s field of view clear, allowing it to scan effectively. And with the IMU placement keeping it away from any magnetic field that can affect the accuracy of the gyro.
 
 ### - Rear Wing
 <table align="center">
@@ -267,6 +268,8 @@ The LiDAR Mount is designed to hold the LiDAR sensor securely in the right posit
   </tr>
 </table>
 
+The Rear wing act as the holder of the robot, even tho it is a real aerodynamic arifoil(S1223 airfoil), but with the robot moving at a very low speed and with the camera arm blocking the ariflow, it doesn't add that much down force
+
 ### - Step-down Tray
 <table align="center">
   <tr>
@@ -277,6 +280,7 @@ The LiDAR Mount is designed to hold the LiDAR sensor securely in the right posit
   </tr>
 </table>
 
+Holds the XL4015 Step-down on top of the Uno motor shield
 
 
 ### - 3D Printer
@@ -295,8 +299,8 @@ ___
 
 ## Mechanical Parts
 
-### __- Motor():__ CHP-20-GP180 DC 12V (Gear Ratio 1:20)™
-<image src="https://github.com/chankrrn/WRO-FE-YBR/blob/f7a4c0febed255ff74d3f7db9998b655cd9f77bb/other/DrivingMotor1.png" width = "400"> <image src="https://github.com/chankrrn/WRO-FE-YBR/blob/f7a4c0febed255ff74d3f7db9998b655cd9f77bb/other/DrivingMotor2.jpg" width = "500">
+### __- Motor():__ CHP-20-GP180 DC 12V (Gear Ratio 1:19)™
+<image src="https://github.com/chankrrn/WRO-FE-YBR/blob/main/other/DrivingMotor1.png" width = "400"> <image src="https://github.com/chankrrn/WRO-FE-YBR/blob/main/other/DrivingMotor2.jpg" width = "500">
 
 We selected the **CHP-20GP-180 DC 12V gear motor** with a **1:19 gear ratio**. It has a dual-phase quadrature encoder, which gives us real-time feedback on speed and rotation. This allows the robot to control its position more accurately.
 
@@ -307,6 +311,22 @@ In previous years, our seniors used normal DC motors without encoders and focuse
 We also chose this motor because we have already tested it in both our prototype and final robot. It has worked reliably without any problems, and it is easy for us to purchase and receive within a week.
 
 Overall, the motor gives us a good balance of **torque, speed, size, precision, and reliability** for the WRO Future Engineers competition.
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="(https://github.com/chankrrn/WRO-FE-YBR/blob/main/other/DrivingMotor3.jpg)" width="400">
+    </td>
+  </tr>
+</table>
+
+The wires are a standard dc dual-phase encoder pinout - 
+-	Red - Motor Power input(positive)
+-	Black -  Hall effect power supply(GND)
+-	Yellow - Encoder Signal B phase (Digital 3)
+-	Green - Encoder Signal A phase (Digital 2)
+-	Blue - Hall effect power supply(5V)
+-	White - Motor Power input(negative)
 
 ##### Electrical Specifications
 
