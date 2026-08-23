@@ -52,8 +52,8 @@ ___
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/1aea5b02989326ef6efdf00d6d068e656367b088/mech/models/MainBase.PNG" width="400">
-      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/models/MainBase.stl">Click here to view the 3D model.</a></p>
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/MainBase.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/MainBase.stl">Click here to view the 3D model.</a></p>
     </td>
   </tr>
 </table>
@@ -66,8 +66,8 @@ The Main Base is the robot’s main structural layer, supporting the Raspberry P
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/1aea5b02989326ef6efdf00d6d068e656367b088/mech/models/ElecBase.PNG" width="400">
-      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/1aea5b02989326ef6efdf00d6d068e656367b088/mech/models/ElecBase.stl">Click here to view the 3D model.</a></p>
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/ElecPlate.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/ElecPlate.stl">Click here to view the 3D model.</a></p>
     </td>
   </tr>
 </table>
@@ -78,8 +78,8 @@ info ------
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/1aea5b02989326ef6efdf00d6d068e656367b088/mech/models/UnoBase.PNG" width="400">
-      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/models/UnoBase.stl">Click here to view the 3D model.</a></p>
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/UnoPlate.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/UnoPlate.stl">Click here to view the 3D model.</a></p>
     </td>
   </tr>
 </table>
@@ -88,31 +88,119 @@ info ------
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/1aea5b02989326ef6efdf00d6d068e656367b088/mech/models/PiBase.PNG" width="400">
-      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/22eeaa753822f26e70fd81ebcdf6a2261e38e23b/mech/models/PiBase.stl">Click here to view the 3D model.</a></p>
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/PiPlate.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/PiPlate.stl">Click here to view the 3D model.</a></p>
     </td>
   </tr>
 </table>
 
-### - Driver Gear
+### - Driver Gear (Gear Adapter)
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/GearAdapter.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/GearAdapter.stl">Click here to view the 3D model.</a></p>
+    </td>
+  </tr>
+</table>
+
 The Driver Gear is a custom 3D print 16 tooth gear that connects the CHP-20-GP180 motor to the LEGO differential gear. Its center hole fits tightly onto the motor shaft to prevent slipping.
 
 
 ### - Motor Bracket
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/MotorBracket.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/MotorBracket.stl">Click here to view the 3D model.</a></p>
+    </td>
+  </tr>
+</table>
+
 The Motor Mount is a 3D printed part. Even though it is made of plastic it provide exceptional strength and rigidity for securing the motors. The mount includes threaded holes, allowing screws to be fastened directly without the need for nuts, making the part both compact and easy to assemble.
 
-### - Bearing Mount
+### - Bearing Mount System
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/BearingSystem.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/BearingSystem.stl">Click here to view the 3D model.</a></p>
+    </td>
+  </tr>
+</table>
+
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/BearingMount.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/efd34ff2dac65304741a8c27362adc24ce5496f1/mech/models/BearingMount.stl">Bearing Mount</a></p>
+    </td>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/L%26R_AxleSleeve.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/L%26R_AxleSleeve.stl">Left and Right Axle Sleeve</a></p>
+    </td>
+     <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/Mid_AxleSleeve.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/Mid_AxleSleeve.stl">Middle Axle Sleeve</a></p>
+    </td>
+  </tr>
+</table>
+
+
 The Rear Wheel Bearing Mount is designed to hold standard ball bearings that support the differential output shaft. The inner race of the bearing interfaces with the shaft through a custom sleeve, allowing smooth and low-friction rotation, while the outer race is securely fixed within the mount. This configuration keeps the rear axle properly aligned, prevents bending under load, and avoids the friction that would occur if the shaft were to rotate directly against 3D-printed surfaces.
 
 ### - Steering Mount
-info ------
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/SteeringSystem.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/SteeringSystem.stl">Click here to view the 3D model.</a></p>
+    </td>
+  </tr>
+</table>
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/SteeringAxle.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/SteeringAxle.stl">Steering Axle</a></p>
+    </td>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/Top_SteeringMount.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/Top_SteeringMount.stl">Top Steering Mount</a></p>
+    </td>
+     <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/Bottom_SteeringMount.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/Bottom_SteeringMount.stl">Bottom Steering Mount</a></p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/L_SteeringArm.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/L_SteeringArm.stl">Left Steering Arm</a></p>
+    </td>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/R_SteeringArm.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/R_SteeringArm.stl">Right Steering Arm</a></p>
+    </td>
+     <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/Top_SteeringCap.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/Top_SteeringCap.stl">Top Steering Cap</a></p>
+    </td>
+     <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/SteeringLinkageArm.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/SteeringLinkageArm.stl">Steering Linkage Arm</a></p>
+    </td>
+  </tr>
+</table>
 
 ### - Servo Bracket
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/1aea5b02989326ef6efdf00d6d068e656367b088/mech/models/ServoBracket.PNG" width="400">
-      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/d13ff506b7ce7c83859c156f1935925f337665c5/mech/models/ServoBracket.stl">Click here to view the 3D model.</a></p>
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/ServoBracket.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/ServoBracket.stl">Click here to view the 3D model.</a></p>
     </td>
   </tr>
 </table>
@@ -124,8 +212,8 @@ The Servo Bracket securely holds the LEGO-compatible steering servo using built-
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/1aea5b02989326ef6efdf00d6d068e656367b088/mech/models/CamMount.PNG" width="400">
-      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/842b297ad1873506880c49be992acc7f23d90d8d/mech/models/CamMount.stl">Click here to view the 3D model.</a></p>
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/CamMount.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/CamMount.stl">Click here to view the 3D model.</a></p>
     </td>
   </tr>
 </table>
@@ -136,16 +224,16 @@ The Camera Positioning Mechanism allows the camera’s height and angle to be ea
 <table align="center">
   <tr>
     <td align="center">
-      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/1aea5b02989326ef6efdf00d6d068e656367b088/mech/models/CamPlate.PNG" width="350">
-      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/842b297ad1873506880c49be992acc7f23d90d8d/mech/models/CamMount.stl">Camera Plate</a></p>
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/CamPlate.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/CamPlate.stl">Camera Plate</a></p>
     </td>
     <td align="center">
-      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/1aea5b02989326ef6efdf00d6d068e656367b088/mech/models/CamArm.PNG" width="350">
-      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/842b297ad1873506880c49be992acc7f23d90d8d/mech/models/CamMount.stl">Camera Arm</a></p>
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/CamArm.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/CamArm.stl">Camera Arm</a></p>
     </td>
      <td align="center">
-      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/1aea5b02989326ef6efdf00d6d068e656367b088/mech/models/CamArmConnector.PNG" width="350">
-      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/842b297ad1873506880c49be992acc7f23d90d8d/mech/models/CamMount.stl">Camera Arm Connector</a></p>
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/CamArmConnector.PNG" width="350">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/CamArmConnector.stl">Camera Arm Connector</a></p>
     </td>
   </tr>
 </table>
@@ -158,7 +246,38 @@ The Camera Positioning Mechanism allows the camera’s height and angle to be ea
 info ------
 
 ### - Lidar Mount
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/LiDARMount.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/LiDARMount.stl">Click here to view the 3D model.</a></p>
+    </td>
+  </tr>
+</table>
+
 The LiDAR Mount is designed to hold the LiDAR sensor securely in the right position for accurate operation. It has a recessed center area that allows the mount to sit directly above the gyro module without getting in the way. The mounting tabs on both sides help attach the plate firmly to the support structure, while the rounded top provides a stable surface for the LiDAR. This design also keeps the sensor’s field of view clear, allowing it to scan effectively.
+
+### - Rear Wing
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/RearWing.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/024d1b6555e8ffe13ea26fbf718020a800f10b2f/mech/models/RearWing.stl">Click here to view the 3D model.</a></p>
+    </td>
+  </tr>
+</table>
+
+### - Step-down Tray
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/StepdownTray.PNG" width="400">
+      <p><a href="https://github.com/chankrrn/WRO-FE-YBR/blob/708c1327a96642dde2c83fabd07bca4eb706b7ec/mech/models/StepdownTray.stl">Click here to view the 3D model.</a></p>
+    </td>
+  </tr>
+</table>
+
+
 
 ### - 3D Printer
   - __Printer name:__ info ------
