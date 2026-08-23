@@ -85,6 +85,19 @@ The power budget therefore influenced our architecture: the motor and computing 
 
 ## Electrical Components
 
+### All Components on Our Robot
+
+<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage1.png" width="700" height="400">
+
+<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage2.png" width="700" height="400">
+
+<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage3.png" width="700" height="400">
+
+<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage4.png" width="700" height="400">
+
+<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/6b0eed2ec69b003c0b4ab057b13127d00ccb34aa/other/ComponentsImage5.png" width="700" height="400">
+
+
 ### Controller
 
 #### Raspberry Pi 5 (8GB)
