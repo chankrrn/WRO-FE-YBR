@@ -199,6 +199,17 @@ The Rear Wheel Bearing Mount is designed to hold standard ball bearings that sup
   </tr>
 </table>
 
+- __Steering Axel:__ The Steering Axel acts as the main pivot point for the steering arms and supports their rotation. Each steering arm is mounted onto the cylindrical section of the axel, allowing the arms to rotate smoothly when the steering linkage moves. The axel keeps the steering arms aligned with the wheel and prevents unwanted sideways movement during steering.
+  
+- __Steering Linkage Arm:__ Connected directly to the steering servo, this arm converts the servo’s rotational output into a push–pull motion. This motion is transferred to both steering arms, allowing the front wheels to change direction together. The linkage is dimensioned to provide smooth and precise steering response.
+  
+- __Top Steering Mount / Cap:__ The top bracket that holds the steering assembly together. It stabilizes the upper side of the steering arms and ensures they remain aligned during rotation. Together with the bottom mount, it keeps the module rigid while still allowing the arms to pivot freely.
+
+- __Bottom Steering Mounta:__ The lower structural plate of the steering module. Aside from supporting and aligning the steering arms from below, it also includes a dedicated mounting position for the light sensor. This placement allows the sensor to stay close to the ground for accurate line detection while being protected inside the steering assembly.
+
+- __Steering Arm (Left & Right):__ These arms connect directly to each front wheel and convert the push–pull input from the linkage into wheel rotation. Each arm includes a dedicated cylindrical pivot point that fits the Steering Axel, allowing the arm to rotate smoothly with minimal friction. The geometry is angled inward to approximate Ackermann steering, ensuring correct wheel angles during turns for improved cornering stability and reduced tire 
+
+
 ### - Servo Bracket
 <table align="center">
   <tr>
@@ -242,9 +253,9 @@ The Camera Positioning Mechanism allows the camera’s height and angle to be ea
   </tr>
 </table>
 
-  - __Camera Plate:__
-  - __Camera Arm:__
-  - __Camera Arm Connector:__
+  - __Camera Plate:__ Holds the main camera securely and keeps it stable during movement. Its rigid structure helps prevent unwanted camera movement or vibration, allowing the camera to capture consistent images during autonomous operation.
+  - __Camera Arm:__ Acts as the main support arm for the camera plate. It positions the camera at the required height and angle while keeping it securely attached to the robot. Its length and position are designed to provide the camera with a clear view of the field.
+  - __Camera Arm Connector:__ Connects the camera arm to the Raspberry Pi HAT area and the rear wing, providing additional support for the camera structure. This connection helps distribute the load across the robot and keeps the camera assembly rigid during acceleration, braking, and steering.
 
 ### - Lidar and IMU mount
 <table align="center">
