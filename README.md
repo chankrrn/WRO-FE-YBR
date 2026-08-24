@@ -1,8 +1,8 @@
-# WRO-FE-YBR
+# WRO-FE-YBR-SUNFLOWER
 
-## YBR — WRO 2026 Future Engineers
+## YBR-SUNFLOWER  — WRO 2026 Future Engineers
 
-Welcome to **YBR's documentation** for the **WRO 2026 Future Engineers** competition.
+Welcome to **YBR-SUNFLOWER's documentation** for the **WRO 2026 Future Engineers** competition.
 
 We are a three-member team from the **Science–Mathematics English Program at Yothinburana School, Thailand**. Our project is an autonomous self-driving vehicle designed to navigate the WRO Future Engineers competition field using a combination of computer vision, distance sensing, orientation feedback, motor control, and autonomous decision-making.
 
@@ -25,7 +25,7 @@ This repository contains our robot's mechanical design, electrical and sensing a
 
 # Our Team
 
-We are **YBR**, a team from the Science–Mathematics English Program at Yothinburana School, Thailand.
+We are **YBR-SUNFLOWER**, a team from the Science–Mathematics English Program at Yothinburana School, Thailand.
 
 Our team consists of three students:
 
