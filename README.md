@@ -102,8 +102,6 @@ The complete mechanical and electrical design is documented in the `mech` and `e
 
 The `robot-photos` directory contains photographs of the robot from multiple directions, including top and bottom views.
 
-[Add robot photos here.]
-
 ---
 
 ## Performance Videos
@@ -137,7 +135,7 @@ The main mechanical design includes:
 
 Detailed CAD models and mechanical documentation can be found in the `mech` directory.
 
-[Add robot overview image / 3D model image here.]
+
 
 ---
 
@@ -153,7 +151,7 @@ During prototype testing, we found that insufficient torque made low-speed movem
 
 ## Motor Selection
 
-<img width="400" alt="image" src="https://github.com/user-attachments/assets/a1ab7c62-66f1-469f-9876-43a2f6fce361" />
+<img width="400" alt="image" src=other/DrivingMotor1.png />
 
 We selected the **CHP-20GP-180**, a brushed DC motor with a dual-phase quadrature encoder.
 
@@ -172,17 +170,17 @@ We selected the **1:19 configuration** because our design philosophy prioritizes
 
 ## Gearbox Development
 
-<image src=https://github.com/chankrrn/WRO-FE-YBR/blob/main/mech/models/Powertrains.png width = "800">
+<image src=/mech/models/Powertrains.png width = "800">
 
 During the prototype stage, we used a **28:28 gearbox**, giving a **1:1 ratio**.
 
 Testing showed that the available torque was too low for our desired low-speed behavior. The robot struggled to accelerate smoothly from a stop and was difficult to control accurately at low speeds.
 
-For the final design, we developed a custom **3D-printed 21-tooth gear** that could connect directly to the motor without requiring the additional gear adapter used in the prototype.
+For the final design, we developed a custom **3D-printed 16-tooth gear** that could connect directly to the motor without requiring the additional gear adapter used in the prototype.
 
-The final gearbox uses a **21:28 ratio**.
+The final gearbox uses a **16:28 ratio**.
 
-Although the change appears relatively small, testing showed a significant improvement in low-speed controllability and overall precision.
+With this gearbox, testing showed a significant improvement in low-speed controllability and overall precision.
 
 Detailed mechanical development and CAD files are available in:
 
@@ -309,6 +307,10 @@ Detailed engineering decisions are documented throughout the `mech`, `elec`, and
 
 # Build / Compile / Upload
 
+## Building Instruction
+
+The building instruction is in the [`BUILD.md`](BUILD.md)
+
 ## Hardware
 
 The robot requires the following main hardware:
@@ -348,8 +350,6 @@ Electrical diagrams and documentation are stored in:
 and:
 
 [`schemes/`](schemes/)
-
-> Detailed build, configuration, and upload instructions will be added as the final development environment is documented.
 
 ---
 
