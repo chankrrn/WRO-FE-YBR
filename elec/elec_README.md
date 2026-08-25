@@ -52,65 +52,130 @@ The electrical system is divided into high-level computing, low-level control, s
 
 ### Battery
 
-**Battery:** Helix 1100 mAh 11.1 V 3S LiPo
+| Specification         | Value               |
+| --------------------- | ------------------- |
+| Model                 | Helix 1100 mAh LiPo |
+| Configuration         | 3S                  |
+| Nominal Voltage       | 11.1 V              |
+| Fully Charged Voltage | 12.6 V              |
+| Capacity              | 1100 mAh            |
 
-**Voltage:** 11.1 V nominal
+The robot is powered by a single 3S LiPo battery with a nominal voltage of 11.1 V. The 11.1 V value is the nominal voltage of the battery rather than a constant output voltage. A fully charged 3S LiPo battery reaches approximately 12.6 V, and its voltage gradually decreases during operation.
 
-**Capacity:** 1100 mAh
+The battery serves as the main power source for the entire robot. Since the Raspberry Pi, sensors, Arduino, motor driver, and servo operate at different voltage requirements, the battery voltage is regulated before being supplied to the individual subsystems.
 
-The robot uses a single 11.1 V 3S LiPo battery as its main power source. The battery supplies both the computing system and the motor/control system through separate regulated branches.
+The battery capacity is 1100 mAh. In practice, the available operating time depends on the current drawn by the robot and varies significantly with motor load, steering activity, sensor usage, and Raspberry Pi workload.
 
 ---
 
 ## 2.2 Power Distribution
 
-The robot uses a single battery pack, with power distributed into separate regulated branches through **D1-2 (positive)** and **PCT-21 (negative)**.
+The robot uses a single battery pack, with the battery output distributed into separate regulated power branches.
 
-The battery positive connection is connected to **D1-2**, which distributes the positive supply to the power branches. The battery negative connection is connected to **PCT-21**, which provides the common ground connection.
+The power distribution system is divided into two main branches:
 
-The Raspberry Pi is supplied through the LM2596 step-down converter, while the motor and control system is supplied through the XL4015.
+1. **Computing branch** — supplies the Raspberry Pi and its associated electronics through the LM2596 step-down converter.
+2. **Motor and control branch** — supplies the motor/control system through the XL4015 step-down converter and motor driver.
 
-We use separate regulated branches to reduce the effect of changes in motor power demand on the Raspberry Pi and to improve overall power stability.
+This separation was chosen to reduce the effect of rapid current changes in the motor system on the Raspberry Pi and other sensitive computing electronics.
+
+The battery connections are distributed through the electrical connectors shown in the schematic diagram. D1–D2 are used on the positive side of the power distribution, while PCT-21 connectors are used to distribute the negative/common-ground connections.
+
+All regulated subsystems share a common electrical reference through the ground connection.
+
+The overall power flow can be summarized as:
+
+```text
+11.1 V 3S LiPo Battery
+          │
+          ├─────────────── Computing Branch
+          │                    │
+          │                 LM2596
+          │                    │
+          │                 ~5.1 V
+          │                    │
+          │                Raspberry Pi
+          │
+          └─────────────── Motor / Control Branch
+                               │
+                            XL4015
+                               │
+                              ~5 V
+                               │
+                    Arduino / Motor Driver / Servo
+```
+
+The exact physical wiring and component connections are shown in the schematic and wiring diagrams in the `schemes/` directory.
 
 ---
 
 ## 2.3 Voltage Conversion
 
-| Component |  Input | Output | Supplies               |
-| --------- | -----: | -----: | ---------------------- |
-| LM2596    | 11.1 V |  5.1 V | Raspberry Pi 5         |
-| XL4015    | 11.1 V | 11.1 V | Motor / control branch |
+| Component                  |                                                       Input |              Output | Supplies               |
+| -------------------------- | ----------------------------------------------------------: | ------------------: | ---------------------- |
+| LM2596 step-down converter | Battery voltage, approximately 9.6–12.6 V during normal use | Approximately 5.1 V | Raspberry Pi branch    |
+| XL4015 step-down converter | Battery voltage, approximately 9.6–12.6 V during normal use |   Approximately 5 V | Motor / control branch |
 
-The LM2596 provides the regulated 5.1 V supply required by the Raspberry Pi.
+The LM2596 converter is used to reduce the LiPo battery voltage to approximately 5.1 V for the Raspberry Pi. The output was adjusted slightly above 5.0 V to compensate for voltage losses in wiring and connectors.
 
-The XL4015 is used for the motor/control branch and is adjusted to approximately 11.1 V.
+The XL4015 converter is used for the motor and control branch. Its output is regulated to the voltage required by the motor-control electronics shown in the schematic.
+
+Both converters are step-down (buck) converters. Their purpose is to convert the higher and variable battery voltage into a lower and more stable voltage suitable for the connected electronics.
+
+The converters provide an important separation between the battery voltage and the low-voltage electronics. This allows the same battery to power the entire robot without directly exposing 5 V electronics to the LiPo battery voltage.
 
 ---
 
 ## 2.4 Power Budget
 
-| Component          | Voltage | Typical Current | Peak / Stall Current |
-| ------------------ | ------: | --------------: | -------------------: |
-| Raspberry Pi 5     |   5.1 V |             [ ] |                  [ ] |
-| Camera             |     5 V |             [ ] |                  [ ] |
-| RPLiDAR C1         |     5 V |             [ ] |                  [ ] |
-| BNO055 IMU         |     [ ] |             [ ] |                  [ ] |
-| CHP-20GP-180 Motor |  11.1 V |             [ ] |                  [ ] |
-| Steering Servo     |     [ ] |             [ ] |                  [ ] |
+Power consumption is divided into load-independent and load-dependent components.
+
+For components whose current depends strongly on the operating condition, the team prefers measured values rather than using a single theoretical value.
+
+| Component             |                             Voltage |    Typical / Reference Current |                                   Peak / Stall Current |
+| --------------------- | ----------------------------------: | -----------------------------: | -----------------------------------------------------: |
+| Raspberry Pi 5        |                                 5 V |                 Load dependent | Power system designed with up to 5 A supply capability |
+| Camera                |                                 5 V | Approximately 250 mA reference |                                         Load dependent |
+| RPLiDAR C1            |                                 5 V | Approximately 290 mA reference |                                         Load dependent |
+| BNO055 IMU            | 3.3–5 V depending on breakout board |             Low-current sensor |                                          Not specified |
+| Arduino UNO R4 Minima |                                 5 V |                 Load dependent |                                          Not specified |
+| Drive Motor           |      Depends on motor configuration |         Measure experimentally |                                 Measure experimentally |
+| Steering Servo        |                 Approximately 4.8 V |            Approximately 70 mA |                       Approximately 0.8–0.9 A at stall |
+
+The values above should be treated as reference values rather than exact measurements of the final robot. Actual current depends on the specific hardware, workload, motor load, cable losses, and converter efficiency.
+
+The drive motor is especially load-dependent. Its current increases significantly during acceleration, high mechanical load, or near-stall conditions. Therefore, the final motor current budget should be obtained through direct measurement on the completed robot.
 
 ### Power Margin
 
-[WRITE ACTUAL POWER CALCULATION OR MEASUREMENT IF AVAILABLE]
+The power system was designed with additional current margin rather than operating each converter continuously at its maximum theoretical output.
+
+The Raspberry Pi branch is given particular attention because the Raspberry Pi 5 can require substantially more current when processing camera data and communicating with external peripherals.
+
+The motor/control branch is also designed to tolerate short-duration increases in current caused by motor acceleration and steering movement.
+
+The final power margin should be verified experimentally by measuring the voltage at the output of each converter while the robot is operating under its highest expected load.
 
 ---
 
 ## 2.5 Power Reliability
 
-Our main power reliability consideration was the effect of motor power demand on the computing system.
+Power reliability is important because the robot contains both high-current actuators and sensitive computing electronics.
 
-The final design separates the Raspberry Pi power supply from the motor/control power branch. The Raspberry Pi is supplied through the LM2596, while the motor/control system uses the XL4015.
+The main reliability decisions are:
 
-This separation was chosen to reduce the effect of motor power changes on the Raspberry Pi and improve the stability of the overall electrical system.
+* A single LiPo battery is used as the main energy source.
+* Step-down converters regulate the battery voltage before it reaches low-voltage electronics.
+* The computing branch is separated from the motor/control branch.
+* The Raspberry Pi supply is adjusted to approximately 5.1 V to compensate for voltage losses in the wiring.
+* Power and ground connections are distributed through dedicated connectors and wiring rather than relying on the signal connections between boards.
+
+Separating the power branches reduces the possibility that rapid changes in motor current will directly disturb the Raspberry Pi supply. This is particularly important during acceleration, steering movement, and other situations in which actuator current can change quickly.
+
+During final testing, the team should verify that the voltage at each regulated power rail remains within the acceptable operating range while the robot is running continuously and while the motor and servo are under their highest expected loads.
+
+---
+
 
 ---
 
@@ -364,7 +429,7 @@ No major functional problem was observed with the IMU during development.
 
 ## 8.1 Version 1 — Initial Prototype
 
-<img width="960" height="1280" alt="IMG_2874" src="https://github.com/user-attachments/assets/2cd51408-8423-43bb-8a1c-9e98e6d49be4" />
+<img width="500" height="550" alt="IMG_2874" src="https://github.com/user-attachments/assets/2cd51408-8423-43bb-8a1c-9e98e6d49be4" />
 
 ### Initial Design
 
@@ -391,12 +456,12 @@ After considering the limitations of this sensing approach, we decided to change
 
 ## 8.2 Version 2 — LiDAR-Based Prototype
 
-<img width="555" height="555" alt="V2_front" src="https://github.com/user-attachments/assets/565e1a1a-5c90-46f8-8a8d-0b25f9c8d971" />
-<img width="555" height="555" alt="V2_back" src="https://github.com/user-attachments/assets/888e36f8-cadd-46e1-8e95-7e89deb52e78" />
-<img width="555" height="555" alt="V2_left" src="https://github.com/user-attachments/assets/455b8f9b-da00-4c4a-b316-7e742cbc7fa5" />
-<img width="555" height="555" alt="V2_right" src="https://github.com/user-attachments/assets/cefe285f-9064-48ea-a7d9-442a564c19d1" />
-<img width="555" height="555" alt="V2_top" src="https://github.com/user-attachments/assets/b6866442-817b-4d32-8025-cc98f1e219f3" />
-<img width="580" height="580" alt="V2_buttom" src="https://github.com/user-attachments/assets/657bd3e9-f3c4-46d8-922b-e58752a9c771" />
+<img width="355" height="355" alt="V2_front" src="https://github.com/user-attachments/assets/565e1a1a-5c90-46f8-8a8d-0b25f9c8d971" />
+<img width="355" height="355" alt="V2_back" src="https://github.com/user-attachments/assets/888e36f8-cadd-46e1-8e95-7e89deb52e78" />
+<img width="355" height="355" alt="V2_left" src="https://github.com/user-attachments/assets/455b8f9b-da00-4c4a-b316-7e742cbc7fa5" />
+<img width="355" height="355" alt="V2_right" src="https://github.com/user-attachments/assets/cefe285f-9064-48ea-a7d9-442a564c19d1" />
+<img width="355" height="355" alt="V2_top" src="https://github.com/user-attachments/assets/b6866442-817b-4d32-8025-cc98f1e219f3" />
+<img width="355" height="355" alt="V2_buttom" src="https://github.com/user-attachments/assets/657bd3e9-f3c4-46d8-922b-e58752a9c771" />
 
 Version 2 used the same physical robot platform as V1, but the sensing architecture was redesigned.
 
