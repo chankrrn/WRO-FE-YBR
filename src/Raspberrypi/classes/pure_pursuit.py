@@ -35,7 +35,7 @@ LOOKAHEAD_MIN_MM = 250.0
 LOOKAHEAD_MAX_MM = 700.0
 LOOKAHEAD_BASE_MM = 260.0
 LOOKAHEAD_PER_SPEED_MM = 3.0     # added per unit of the 0-100 speed command
-MAX_ROAD_WHEEL_DEG = 30.0        # actual steer angle at full lock
+MAX_ROAD_WHEEL_DEG = 70.0        # actual steer angle at full lock
 MAX_STEER_COMMAND = 70.0         # what MotorManager.steer() calls full lock
 REAR_AXLE_OFFSET_MM = 0.0        # + forward of the pose origin, usually <= 0
 

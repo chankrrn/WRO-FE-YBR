@@ -37,11 +37,26 @@ import numpy as np
 from classes.field_map import FieldMap
 from utils.angle_utils import angle_difference, clamp, normalize_angle
 
-# How much room the corner arcs leave between themselves and the center block.
-# Must exceed blocks.robot_half_width_mm or the corner apex clips the block
-# even with zero pillar dodge active - 200 gives 40mm of real body clearance
-# over the current 160mm robot_half_width_mm.
-CORNER_BLOCK_MARGIN_MM = 170.0
+# The corner arcs cost nothing in block clearance until their radius passes
+# `half - inner`, so that is where the default stops.
+#
+# The old rule here subtracted a further 170mm "or the corner apex clips the
+# block", which the geometry does not support: the arc is tangent to both
+# straights, so its centre sits at (half - radius) on each axis and its apex is
+# the point on the whole loop FURTHEST from the block, not nearest. Measured on
+# the real field (outer 1500, inner 500) the minimum gap from the loop to the
+# block is exactly `half - inner` for every radius up to `half - inner`, and
+# only then starts falling:
+#
+#     half=900   r=230 -> 400mm     r=400 -> 400mm     r=500 -> 359mm
+#     half=1000  r=330 -> 500mm     r=500 -> 500mm     r=600 -> 459mm
+#
+# The 170mm was therefore being paid for nothing, and it was expensive: with
+# wall_margin_mm=600 it held the corner radius at 230mm against a robot that
+# cannot turn tighter than ~197mm, leaving the final round's pillar dodge no
+# room at all to bend the line INWARD through a corner (see
+# FinalTask._corner_room_mm).
+CORNER_BLOCK_LIMIT = 1.0     # x (half - inner)
 DEFAULT_RESOLUTION_MM = 20.0
 
 
@@ -64,8 +79,9 @@ class RacingLine:
             wall_margin_mm: gap from the outer wall to the straights. None
                             centers the loop in the corridor, which is the
                             most forgiving line and the sane default.
-            corner_radius_mm: None picks the largest radius that still clears
-                              the center block by CORNER_BLOCK_MARGIN_MM.
+            corner_radius_mm: None picks the largest radius that costs no
+                              block clearance at all - see
+                              CORNER_BLOCK_LIMIT.
         """
         self.map = field_map or FieldMap()
 
@@ -74,10 +90,9 @@ class RacingLine:
         else:
             self.half = self.map.outer - float(wall_margin_mm)
 
-        # The arcs pull in to (half - radius), which has to stay outside the
-        # block. Capped at 70% of the half-size too, or the "square" collapses
+        # Capped at 70% of the half-size as well, or the "square" collapses
         # into a circle and the straights vanish.
-        largest = min(self.half - self.map.inner - CORNER_BLOCK_MARGIN_MM, self.half * 0.7)
+        largest = min(CORNER_BLOCK_LIMIT * (self.half - self.map.inner), self.half * 0.7)
         self.corner_radius = float(corner_radius_mm) if corner_radius_mm else largest
         self.corner_radius = clamp(self.corner_radius, 50.0, self.half * 0.95)
 
@@ -243,15 +258,29 @@ class RacingLine:
     # LIMITS
     # ========================================================================
 
+    def lateral_room_mm(self, clearance_mm):
+        """
+        How far the line may be shifted before the robot runs out of corridor,
+        each way separately.
+
+        The two sides are NOT the same unless the loop is centred, and taking
+        the smaller for both throws away whatever the wider side had spare -
+        with the line 474mm off the wall on a 1000mm corridor that is 52mm of
+        room toward the centre block, given up for nothing.
+
+        The straights are the binding case: they sit `half` from the centre,
+        with the wall at `outer` and the block at `inner`. Corners are no
+        tighter - see CORNER_BLOCK_LIMIT.
+
+        I/O:
+            return: (toward_wall_mm, toward_block_mm), both >= 0
+        """
+        return (max(0.0, self.map.outer - self.half - clearance_mm),
+                max(0.0, self.half - self.map.inner - clearance_mm))
+
     def lateral_limit(self, clearance_mm):
-        """
-        How far the line may be shifted sideways before the robot runs out of
-        corridor. The straights are the binding case: they sit `half` from the
-        center, with the wall at `outer` and the block at `inner`.
-        """
-        toward_wall = self.map.outer - self.half - clearance_mm
-        toward_block = self.half - self.map.inner - clearance_mm
-        return max(0.0, min(toward_wall, toward_block))
+        """The smaller of lateral_room_mm's two sides - what fits either way."""
+        return min(self.lateral_room_mm(clearance_mm))
 
     def curvature_at(self, progress, direction=1):
         """
@@ -272,6 +301,68 @@ class RacingLine:
         """The sharpest bend in the next `ahead_mm` - what the throttle reads."""
         steps = np.linspace(0.0, ahead_mm, samples)
         return max(self.curvature_at(progress + step, direction) for step in steps)
+
+    def inward_sign(self, direction=1):
+        """
+        Which sign of `lateral` points at the INSIDE of a bend.
+
+        The loop is built counter-clockwise, so every corner is a left-hander
+        going the +1 way round and a right-hander going the other way. Since
+        `lateral` is positive to the right of travel, inside-of-the-bend is
+        negative one way and positive the other.
+        """
+        return -1.0 if direction > 0 else 1.0
+
+    def bend_spans(self, direction=1):
+        """
+        Where the corners are, as (start, end) travel-frame progress.
+
+        The loop's curvature is a step function - four arcs and four straights
+        - so anything that has to know "does this stretch of line pass through
+        a bend" can ask for the four intervals once instead of sampling
+        curvature_at over and over. FinalTask sizes its pillar dodges off this.
+
+        I/O:
+            return: list of (start_mm, end_mm), each start < end, and each
+                    already shifted so `end` may run past self.length rather
+                    than wrapping to a lower number - callers comparing
+                    against a progress should use gap() or mod themselves.
+        """
+        spans, arc = [], 0.0
+        for segment in self._segments:
+            if "arc" in segment:
+                spans.append((arc, arc + segment["length"]))
+            arc += segment["length"]
+        if direction > 0:
+            return spans
+        # Travel progress runs the other way: an arc occupying [a, b] of the
+        # +1 arc length occupies [length - b, length - a] going backwards.
+        return [((self.length - end) % self.length,
+                 (self.length - end) % self.length + (end - start))
+                for start, end in spans]
+
+    def inward_limit_mm(self, progress, direction=1, min_radius_mm=0.0):
+        """
+        How far the line may be shifted toward the inside of the bend at
+        `progress` before the shifted line is tighter than `min_radius_mm`.
+
+        A line held `lateral` mm to one side of an arc of radius R is itself an
+        arc, of radius R - lateral on the inside and R + lateral on the
+        outside. So an inward shift eats the radius one-for-one: shift a 230mm
+        corner 230mm inward and the offset line collapses to a point, and past
+        that it turns inside out - the offset "line" doubles back on itself and
+        anything following it sees a hairpin where the corner used to be.
+
+        Outward is unbounded here (it only ever makes the radius larger); the
+        wall is what limits that, and lateral_limit covers it.
+
+        I/O:
+            return: mm, or inf on a straight
+        """
+        curvature = self.curvature_at(progress, direction)
+        if curvature <= 0.0:
+            return float("inf")
+        return max(0.0, 1.0 / curvature - float(min_radius_mm))
 
     # ========================================================================
     # DRAWING
