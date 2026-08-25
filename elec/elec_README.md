@@ -226,9 +226,9 @@ We chose Serial communication because it provides a simple and reliable wired co
 
 # 4. Sensors and Hardware Placement
 
-## 4.1 Camera
+## 4.1 Camera - Raspberry Pi Night Vision Camera Module
 
-![Camera Placement](./images/camera_placement.png)
+<img width="213" height="213" alt="Camera" src="https://github.com/user-attachments/assets/4569d131-1d92-42f9-aca9-de952a0eb49e" />
 
 **Purpose:** Visual detection.
 
@@ -252,7 +252,7 @@ We replaced the original lens with a wider-angle lens. The final lens provides a
 
 ## 4.2 RPLiDAR C1
 
-![LiDAR Placement](./images/lidar_placement.png)
+<img width="275" height="312" alt="LiDAR" src="https://github.com/user-attachments/assets/c808007d-88ed-45fe-9764-a8ee5f307576" />
 
 **Purpose:** Distance and environmental sensing.
 
@@ -274,7 +274,7 @@ When we built the new version of the robot, we changed the LiDAR mounting positi
 
 ## 4.3 BNO055 IMU
 
-![IMU Placement](./images/imu_placement.png)
+<img width="282" height="239" alt="IMU" src="https://github.com/user-attachments/assets/15e91a09-cf60-4824-845d-28d4c9bf8de7" />
 
 **Purpose:** Orientation and heading feedback.
 
@@ -296,7 +296,7 @@ No significant functional problem was observed with the BNO055 itself during dev
 
 ## 4.4 Encoder
 
-![Motor and Encoder](./images/motor_encoder.png)
+<img width="329" height="116" alt="motor_encoder" src="https://github.com/user-attachments/assets/9a413340-51db-4588-b1f5-72959419bfdf" />
 
 **Purpose:** Motor movement feedback.
 
@@ -310,7 +310,7 @@ The encoder integrated with the CHP-20GP-180 provides motor movement information
 
 ## 4.5 Start / Touch Sensor
 
-![Start Button](./images/start_button.png)
+<img width="196" height="217" alt="Touch Sensor" src="https://github.com/user-attachments/assets/18c3326b-c0d9-40d7-81cc-c5605b7d4bd8" />
 
 **Purpose:** Competition start control.
 
@@ -608,37 +608,20 @@ The repository also contains:
 
 A team reproducing our electrical system should follow the final wiring diagram and component layout, connect the power distribution according to the documented D1-2 positive and PCT-21 negative connections, and configure the sensors according to their documented positions.
 
-[ADD FINAL PIN ASSIGNMENTS AND CALIBRATION VALUES IF AVAILABLE]
-
 ---
 
 # 14. References
 
 | Component / Topic     | Reference |
 | --------------------- | --------- |
-| Raspberry Pi 5        | [ ]       |
-| Arduino UNO R4 Minima | [ ]       |
-| RPLiDAR C1            | [ ]       |
-| BNO055                | [ ]       |
-| Camera                | [ ]       |
-| CHP-20GP-180          | [ ]       |
-| LM2596                | [ ]       |
-| XL4015                | [ ]       |
-| L298P                 | [ ]       |
+| Raspberry Pi 5        | https://www.raspberrypi.com/products/raspberry-pi-5/       |
+| Arduino UNO R4 Minima | https://docs.arduino.cc/hardware/uno-r4-minima       |
+| RPLiDAR C1            | https://www.slamtec.com/en/C1       |
+| BNO055                | https://www.dfrobot.com/product-2258.html       |
+| Camera                | https://www.waveshare.com/wiki/RPi_Camera_(H)       |
+| CHP-20GP-180          | https://www.airsoftmotor.com/micro-dc-reduction-motor/planetary-gear-motor/chp-20gp-180-dc-planetary-gear-motor.html       |
+| LM2596                | https://www.ti.com/product/LM2596       |
+| XL4015                | https://www.xlsemi.com/datasheet/XL4015-5A-36V-DC-DC-Converter.pdf       |
+| L298P                 | https://wiki.dfrobot.com/dri0017/       |
 
 ---
-
-# Level 6 Final Check
-
-* [x] Electrical hardware layout
-* [x] Power architecture
-* [x] Sensor placement
-* [x] Sensor selection reasoning
-* [x] Wiring documentation
-* [x] Real design iterations
-* [x] Failure considerations
-* [x] System-level decisions
-* [ ] Verified power budget
-* [ ] Detailed calibration values
-* [ ] Quantitative testing results
-* [ ] Final pin assignments
