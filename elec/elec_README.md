@@ -6,83 +6,32 @@ The goal of this documentation is not only to describe what components we use, b
 
 ---
 
-# 1. Electrical System Overview
+# 1. Electrical Hardware Overview
 
-## 1.1 System Architecture
+## 1.1 Annotated Hardware Layout
 
-![Electrical System Overview](./images/electrical_system_overview.png)
+![Annotated Electrical Hardware Layout](./images/electrical_layout.png)
 
-<!-- INSERT:
-A simplified block diagram showing:
+The annotated view shows the main electrical and sensing components
+installed on our final robot, including the Raspberry Pi 5, Arduino UNO
+R4 Minima, RPLiDAR C1, BNO055 IMU, camera module, battery, motor driver,
+and voltage converters.
 
-Battery
-↓
-Power Distribution
-↓
-├── Computing / Logic
-├── Sensors
-└── Motor / Servo System
+[เขียนสั้น ๆ อีก 1 ย่อหน้าเรื่องการแบ่งหน้าที่ของ hardware]
 
-Also show:
-Raspberry Pi
-Arduino
-Sensors
-Motor Driver
-Motor
-Servo
--->
+## 1.2 Hardware Roles
+[ตารางสั้น ๆ]
 
-### Overview
-
-[WRITE 1–2 SHORT PARAGRAPHS]
-
-<!-- Explain:
-- What powers the robot?
-- What are the main controllers?
-- What are the major sensors?
-- How does information flow through the system?
--->
-
----
-
-## 1.2 Hardware Layout
-
-![Annotated Robot Hardware Layout](./images/electronics_layout.png)
-
-<!-- INSERT:
-Use an annotated photo/render of the actual robot.
-Add arrows pointing to the major electrical components.
-
-Recommended labels:
-- Raspberry Pi 5
-- Arduino UNO R4 Minima
-- RPLiDAR C1
-- BNO055 IMU
-- Camera
-- Battery
-- L298P Motor Driver
-- LM2596
-- XL4015
-- D1-2
-- PCT-21
-- On/Off Switch
-- ZX-Switch01
--->
-
-### Layout Rationale
-
-[WRITE A SHORT PARAGRAPH]
-
-<!-- Explain why major components were placed where they are.
-Do NOT explain every screw or wire.
-Focus on:
-- sensor visibility
-- accessibility
-- wiring length
-- protection
-- balance
-- interference
--->
+| Component | Role |
+|---|---|
+| Raspberry Pi 5 | High-level processing |
+| Arduino UNO R4 | Low-level control |
+| LiDAR | Distance sensing |
+| Camera | Visual sensing |
+| BNO055 | Heading / orientation |
+| Encoder | Motor feedback |
+| Battery | Main power source |
+| ... | ... |
 
 ---
 
