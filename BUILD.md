@@ -27,7 +27,8 @@ CAD/schematic lives. Example table — fill in with your actual parts:
 | Power | Helicox 1100mAh 11.1V 3S LiPo | 1 | | https://sl1nk.com/tpaqu28 |
 | Power | LM2596 step-down converter | 1 | tuned to 5.1V | |
 | Power | XL4015 step-down converter | 1 | tuned to 11.1 | |
-| — | (add fasteners, wire gauges, connectors, etc.) | | | |
+| Power | Quick Wire Connectors | 2 | PCT-21 & D1-2 | |
+
 
 Add tools required too: soldering iron, hex driver set, 3D printer + filament type, etc.
 
@@ -37,16 +38,16 @@ Add tools required too: soldering iron, hex driver set, 3D printer + filament ty
 
 Step-by-step, in build order. Reference photos/CAD renders where possible.
 
-1. **Print/prepare structural parts** — list which STL/STEP files to print, printer settings
-   (layer height, infill) if relevant. Link to `mech/models/`.
-2. **Assemble drivetrain** — mount motor, install gearbox (21:28 ratio), attach to chassis.
-3. **Mount steering system** — install servo, connect to steering linkage.
-4. **Attach wheels.**
-5. **Mount chassis plates / frame.**
-6. **Mount sensors** — LiDAR position, camera position and angle, IMU placement. Note *why*
+1. **Print/prepare structural parts** — print all the .stl parts in the 'mech/models'. import it into your printer slicer app(For us we use the bambu studio app)
+2. 
+3. **Assemble drivetrain** — mount motor, install gearbox (21:28 ratio), attach to chassis.
+4. **Mount steering system** — install servo, connect to steering linkage.
+5. **Attach wheels.**
+6. **Mount chassis plates / frame.**
+7. **Mount sensors** — LiDAR position, camera position and angle, IMU placement. Note *why*
    each is placed there (see `mech/mech_README.md` for full reasoning) but give the *physical
    how-to* here (screw pattern, height, angle in degrees).
-7. **Final dimension check** — confirm the assembled vehicle is within 300×200×300 mm and
+8. **Final dimension check** — confirm the assembled vehicle is within 300×200×300 mm and
    ≤1.5 kg (WRO requirement).
 
 Include a photo or diagram after each major step if possible.
