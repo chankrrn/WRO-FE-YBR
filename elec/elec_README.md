@@ -10,7 +10,11 @@ The goal of this documentation is not only to describe what components we use, b
 
 ## 1.1 Annotated Hardware Layout
 
-![Annotated Electrical Hardware Layout](./images/electrical_layout.png)
+![Base Plate View](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/1cafb8eafe769b20afa6bdf1097000732c3158ca/other/ComponentsImage1.png)
+![Right View](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/1cafb8eafe769b20afa6bdf1097000732c3158ca/other/ComponentsImage2.png)
+![Left View](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/1cafb8eafe769b20afa6bdf1097000732c3158ca/other/ComponentsImage3.png)
+![Front View1](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/1cafb8eafe769b20afa6bdf1097000732c3158ca/other/ComponentsImage4.png)
+
 
 The annotated view shows the main electrical and sensing components
 installed on our final robot, including the Raspberry Pi 5, Arduino UNO
