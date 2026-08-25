@@ -62,7 +62,7 @@ MIN_TOTAL_TURN_DEG = 200.0
 # Bracket for the solve, in degrees of full lock. Wide enough for any sane
 # steering rack; the answer is bisected inside it.
 SEARCH_MIN_DEG = 2.0
-SEARCH_MAX_DEG = 70.0
+SEARCH_MAX_DEG = 60.0
 
 
 class SteeringCalibrator:

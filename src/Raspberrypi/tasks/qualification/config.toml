@@ -55,7 +55,16 @@ wall_margin_mm = 130.0
 #
 # Corner radius. Leave unset for the biggest that still clears the centre
 # block, and keep it above the robot's turning circle (setup warns if not).
-# corner_radius_mm = 450.0
+#
+# Pinned at 700 rather than left unset: that is exactly what the old default
+# produced here, and RacingLine's default has since been corrected upward (it
+# was subtracting a 170mm block margin that the geometry does not need - see
+# CORNER_BLOCK_LIMIT). Unset now gives 870mm, which clears the block by the
+# same 870mm and the wall by the same 130mm but shortens the lap by 292mm and
+# opens the corners out. That is very likely an improvement, but it is a
+# change to a round that is already tuned, so it is left as a deliberate
+# choice: delete this line to take it.
+corner_radius_mm = 700.0
 resolution_mm = 20.0
 
 [pursuit]

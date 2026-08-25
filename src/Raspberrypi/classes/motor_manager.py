@@ -13,6 +13,10 @@ from utils.angle_utils import clamp
 DEFAULT_PORT = "/dev/ttyACM0"
 DEFAULT_BAUD = 115200
 SERIAL_TIMEOUT_S = 0.1
+# A write must never be able to park the control loop either. The line is
+# 115200 baud and the messages are ~12 bytes, so anything approaching this
+# means the link is not draining and no amount of waiting will fix it.
+SERIAL_WRITE_TIMEOUT_S = 0.05
 
 # The Arduino UNO R4 enumerates as /dev/ttyACM*; matching the USB descriptor
 # keeps autodetect off the lidar's CP2102N bridge on /dev/ttyUSB0.
@@ -21,8 +25,8 @@ USB_ID_HINTS = ("Arduino", "UNO")
 # The Arduino resets when the port is opened and prints a banner when ready.
 ARDUINO_BOOT_S = 2.0
 
-MAX_STEER_DEG = 80
-STEER_SMOOTHING_WINDOW = 5
+MAX_STEER_DEG = 50
+STEER_SMOOTHING_WINDOW = 3
 
 # drive() skips the serial round-trip when nothing has meaningfully changed.
 # The control loop runs far faster than the robot can respond, so most ticks
@@ -45,17 +49,40 @@ class MotorManager:
     distance is degrees of motor-shaft rotation (0 = keep going until told
     otherwise). The Arduino answers every command with a line, and answers a
     non-zero distance move with "t" once the move has actually finished.
+
+    Those replies are ACKNOWLEDGEMENTS, not data - nothing in the control loop
+    reads one - so drive() does not wait for them. It writes and returns, and
+    drains whatever has arrived since last time on the way past. Waiting cost
+    the loop a serial round-trip per command in the good case and the port's
+    full 0.1s timeout in the bad one, mid-corner, for a line nobody was going
+    to look at. drive_distance() and wait_for_start() still read, because for
+    those the reply IS the answer.
+
+    With `drive_enabled=False` the speed field of every message is forced to
+    zero on the way out (see _send), which is the one place all of them pass
+    through - steering, stops and queued moves included.
     """
 
-    def __init__(self, port=None, baudrate=DEFAULT_BAUD, debug=False):
+    def __init__(self, port=None, baudrate=DEFAULT_BAUD, debug=False, drive_enabled=True):
         self.port = port or self.autodetect_port()
         self.baudrate = baudrate
         self.debug = debug
+        # False (--no-drive) means the steering servo still does everything it
+        # normally would, but every command leaves the Pi with speed 0 - so
+        # the round can be walked through by hand, pushing the robot along
+        # while watching the wheels answer the real control loop.
+        self.drive_enabled = drive_enabled
 
         self.serial = None
         self.current_speed = 0
         self.current_angle = 0
         self.steering_history = deque(maxlen=STEER_SMOOTHING_WINDOW)
+        # Acknowledgements read and thrown away, and writes that timed out.
+        # Neither is ever acted on - but a run that ends having drained zero
+        # replies means the Arduino was not answering at all, and that is
+        # worth being able to see afterwards.
+        self.replies_dropped = 0
+        self.write_failures = 0
 
     # ========================================================================
     # LIFECYCLE
@@ -69,14 +96,19 @@ class MotorManager:
         return DEFAULT_PORT
 
     def start(self):
-        self.serial = serial.Serial(self.port, self.baudrate, timeout=SERIAL_TIMEOUT_S)
+        self.serial = serial.Serial(self.port, self.baudrate, timeout=SERIAL_TIMEOUT_S,
+                                    write_timeout=SERIAL_WRITE_TIMEOUT_S)
         time.sleep(ARDUINO_BOOT_S)   # the port opening resets the board
         banner = self.serial.readline().decode(errors="ignore").strip()
         if self.debug:
             print(f"[motor] {self.port} @ {self.baudrate}, arduino says: {banner!r}")
+        if not self.drive_enabled:
+            print("  DRIVE MOTOR DISABLED - steering only, push the robot by hand")
         self.current_speed = 0
         self.current_angle = 0
         self.steering_history.clear()
+        self.replies_dropped = 0
+        self.write_failures = 0
 
     def stop_and_close(self):
         try:
@@ -103,10 +135,47 @@ class MotorManager:
     def _send(self, angle, speed, distance=0, wait_for_reply=True):
         if self.serial is None:
             raise RuntimeError("MotorManager.start() must be called first")
-        self.serial.write(f"{int(angle)},{int(speed)},{int(distance)}\n".encode())
+        if not self.drive_enabled:
+            speed = 0
+        try:
+            self.serial.write(f"{int(angle)},{int(speed)},{int(distance)}\n".encode())
+        except serial.SerialTimeoutException:
+            # The link is not draining. Counted and carried on rather than
+            # raised: losing one steering command is survivable, ending the
+            # round in the middle of a corner is not.
+            self.write_failures += 1
+            if self.write_failures in (1, 10) or self.write_failures % 100 == 0:
+                print(f"WARNING: motor serial write timed out "
+                      f"({self.write_failures} so far) - is the Arduino alive?")
+            return None
         if wait_for_reply:
             return self.serial.readline().decode(errors="ignore").strip()
         return None
+
+    def drain_replies(self):
+        """
+        Throws away acknowledgements that have piled up, without blocking.
+
+        Somebody has to read them. The Arduino answers every command, so a
+        three-minute round leaves thousands of lines in the kernel's receive
+        buffer if nothing ever does - and then the first caller that wants a
+        REAL reply (drive_distance waiting for its "t") reads the backlog
+        instead of the answer.
+
+        I/O:
+            return: bytes discarded
+        """
+        if self.serial is None:
+            return 0
+        try:
+            waiting = self.serial.in_waiting
+            if not waiting:
+                return 0
+            self.serial.read(waiting)
+        except Exception:
+            return 0
+        self.replies_dropped += waiting
+        return waiting
 
     def drive(self, angle, speed):
         """
@@ -118,16 +187,26 @@ class MotorManager:
         This says it once, and says nothing at all when neither value has moved
         past its deadband.
 
+        Fire and forget. The Arduino's reply to a drive command is an
+        acknowledgement nobody reads, and waiting for it put a serial
+        round-trip inside every tick that moved the wheels - or the port's
+        full 0.1s timeout on a tick where the reply went missing, which is a
+        five-tick stall in the middle of whatever made the steering move that
+        far. The backlog is drained here instead, ahead of the deadband check,
+        so it happens every tick and not only on the ones that transmit.
+
         I/O:
             return: True if a command actually went out
         """
+        self.drain_replies()
+
         angle = clamp(angle, -MAX_STEER_DEG, MAX_STEER_DEG)
         if (abs(angle - self.current_angle) < STEER_DEADBAND_DEG
                 and abs(speed - self.current_speed) < SPEED_DEADBAND):
             return False
         self.current_angle = angle
         self.current_speed = speed
-        self._send(angle, speed, 0)
+        self._send(angle, speed, 0, wait_for_reply=False)
         return True
 
     def forward(self, speed):
@@ -167,10 +246,23 @@ class MotorManager:
         than trusting a single readline() bounded by the port's 0.1s timeout,
         so this stays correct for moves longer than that timeout. Returns None
         if "t" never arrives within max_wait seconds.
+
+        With the drive motor disabled the move cannot happen at all, so it
+        only steers and reports the move as done - waiting would just park the
+        caller for max_wait seconds on a "t" that is never coming.
         """
         angle = self.current_angle if angle is None else angle
         self.current_angle = angle
         self.current_speed = speed
+        if not self.drive_enabled:
+            self.steer(angle)
+            return DONE_REPLY
+        # Clear the backlog BEFORE sending, or a stale "t" left over from an
+        # earlier move reads as this one finishing the instant it starts.
+        try:
+            self.serial.reset_input_buffer()
+        except Exception:
+            pass
         self._send(angle, speed, distance, wait_for_reply=False)
 
         deadline = time.monotonic() + max_wait

@@ -37,6 +37,13 @@ Speeds and geometry are per-round TOML, not code:
     uv run python main.py qualification --dry-run    check the plan, no hardware
     uv run python main.py qualification --speed 65   override for one run
 
+--no-drive is the halfway house between --dry-run and a real run: every
+sensor, the filter and the control loop all run for real and the steering
+servo answers them tick by tick, but the drive motor is never given a speed,
+so you push the robot round the mat by hand and watch where it wanted to go.
+
+    uv run python main.py final --debug --no-drive
+
 Test the whole round with no robot at all - real task, real filter, real
 config, simulated chassis:
 

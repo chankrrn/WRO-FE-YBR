@@ -41,6 +41,9 @@ def run_synthetic_check():
 
     hsv_image = ImageTransformUtils.bgr_to_hsv(image)
     objects = solver.detect(hsv_image, display_image=image)
+    # detect() only renders - putting the windows up is the caller's job now,
+    # because in a round detect() runs on the vision thread. See ObjectSolver.
+    solver.show_debug()
 
     print(f"Detected {len(objects)} object(s):")
     for obj in objects:
@@ -66,6 +69,7 @@ def run_live():
             camera_manager.transform_image()
 
             objects = solver.detect(camera_manager.hsv_image, display_image=camera_manager.display_image)
+            solver.show_debug()
             for obj in objects:
                 print(f"{obj.color.value:>5}: dist={obj.distance_cm}cm bearing={obj.bearing_deg}deg "
                       f"fwd={obj.forward_cm}cm lat={obj.lateral_cm}cm")

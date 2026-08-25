@@ -20,7 +20,7 @@ WALL_ERROR_IGNORE = 4000
 HEADING_PRIORITY_DEG = 20
 
 HEADING_WEIGHT = 0.8
-MAX_STEER_DEG = 80
+MAX_STEER_DEG = 50
 
 # ============================================================================
 # Course layout
