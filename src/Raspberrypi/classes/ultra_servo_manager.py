@@ -10,7 +10,7 @@ SERVO_CENTER_DEG = 45      # servo angle that points the sensor straight ahead
 SERVO_LEFT_DEG = 90        # ... at the left-hand wall
 SERVO_RIGHT_DEG = 0        # ... at the right-hand wall
 SERVO_MIN_DEG = 0
-SERVO_MAX_DEG = 90
+SERVO_MAX_DEG = 50
 
 # How hard the head counter-rotates against the robot's heading error, so it
 # keeps pointing at the same patch of wall while the body yaws.

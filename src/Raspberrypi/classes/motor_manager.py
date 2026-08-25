@@ -25,8 +25,8 @@ USB_ID_HINTS = ("Arduino", "UNO")
 # The Arduino resets when the port is opened and prints a banner when ready.
 ARDUINO_BOOT_S = 2.0
 
-MAX_STEER_DEG = 70
-STEER_SMOOTHING_WINDOW = 5
+MAX_STEER_DEG = 50
+STEER_SMOOTHING_WINDOW = 3
 
 # drive() skips the serial round-trip when nothing has meaningfully changed.
 # The control loop runs far faster than the robot can respond, so most ticks

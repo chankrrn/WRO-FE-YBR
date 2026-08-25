@@ -25,6 +25,7 @@ Everything here is in millimeters and the field frame from field_map.py, even
 though ObjectSolver talks centimeters - the conversion happens once, on the way
 in, so nothing downstream has to remember which unit it is holding.
 """
+import itertools
 import math
 import threading
 import time
@@ -105,7 +106,7 @@ DEFAULT_CAMERA_FOV_DEG = CAPTURED_HORIZONTAL_FOV_DEG
 # sensors are described relative to the robot's center, but only ONE of the two
 # distances is a fixed property of the build - so the camera's offset is
 # derived from the lidar's rather than typed in twice and left to drift apart.
-CAMERA_BEHIND_LIDAR_MM = 210.0
+CAMERA_BEHIND_LIDAR_MM = 170.0
 # Blocks at the very edge of the frame are half-cut and range badly, so the
 # "should I have seen it?" test uses a slightly narrower cone than the real one.
 VISIBILITY_FOV_MARGIN_DEG = 4.0
@@ -134,6 +135,15 @@ def camera_offset_behind_lidar(lidar_offset_mm=(0.0, 0.0),
     return forward - behind_mm, right
 
 
+# A serial number per tracked block, for anything that has to remember
+# something ABOUT a block between ticks (see FinalTask's ramp anchors).
+# Neither position nor colour identifies a pillar: both are shared by other
+# pillars, the position drifts as sightings refine it, and a dropped block
+# re-detected later is a genuinely new track that must not inherit the old
+# one's state. Never reused, so a stale key cannot land on a live block.
+_BLOCK_UIDS = itertools.count(1)
+
+
 @dataclass
 class Block:
     """One tracked pillar, in field millimeters."""
@@ -143,6 +153,7 @@ class Block:
     hits: int = 1
     misses: int = 0
     last_seen: float = field(default_factory=time.monotonic)
+    uid: int = field(default_factory=lambda: next(_BLOCK_UIDS))
 
     @property
     def is_confirmed(self):

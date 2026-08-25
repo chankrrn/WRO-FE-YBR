@@ -351,15 +351,18 @@ class NavigationManager:
         return ((bearings - start) % 360.0) <= ((end - start) % 360.0)
 
     def set_fov(self, fov_deg):
-        """Changes the accepted bearing window at runtime (None = all 360)."""
+        """
+        Changes the accepted bearing window at runtime (None = all 360).
+
+        The lidar's FOV only, deliberately: this used to carry a pasted copy
+        of __init__'s block-map construction, which referenced names that do
+        not exist in this scope (it would have raised NameError on the first
+        call) and, had it run, would have thrown away every pillar mapped so
+        far. Where the camera looks has nothing to do with which bearings the
+        lidar is allowed to believe.
+        """
         self.fov_deg = tuple(float(v) for v in fov_deg) if fov_deg else None
         self._fov_mask = self._build_fov_mask(self.fov_deg)
-        # The camera hangs off the same mast as the lidar, so its offset is
-        # derived from lidar_offset_mm rather than configured separately -
-        # move the mast and both sensors follow.
-        self.blocks = block_map or BlockMap(
-            field_map=self.map, debug=debug,
-            camera_offset_mm=camera_offset_behind_lidar(self.lidar_offset_mm))
 
     def crop_scan(self, scan):
         """

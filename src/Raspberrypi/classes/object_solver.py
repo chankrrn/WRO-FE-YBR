@@ -20,7 +20,7 @@ from utils.image_transform_utils import ImageTransformUtils
 # against the actual frame (point the camera at two references a known angle
 # apart, e.g. floor tiles or a printed protractor, and count pixels between
 # them) rather than trusting the lens datasheet number.
-CAPTURED_HORIZONTAL_FOV_DEG = 80.0
+CAPTURED_HORIZONTAL_FOV_DEG = 100.0
 
 # Full, UNCROPPED main-stream width that CAPTURED_HORIZONTAL_FOV_DEG was
 # measured against (see camera_manager.py's configure_camera/transform_image).

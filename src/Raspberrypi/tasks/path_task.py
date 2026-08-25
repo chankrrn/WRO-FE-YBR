@@ -101,12 +101,76 @@ DEFAULTS = {
     # Final round only - see tasks/final/task.py. They live here so that
     # setting() has a default for them whatever config file is loaded.
     "blocks.clearance_mm": 180.0,        # gap between robot and pillar face
-    "blocks.approach_mm": 900.0,         # start easing across this far out
-    "blocks.past_mm": 250.0,             # hold the offset this far beyond it
+    # The straight part of the dodge: this far either side of the pillar the
+    # line runs parallel to the racing line at the full offset. approach_mm
+    # and past_mm are the transitions leading into and out of it.
+    "blocks.padding_mm": 150.0,
+    "blocks.approach_mm": 900.0,         # length of the easing-in transition
+    # How far off a pillar may be mapped, overriding block_map's own
+    # MAX_MAPPING_RANGE_MM. None leaves that alone. This is the real ceiling
+    # on approach_mm - a sweep cannot start before the pillar exists.
+    "blocks.map_range_mm": None,
+    "blocks.past_mm": 250.0,             # length of the easing-out transition
+    # How long a pillar keeps steering the line after its track is lost. A
+    # dodge must not be cancelled by a dropped frame - that is a collision -
+    # so it is held, and this bounds how long a wrong detection can hold it.
+    "blocks.memory_s": 1.5,
+    "blocks.wall_clearance_mm": 220.0,   # never dodge closer than this to a wall
+    # Pure pursuit steers the robot's CENTER onto the target point, not its
+    # edge - without this, clearance_mm is the gap from the robot's centerline
+    # to the block, not from its actual body, and the real gap comes up short
+    # by however wide the chassis is. Half the robot's own width, widest point
+    # (mirrors, wheels) to centerline - measure it, do not guess.
+    "blocks.robot_half_width_mm": 100.0,
+    "blocks.red_extra_clearance_mm": 0.0,     # extra padding on RED dodges only
+    "blocks.green_extra_clearance_mm": 0.0,   # extra padding on GREEN dodges only
+    # How much of the robot's own minimum turning circle to keep in hand where
+    # a dodge pushes the line INWARD through a corner, which tightens the arc
+    # it has to drive one mm for one. 1.0 is the bare geometric limit - the
+    # line comes out at exactly the tightest arc the steering can hold, with
+    # nothing left for tracking error. This ONLY ever limits a pillar that has
+    # to be passed on the inside of a bend; a dodge on a straight, or one to
+    # the outside of a bend, is never touched by it. See
+    # FinalTask._corner_room_mm.
+    "blocks.turn_radius_margin": 1.15,
+    # Where the two inner control points of a dodge's easing-in and easing-out
+    # curves sit, as a fraction of the transition's length. Both ends of each
+    # curve are horizontal whatever these are, so they do not decide whether
+    # the line joins smoothly - only how much of the transition is spent
+    # turning. 1/3 is the plain S-curve; lower turns earlier and more evenly,
+    # higher holds the straight longer and turns harder in the middle.
+    "blocks.bezier_lead": 1.0 / 3.0,
+    "blocks.bezier_settle": 1.0 / 3.0,
+    # The steepest the line is aimed to lean, in degrees off the racing line,
+    # when crossing from one pillar's dodge to the next. The curve between two
+    # pillars is given the length it needs to hold this BEFORE either pillar's
+    # flat part gets any of the gap - past about 45 degrees pure pursuit stops
+    # following the line and starts cutting across it. Where two pillars are
+    # too close for it at any length, the curve takes what there is and leans
+    # harder; steep beats absent. See FinalTask._share_gap.
+    "blocks.max_lean_deg": 45.0,
+    # Over how much driving the line closes the gap when the profile moves
+    # under it - a pillar appearing, or one being dropped. The dodge itself is
+    # a function of where the pillars are and nothing else; this is the only
+    # place the robot's own position enters, and it exists so that a pillar
+    # confirmed late slides the line across instead of stepping it. Too short
+    # and a pop-in is still a yank; too long and the line is lazy about
+    # reaching a dodge it has just learned about. See FinalTask._settle_bias.
+    "blocks.catchup_mm": 800.0,
 
     # Final round only - the parking bay. See classes/parking.py for the
     # geometry these describe and why the manoeuvre is shaped the way it is.
     "parking.enabled": True,
+    # Whether the line is kept off the outer wall across the WHOLE starting
+    # section before BayFinder has located the bay. Off, because the
+    # competition never puts a pillar within PILLAR_FREE_MM of a parking
+    # space: wherever the bay turns out to be, no pillar's pass is beside it,
+    # so the line is near the racing line there and already clear of a bay
+    # wall. Guarding speculatively costs a pillar dodge in that section about
+    # half its clearance, on every lap, to protect against a case the field
+    # layout rules out. Turn it on for a mat where that does not hold. The
+    # window around the bay once it IS found is always guarded either way.
+    "parking.guard_before_found": False,
     # Real gap from the robot's BODY to the tips of the bay walls while
     # driving PAST them. They stick 200mm out from the outer wall, so the
     # ordinary wall_clearance_mm - which assumes a flat wall - would happily
@@ -115,17 +179,25 @@ DEFAULTS = {
     # How far the BODY reaches sideways from the point that tracks the path.
     # Not half the width: the robot is only that narrow when it is perfectly
     # square to the line. Yawed by t it reaches half_width*cos(t) plus its
-    # nose overhang*sin(t), and the corner-to-centre half-diagonal is 134mm.
+    # nose overhang*sin(t), which for a 240mm body at 15 degrees is about
+    # 110mm, and the corner-to-centre half-diagonal is 134mm. Add what the
+    # path follower's own tracking error contributes and this is the number
+    # that decides whether a dodge clears a bay wall - sizing the clamp off
+    # robot_half_width_mm instead lets a yawed robot clip one while the
+    # commanded line looks perfectly legal.
     "parking.body_reach_mm": 130.0,
-    # How much lap either side of the bay the tighter clamp applies over,
-    # once the bay has been found.
+    # How much lap either side of the bay the tighter clamp applies over, once
+    # the bay has been found. Before that it covers the whole start section,
+    # because the first pass at the bay happens before anything knows where it
+    # is. Narrower means less argument with a pillar that wants a wall-side
+    # pass in the same section.
     "parking.window_mm": 500.0,
-    # A bay is only believed after this many scans agree about it, and a
-    # return only counts as a bay wall this far out from the outer wall.
+    # A bay is only believed after this many scans agree about it.
     "parking.detect_min_scans": 3,
-    "parking.detect_min_depth_mm": 120.0,
-    "parking.detect_min_gap_mm": 250.0,
-    "parking.detect_max_gap_mm": 400.0,
+    # Reversing speed for the manoeuvre, and the slower creep used for the
+    # last stretch up to the staging point. The approach is deliberately slow:
+    # at racing speed one control tick is 8mm, and every millimetre of
+    # overshoot there lands on the tightest clearance of the whole manoeuvre.
     # How much further the robot will keep lapping, looking for the bay,
     # once the laps are done. The fallback is deliberately "keep driving" -
     # laps already scored are worth more than a blind park - but it cannot be
@@ -151,20 +223,18 @@ DEFAULTS = {
     # where the parked body sits along the bay, + toward the far wall
     "parking.end_offset_mm": 0.0,
     # 0  how much run-up gets the slow, short-lookahead treatment, and what
-    # that lookahead is.
+    # that lookahead is. Long enough to slide in from the racing line without
+    # leaning more than approach_lean_deg.
     "parking.approach_mm": 900.0,
     "parking.approach_lookahead_mm": 200.0,
     "parking.speed": 25,
-    "parking.approach_speed": 25,             # hold the offset this far beyond it
-    "blocks.wall_clearance_mm": 220.0,   # never dodge closer than this to a wall
-    # Pure pursuit steers the robot's CENTER onto the target point, not its
-    # edge - without this, clearance_mm is the gap from the robot's centerline
-    # to the block, not from its actual body, and the real gap comes up short
-    # by however wide the chassis is. Half the robot's own width, widest point
-    # (mirrors, wheels) to centerline - measure it, do not guess.
-    "blocks.robot_half_width_mm": 100.0,
-    "blocks.red_extra_clearance_mm": 0.0,     # extra padding on RED dodges only
-    "blocks.green_extra_clearance_mm": 0.0,   # extra padding on GREEN dodges only
+    "parking.approach_speed": 25,
+    # How far out from the outer wall a return has to be to count as a bay
+    # wall rather than the wall itself, and the gap between the two clusters
+    # that reads as a bay.
+    "parking.detect_min_depth_mm": 120.0,
+    "parking.detect_min_gap_mm": 250.0,
+    "parking.detect_max_gap_mm": 400.0,
 }
 
 
@@ -190,6 +260,7 @@ class PathDrivingTask(Task):
         self.direction = 1
 
         self.progress = 0.0          # travel-frame progress this tick
+        self.aim_progress = 0.0      # progress of the point being chased
         self.lateral = 0.0           # how far off the line we are, + right
         self.distance_driven = 0.0   # along the path, for lap counting
         self.speed = 0
@@ -267,6 +338,7 @@ class PathDrivingTask(Task):
         self.direction = self.path.direction_for(pose)
         self._warn_if_started_outside_a_zone(pose)
         self.progress, self.lateral = self.path.project(pose.x, pose.y, self.direction)
+        self.aim_progress = self.progress
         self.distance_driven = 0.0
         self._last_tick_at = time.monotonic()
 
@@ -388,10 +460,11 @@ class PathDrivingTask(Task):
         self._track_progress(pose)
 
         # Parking owns the wheels outright once it starts: it is driving arcs
-        # and reverse strokes that pure pursuit has no way to express, and the
-        # safety stops below would fight it (the front sector is SUPPOSED to
-        # be full of bay wall). Odometry above is untouched, so the filter
-        # keeps tracking through the manoeuvre - see _drive_parking.
+        # and short reverse strokes that pure pursuit has no way to express,
+        # and the safety stops below would fight it (the front sector is
+        # SUPPOSED to be full of bay wall). Odometry above is untouched, so
+        # the filter keeps tracking through the manoeuvre - see
+        # _drive_parking.
         if self._drive_parking(dt):
             if context.debug:
                 self.show_debug()
@@ -429,6 +502,57 @@ class PathDrivingTask(Task):
 
         if context.debug:
             self.show_debug()
+
+    def parking_caps(self):
+        """
+        What the parking approach wants the path follower limited to, as
+        (speed, lookahead_mm) - either may be None for "no limit".
+
+        Separate from parking_command because this applies while the PATH is
+        still driving. A long lookahead is what makes pure pursuit cut a
+        corner, and cutting it on the way into the bay means arriving at the
+        staging pose off line and off square, which nothing downstream can
+        correct - every step of the manoeuvre is an open arc measured from
+        that pose.
+
+        Nothing here: the qualification round never parks.
+        """
+        return (None, None)
+
+    def parking_command(self, dt):
+        """
+        The parking manoeuvre's (steer_command, speed) for this tick, or None
+        when it is not driving.
+
+        Nothing here: the qualification round never parks. The final round
+        overrides it - see tasks/final/task.py.
+        """
+        return None
+
+    def _drive_parking(self, dt):
+        """
+        Hands the wheels to the parking manoeuvre for a tick.
+
+        The controller returns a command rather than touching the motor
+        itself, so that `steer_command` and `speed` stay the single record of
+        what the wheels were told - which is what _travelled() and _turned()
+        dead-reckon from, and what the status line reports. The road-wheel
+        angle has to be published to the pursuit object explicitly, because
+        the usual writer of it (PurePursuit.steering) is not running.
+
+        I/O:
+            return: True if this tick was spent parking
+        """
+        command = self.parking_command(dt)
+        if command is None:
+            return False
+        steer, speed = command
+        self.steer_command = clamp(float(steer), -self.pursuit.max_steer_command,
+                                   self.pursuit.max_steer_command)
+        self.speed = int(speed)
+        self.pursuit.set_road_wheel_command(self.steer_command)
+        self.context.motor.drive(self.steer_command, self.speed)
+        return True
 
     def _travelled(self, dt):
         """
@@ -587,58 +711,12 @@ class PathDrivingTask(Task):
             lookahead = min(lookahead, float(reach_cap))
 
         ahead = self.progress + lookahead
+        # Published because the lateral target is a function of THIS point,
+        # not of where the robot is - anything reasoning about when a shift in
+        # the line starts has to measure from the same place, a lookahead
+        # further on. See FinalTask._update_ramp_anchors.
+        self.aim_progress = ahead
         return self.path.point_at(ahead, self.direction, self.target_lateral_mm(ahead))
-
-    def parking_caps(self):
-        """
-        What the parking approach wants the path follower limited to, as
-        (speed, lookahead_mm) - either may be None for "no limit".
-
-        Separate from parking_command because this applies while the PATH is
-        still driving. A long lookahead is what makes pure pursuit cut a
-        corner, and cutting it on the way into the bay means arriving at the
-        staging pose off line and off square, which nothing downstream can
-        correct - every step of the manoeuvre is an open arc measured from
-        that pose.
-
-        Nothing here: the qualification round never parks.
-        """
-        return (None, None)
-
-    def parking_command(self, dt):
-        """
-        The parking manoeuvre's (steer_command, speed) for this tick, or None
-        when it is not driving.
-
-        Nothing here: the qualification round never parks. The final round
-        overrides it - see tasks/final/task.py.
-        """
-        return None
-
-    def _drive_parking(self, dt):
-        """
-        Hands the wheels to the parking manoeuvre for a tick.
-
-        The controller returns a command rather than touching the motor
-        itself, so that `steer_command` and `speed` stay the single record of
-        what the wheels were told - which is what _travelled() and _turned()
-        dead-reckon from, and what the status line reports. The road-wheel
-        angle has to be published to the pursuit object explicitly, because
-        the usual writer of it (PurePursuit.steering) is not running.
-
-        I/O:
-            return: True if this tick was spent parking
-        """
-        command = self.parking_command(dt)
-        if command is None:
-            return False
-        steer, speed = command
-        self.steer_command = clamp(float(steer), -self.pursuit.max_steer_command,
-                                   self.pursuit.max_steer_command)
-        self.speed = int(speed)
-        self.pursuit.set_road_wheel_command(self.steer_command)
-        self.context.motor.drive(self.steer_command, self.speed)
-        return True
 
     def target_lateral_mm(self, progress):
         """
