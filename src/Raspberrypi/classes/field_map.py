@@ -46,6 +46,53 @@ class FieldMap:
         self.outer = self.field_size_mm / 2.0      # +/- this is the outer wall
         self.inner = self.inner_size_mm / 2.0      # +/- this is the block face
 
+        # Extra axis-aligned boxes the lidar can see but the two fixed walls do
+        # not explain - in practice the parking bay's two magenta walls, once
+        # they have been found. See add_obstacle for why these are raycast-only.
+        self.obstacles = []
+
+    # ========================================================================
+    # OBSTACLES
+    # ========================================================================
+
+    def add_obstacle(self, low, high):
+        """
+        Registers an axis-aligned box for the RAYCASTER only.
+
+        Deliberately not part of contains(): that is the particle filter's
+        "could the robot be here" test, and a particle inside the box is killed
+        outright (see NavigationManager, log_weights -> -inf). The parking bay's
+        walls are 100mm tall and the robot is supposed to end up BETWEEN them,
+        so treating them as no-go would delete every particle in the bay at
+        exactly the moment the pose matters most.
+
+        What they ARE good for is prediction: the beams that hit them are
+        otherwise unexplained, which inflates the match error and drags
+        confidence down near the bay. Raycasting them makes those beams agree
+        with the map instead.
+
+        I/O:
+            low, high: (x_min, y_min), (x_max, y_max) in mm
+        """
+        self.obstacles.append((tuple(float(v) for v in low),
+                               tuple(float(v) for v in high)))
+        return self
+
+    def set_obstacles(self, rects):
+        """Replaces the obstacle list with `rects`, a sequence of (low, high)."""
+        self.obstacles = []
+        for low, high in rects:
+            self.add_obstacle(low, high)
+        return self
+
+    def clear_obstacles(self):
+        self.obstacles = []
+        return self
+
+    def obstacle_rectangles(self):
+        """The obstacles as (low, high) pairs, for rendering."""
+        return tuple(self.obstacles)
+
     # ========================================================================
     # GEOMETRY QUERIES
     # ========================================================================
@@ -75,7 +122,7 @@ class FieldMap:
         inside_block = (x < self.inner + margin_mm) & (y < self.inner + margin_mm)
         return inside_field & ~inside_block
 
-    def raycast(self, x, y, angles_rad, max_range_mm=None):
+    def raycast(self, x, y, angles_rad, max_range_mm=None, include_obstacles=True):
         """
         Distance from (x, y) to the first wall along each angle.
 
@@ -86,6 +133,10 @@ class FieldMap:
             x, y: ray origins in mm
             angles_rad: bearings in radians, clockwise from +Y
             max_range_mm: clip the result (None = clip at the field diagonal)
+            include_obstacles: fold in anything add_obstacle() registered.
+                               False answers "what would a scan plane mounted
+                               ABOVE the parking walls see", which is the one
+                               hardware question this whole feature rests on.
             return: float array of millimeters, broadcast to the common shape
         """
         dx = np.sin(angles_rad)
@@ -100,15 +151,30 @@ class FieldMap:
 
         # Inner block: the ray starts outside, so the hit is where it ENTERS,
         # and only counts if it enters before it leaves and does so ahead of us.
-        enter_x, leave_x = self._slab(x, dx, -self.inner, self.inner)
-        enter_y, leave_y = self._slab(y, dy, -self.inner, self.inner)
-        enter = np.maximum(enter_x, enter_y)
-        leave = np.minimum(leave_x, leave_y)
-        inner_hit = np.where((enter <= leave) & (enter > 0), enter, np.inf)
-
-        ranges = np.minimum(outer_hit, inner_hit)
+        ranges = np.minimum(outer_hit, self._box_hit(x, y, dx, dy,
+                                                     (-self.inner, -self.inner),
+                                                     (self.inner, self.inner)))
+        if include_obstacles:
+            for low, high in self.obstacles:
+                ranges = np.minimum(ranges, self._box_hit(x, y, dx, dy, low, high))
         cap = self.diagonal_mm if max_range_mm is None else max_range_mm
         return np.clip(ranges, 0.0, cap)
+
+    @classmethod
+    def _box_hit(cls, x, y, dx, dy, low, high):
+        """
+        Distance to where a ray STARTING OUTSIDE an axis-aligned box first
+        enters it, or inf if it never does.
+
+        Shared by the centre block and every registered obstacle - they are the
+        same test, and the only reason the block was ever written out longhand
+        is that it used to be the only box.
+        """
+        enter_x, leave_x = cls._slab(x, dx, low[0], high[0])
+        enter_y, leave_y = cls._slab(y, dy, low[1], high[1])
+        enter = np.maximum(enter_x, enter_y)
+        leave = np.minimum(leave_x, leave_y)
+        return np.where((enter <= leave) & (enter > 0), enter, np.inf)
 
     @staticmethod
     def _slab(p, d, low, high):
