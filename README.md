@@ -388,7 +388,7 @@ WRO-FE-YBR/
 
 # Conclusion
 
-YBR's WRO Future Engineers robot was developed through an iterative engineering process combining mechanical design, electronics, sensing, and software.
+YBR SUNFLOWER's WRO Future Engineers robot was developed through an iterative engineering process combining mechanical design, electronics, sensing, and software.
 
 Our main design philosophy is to prioritize **precision, stability, reliability, and repeatability** rather than maximizing a single performance factor such as top speed.
 
