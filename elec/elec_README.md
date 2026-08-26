@@ -7,6 +7,7 @@ The purpose of this documentation is not only to describe which components are u
 * why each component was selected,
 * how the electrical and sensing systems are integrated,
 * how the Raspberry Pi and Arduino communicate,
+* how the Raspberry Pi I/O Expansion HAT is used as an interface layer,
 * how the sensors are positioned and initialized,
 * what problems were identified during development,
 * how the electrical and sensing architecture evolved,
@@ -31,6 +32,7 @@ The purpose of this documentation is not only to describe which components are u
 The annotated views show the main electrical, control, and sensing components installed on the final robot, including:
 
 * Raspberry Pi 5
+* DFR0566 IO Expansion HAT for Raspberry Pi
 * Arduino UNO R4 Minima
 * RPLiDAR C1
 * BNO055 IMU
@@ -50,10 +52,10 @@ The electrical system is divided into four main functional groups:
 
 1. **High-level computing** — Raspberry Pi 5
 2. **Low-level control** — Arduino UNO R4 Minima
-3. **Sensing** — Camera, LiDAR, and BNO055 IMU
-4. **Power and actuation** — Battery, converters, motor driver, drive motor, steering servo, and encoder
+3. **Sensing** — Camera, LiDAR, BNO055 IMU, and encoder feedback
+4. **Power and actuation** — Battery, converters, motor driver, drive motor, steering servo, and supporting interface electronics
 
-The Raspberry Pi performs high-level perception, localization, navigation, and driving decisions. The Arduino handles low-level actuator control, encoder feedback, and the physical start switch.
+The Raspberry Pi performs high-level perception, localization, navigation, and driving decisions. The DFR0566 IO Expansion HAT provides an organized interface layer for Raspberry Pi-side GPIO and peripheral connections. The Arduino handles low-level actuator control, encoder feedback, and the physical start switch.
 
 ---
 
@@ -62,6 +64,7 @@ The Raspberry Pi performs high-level perception, localization, navigation, and d
 | Component                        | Role                                                            |
 | -------------------------------- | --------------------------------------------------------------- |
 | Raspberry Pi 5                   | High-level processing, perception, localization, and navigation |
+| DFR0566 IO Expansion HAT         | Raspberry Pi I/O expansion and peripheral interface layer       |
 | Arduino UNO R4 Minima            | Low-level motor, steering, encoder, and start-button control    |
 | RPLiDAR C1                       | 2D distance and environmental sensing                           |
 | Raspberry Pi Night Vision Camera | Visual sensing and field-feature detection                      |
@@ -114,6 +117,9 @@ The battery output is divided into two main regulated power branches.
    ~5.1 V
       |
  Raspberry Pi
+      |
+      v
+DFR0566 IO Expansion HAT
 ```
 
 ### Motor / Control Branch
@@ -131,6 +137,8 @@ The battery output is divided into two main regulated power branches.
 
 The two branches are separated to reduce the effect of rapid motor-current changes on the Raspberry Pi and other sensitive computing electronics.
 
+The DFR0566 is powered as part of the Raspberry Pi-side electronics and provides the physical interface for the Raspberry Pi's peripheral connections.
+
 The power distribution uses:
 
 * **D1-2** for positive power distribution
@@ -147,7 +155,7 @@ All subsystems share a common electrical reference through the ground connection
 | LM2596    | Approximately 9.6–12.6 V during normal operation | Approximately 5.1 V | Raspberry Pi branch    |
 | XL4015    | Approximately 9.6–12.6 V during normal operation | Approximately 5 V   | Motor / control branch |
 
-The LM2596 is adjusted to approximately 5.1 V for the Raspberry Pi.
+The LM2596 is adjusted to approximately 5.1 V for the Raspberry Pi and its associated Pi-side interface electronics.
 
 The XL4015 provides the regulated low-voltage supply used by the motor/control branch according to the final wiring design.
 
@@ -157,15 +165,16 @@ The converters protect the low-voltage electronics from the much higher and vari
 
 ## 2.4 Power Budget
 
-| Component             |                             Voltage |    Typical / Reference Current | Notes                                                  |
-| --------------------- | ----------------------------------: | -----------------------------: | ------------------------------------------------------ |
-| Raspberry Pi 5        |                                 5 V |                 Load dependent | Power system designed with up to 5 A supply capability |
-| Camera                |                                 5 V | Approximately 250 mA reference | Load dependent                                         |
-| RPLiDAR C1            |                                 5 V | Approximately 290 mA reference | Load dependent                                         |
-| BNO055 IMU            | 3.3–5 V depending on breakout board |             Low-current sensor | Load dependent                                         |
-| Arduino UNO R4 Minima |                                 5 V |                 Load dependent | Depends on connected hardware                          |
-| Drive Motor           |       Motor configuration dependent |                 Load dependent | Measure experimentally                                 |
-| Steering Servo        |                 Approximately 4.8 V |  Approximately 70 mA reference | Can reach approximately 0.8–0.9 A at stall             |
+| Component                |                       Voltage |    Typical / Reference Current | Notes                                                  |
+| ------------------------ | ----------------------------: | -----------------------------: | ------------------------------------------------------ |
+| Raspberry Pi 5           |                           5 V |                 Load dependent | Power system designed with up to 5 A supply capability |
+| Camera                   |                           5 V | Approximately 250 mA reference | Load dependent                                         |
+| RPLiDAR C1               |                           5 V | Approximately 290 mA reference | Load dependent                                         |
+| BNO055 IMU               |                       3.3–5 V |   Approximately 5 mA reference | DFRobot SEN0253 module                                 |
+| Arduino UNO R4 Minima    |                           5 V |                 Load dependent | Depends on connected hardware                          |
+| DFR0566 IO Expansion HAT |                           5 V |                 Load dependent | Pi-side interface electronics                          |
+| Drive Motor              | Motor configuration dependent |                 Load dependent | Measure experimentally                                 |
+| Steering Servo           |           Approximately 4.8 V |  Approximately 70 mA reference | Can reach approximately 0.8–0.9 A at stall             |
 
 The values above are reference values rather than exact measurements of the completed robot.
 
@@ -183,6 +192,7 @@ The main power-reliability decisions are:
 * Regulate the battery voltage before supplying low-voltage electronics.
 * Separate the computing branch from the motor/control branch.
 * Adjust the Raspberry Pi supply to approximately 5.1 V.
+* Use the DFR0566 to organize Raspberry Pi-side peripheral connections.
 * Use dedicated power and ground distribution.
 * Verify converter output voltage under maximum expected load.
 
@@ -208,9 +218,37 @@ Its main responsibilities include:
 * Generating steering and drive commands
 * Communicating commands to the Arduino
 
+The Raspberry Pi's GPIO and peripheral interfaces are organized through the DFR0566 IO Expansion HAT.
+
 ---
 
-## 3.2 Arduino UNO R4 Minima
+## 3.2 DFR0566 IO Expansion HAT
+
+**Purpose:** Raspberry Pi I/O expansion and peripheral interface.
+
+The **DFR0566 IO Expansion HAT for Raspberry Pi** acts as the main interface layer around the Raspberry Pi.
+
+The board exposes Raspberry Pi GPIO functions and provides convenient access to:
+
+* Digital I/O
+* Analog input
+* PWM
+* I²C
+* UART
+* SPI
+* IIS
+
+It is also compatible with DFRobot Gravity-style connections, which simplifies the physical connection of supported sensors and modules. DFRobot specifies a 5 V operating voltage and a 65 × 56 mm board size. The manufacturer documentation also specifies the I²C, UART, SPI, PWM, digital, and analog interfaces provided by the board. ([DFRobot Product](https://www.dfrobot.com/product-1930.html), [DFRobot Wiki](https://wiki.dfrobot.com/dfr0566/docs/22892))
+
+In our robot, the HAT is used to organize the Raspberry Pi-side peripheral connections and reduce direct wiring to the Raspberry Pi GPIO header.
+
+The camera and LiDAR use their dedicated Raspberry Pi interfaces, while the HAT provides the structured interface for the Raspberry Pi's other required peripheral connections.
+
+This interface layer is important for reproducibility because the electrical system can be reproduced using the same expansion board, connector layout, and interface structure rather than requiring undocumented direct GPIO wiring.
+
+---
+
+## 3.3 Arduino UNO R4 Minima
 
 **Purpose:** Low-level real-time control.
 
@@ -226,7 +264,7 @@ This separation allows the Raspberry Pi to focus on high-level decisions while t
 
 ---
 
-## 3.3 Raspberry Pi ↔ Arduino Communication
+## 3.4 Raspberry Pi ↔ Arduino Communication
 
 The Raspberry Pi communicates with the Arduino through **USB Serial**.
 
@@ -256,7 +294,7 @@ This command means:
 
 ---
 
-## 3.4 Serial Command Protocol
+## 3.5 Serial Command Protocol
 
 The command format is:
 
@@ -292,7 +330,7 @@ The software currently limits steering requests to approximately:
 
 ---
 
-## 3.5 Motor Speed
+## 3.6 Motor Speed
 
 The wire protocol accepts a signed PWM command.
 
@@ -312,7 +350,7 @@ The Raspberry Pi navigation code typically uses smaller command values for norma
 
 ---
 
-## 3.6 Motor Distance
+## 3.7 Motor Distance
 
 The `distance` field is **not an absolute motor position**.
 
@@ -343,7 +381,7 @@ The encoder provides the feedback used to determine how far the motor shaft has 
 
 ---
 
-## 3.7 Arduino Response Messages
+## 3.8 Arduino Response Messages
 
 The Arduino returns simple status messages.
 
@@ -386,12 +424,13 @@ The drive motor is controlled using:
 
 ## 4.2 Raspberry Pi Device Interfaces
 
-| Device                | Interface  | Default Device / Bus          |
-| --------------------- | ---------- | ----------------------------- |
-| Arduino UNO R4 Minima | USB Serial | `/dev/ttyACM0`                |
-| RPLiDAR C1            | USB Serial | `/dev/ttyUSB0`                |
-| BNO055                | I²C        | Raspberry Pi hardware I²C     |
-| Camera                | CSI        | Raspberry Pi camera interface |
+| Device                | Interface                        | Default Device / Bus                |
+| --------------------- | -------------------------------- | ----------------------------------- |
+| Arduino UNO R4 Minima | USB Serial                       | `/dev/ttyACM0`                      |
+| RPLiDAR C1            | USB Serial                       | `/dev/ttyUSB0`                      |
+| BNO055                | I²C                              | Raspberry Pi hardware I²C / DFR0566 |
+| DFR0566 HAT           | GPIO / I²C / peripheral breakout | Raspberry Pi header                 |
+| Camera                | CSI                              | Raspberry Pi camera interface       |
 
 The software performs device detection using USB identification hints to distinguish the Arduino from the LiDAR adapter.
 
@@ -483,13 +522,13 @@ This significantly improved the quality of the 2D environmental representation.
 
 **Purpose:** Relative heading and orientation reference.
 
-The BNO055 provides fused orientation information from the accelerometer, gyroscope, and magnetometer.
+The robot uses the **DFRobot Gravity: 10 DOF IMU AHRS BNO055 + BMP280 (SEN0253)**.
 
-The robot mainly uses the sensor as a **relative heading reference**, rather than depending on geographic North.
+The BNO055 provides fused orientation information from the accelerometer, gyroscope, and magnetometer. DFRobot states that the module provides fused outputs such as quaternions, Euler angles, rotation vector, linear acceleration, gravity, and heading. ([DFRobot Product](https://www.dfrobot.com/product-1793.html))
 
 ### Interface
 
-The BNO055 is connected to the Raspberry Pi through I²C using the system's SDA and SCL lines.
+The BNO055 is connected to the Raspberry Pi through I²C using the system's SDA and SCL lines. In the final electrical architecture, the Raspberry Pi-side I²C connection is exposed through the DFR0566 interface layer.
 
 ### Placement
 
@@ -608,7 +647,53 @@ This is particularly important for distance-based movement.
 
 ---
 
-## 5.5 Start / Touch Sensor - ZX-Switch01 by INEX
+## 5.5 DFR0566 IO Expansion HAT for Raspberry Pi
+
+<img width="500" alt="DFR0566 IO Expansion HAT" src="https://www.dfrobot.com/product-1930.html" />
+
+**Purpose:** Raspberry Pi I/O expansion and peripheral interfacing.
+
+The DFR0566 provides an interface layer between the Raspberry Pi and its external GPIO-based and peripheral connections.
+
+The board exposes:
+
+* Digital I/O
+* Analog input
+* PWM
+* I²C
+* UART
+* SPI
+* IIS
+
+and supports DFRobot Gravity-compatible connections. ([DFRobot Product](https://www.dfrobot.com/product-1930.html), [DFRobot Wiki](https://wiki.dfrobot.com/dfr0566/docs/22892))
+
+### Placement
+
+The DFR0566 is mounted directly on the Raspberry Pi 5.
+
+### Reason for Use
+
+The HAT was selected to:
+
+* simplify Raspberry Pi-side wiring,
+* provide convenient peripheral interfaces,
+* reduce direct wiring to the Raspberry Pi header,
+* improve organization of the electrical system,
+* and make the final wiring easier to reproduce.
+
+### Development Relationship with the IMU
+
+In the earlier robot, the BNO055 was mounted beside the I/O Expansion HAT.
+
+Although this arrangement was functional, it crowded the electronics area.
+
+During the redesign, the BNO055 was moved underneath the LiDAR while the DFR0566 remained in its role as the Raspberry Pi-side interface layer.
+
+This allowed the final system to retain the HAT's interface benefits while improving physical organization.
+
+---
+
+## 5.6 Start / Touch Sensor - ZX-Switch01 by INEX
 
 <img width="234" height="231" alt="Touch Sensor" src="https://github.com/user-attachments/assets/dbe4f1f2-d705-40a1-bc5b-98a68d8a5cdf" />
 
@@ -679,6 +764,16 @@ The IMU provides a relative orientation reference that complements LiDAR-based e
 
 ---
 
+## 6.6 IO Expansion HAT
+
+The DFR0566 was retained because the Raspberry Pi still required a structured interface for its connected peripherals.
+
+The HAT simplified physical wiring and provided a consistent connector and I/O layer between the Raspberry Pi and external electronics.
+
+It therefore remained part of the final electrical architecture even after the sensor architecture changed.
+
+---
+
 # 7. Wiring Architecture
 
 ## 7.1 Schematic Diagram
@@ -692,6 +787,7 @@ The schematic shows the electrical connections between:
 * LM2596
 * XL4015
 * Raspberry Pi
+* DFR0566 IO Expansion HAT
 * Arduino
 * Motor driver
 * Drive motor
@@ -713,6 +809,8 @@ The final distribution uses:
 ![Wiring Diagram](../schemes/Wiring%20Diagram.png)
 
 The wiring diagram shows the physical connections and routing used in the final robot.
+
+The DFR0566 is shown as part of the Raspberry Pi-side interface layer.
 
 It should be used together with the component-layout images at the beginning of this document when reproducing the final electrical system.
 
@@ -739,12 +837,21 @@ It should be used together with the component-layout images at the beginning of 
            │ Raspberry Pi │             │ Arduino + Motor  │
            │      5       │             │ Control System   │
            └───────┬──────┘             └────────┬─────────┘
-                   |                              |
-          ┌────────┼────────┐             ┌───────┼────────┐
-          |        |        |             |       |        |
-          v        v        v             v       v        v
-       Camera    LiDAR    BNO055       Motor   Servo   Encoder
+                   |
+                   v
+           ┌─────────────────┐
+           │ DFR0566 IO HAT  │
+           │ Pi-side I/O     │
+           └───────┬─────────┘
+                   |
+          ┌────────┼────────┐
+          |        |        |
+          v        v        v
+       BNO055   Pi-side   Other
+                Peripherals I/O
 ```
+
+The camera and LiDAR use their dedicated Raspberry Pi interfaces, while the DFR0566 provides the Raspberry Pi-side I/O expansion and peripheral interface.
 
 The Raspberry Pi and Arduino are connected through USB Serial.
 
@@ -940,6 +1047,7 @@ Unlike V1 and V2, Version 3 was completely disassembled and rebuilt as a new rob
 * Higher motor torque and usable speed
 * LiDAR retained as the main distance sensor
 * BNO055 retained underneath the LiDAR
+* DFR0566 retained as the Raspberry Pi-side I/O interface
 * Final electrical layout
 * Final component placement
 * Final wiring architecture
@@ -975,8 +1083,9 @@ The main electrical and sensing improvements were:
 1. Replacing the original camera lens with an approximately 60° lens.
 2. Correcting the LiDAR mounting angle.
 3. Moving the IMU from beside the Raspberry Pi I/O Expansion HAT to underneath the LiDAR.
-4. Replacing the ultrasonic/light-sensor architecture with LiDAR-based environmental sensing.
-5. Separating the Raspberry Pi power branch from the motor/control branch.
+4. Retaining the DFR0566 as the Pi-side I/O interface during the final redesign.
+5. Replacing the ultrasonic/light-sensor architecture with LiDAR-based environmental sensing.
+6. Separating the Raspberry Pi power branch from the motor/control branch.
 
 ---
 
@@ -1007,7 +1116,7 @@ The BNO055 was originally mounted beside the Raspberry Pi I/O Expansion HAT.
 
 This occupied useful space around the main electronics and increased wiring congestion.
 
-When the robot was rebuilt, the IMU was moved underneath the LiDAR.
+When the robot was rebuilt, the IMU was moved underneath the LiDAR while the DFR0566 remained as the Raspberry Pi-side interface layer.
 
 The LiDAR itself also required a mechanically stable and level mounting position because its physical orientation directly affects the quality of the 2D scan.
 
@@ -1030,6 +1139,8 @@ LiDAR + Camera + IMU + Encoder
 ```
 
 changed the type and quality of information available to the navigation system.
+
+The DFR0566 also provided a more organized interface structure for Raspberry Pi-side peripherals.
 
 As a result:
 
@@ -1059,7 +1170,7 @@ IMU
 Encoder
 ```
 
-rather than relying on one sensing method alone.
+with the DFR0566 providing the Raspberry Pi-side I/O interface rather than relying on one direct connection method.
 
 ---
 
@@ -1070,6 +1181,7 @@ The final electrical and sensing system consists of:
 ### Computing
 
 * Raspberry Pi 5
+* DFR0566 IO Expansion HAT
 
 ### Low-Level Control
 
@@ -1114,10 +1226,11 @@ A team reproducing this electrical system should use the following documentation
 2. Schematic diagram
 3. Wiring diagram
 4. Controller pin assignment
-5. Communication protocol
-6. Sensor placement
-7. Power-distribution architecture
-8. Source code
+5. Raspberry Pi I/O Expansion HAT documentation
+6. Communication protocol
+7. Sensor placement
+8. Power-distribution architecture
+9. Source code
 
 ### Minimum Reproduction Requirements
 
@@ -1132,6 +1245,8 @@ Power:
 Controllers:
 Raspberry Pi 5
       |
+      +--> DFR0566 IO Expansion HAT
+      |
       | USB Serial, 115200
       v
 Arduino UNO R4 Minima
@@ -1139,7 +1254,7 @@ Arduino UNO R4 Minima
 Sensors:
 Camera --> Raspberry Pi
 LiDAR  --> Raspberry Pi (/dev/ttyUSB0, 460800)
-BNO055 --> Raspberry Pi I²C
+BNO055 --> Raspberry Pi I²C / DFR0566 interface
 Encoder --> Arduino D2/D3
 
 Actuators:
@@ -1152,16 +1267,20 @@ ZX-Switch01 --> Arduino A0
 
 The final physical wiring should be reproduced according to the schematic and wiring diagrams rather than inferred only from this overview.
 
+The DFR0566 product documentation should also be consulted when reproducing the Raspberry Pi-side interface layout. ([DFRobot Product](https://www.dfrobot.com/product-1930.html), [DFRobot Wiki](https://wiki.dfrobot.com/dfr0566/docs/22892))
+
 ---
 
 # 15. References
 
 | Component / Topic                         | Reference                                                                                                            |
-| ------------------------------------------| -------------------------------------------------------------------------------------------------------------------- |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Raspberry Pi 5                            | https://www.raspberrypi.com/products/raspberry-pi-5/                                                                 |
 | Arduino UNO R4 Minima                     | https://docs.arduino.cc/hardware/uno-r4-minima                                                                       |
 | RPLiDAR C1                                | https://www.slamtec.com/en/C1                                                                                        |
-| Gravity 10 DOF IMU AHRS (BNO055 + BMP280) | https://www.dfrobot.com/product-1793.html?srsltid=AfmBOoo8UqyT_RF3Lm7TcwyYAZOXUJCBEQOz-6N-Wok6cqs-NMreycCq           |
+| Gravity 10 DOF IMU AHRS (BNO055 + BMP280) | https://www.dfrobot.com/product-1793.html                                                                            |
+| DFR0566 IO Expansion HAT                  | https://www.dfrobot.com/product-1930.html                                                                            |
+| DFR0566 Product Wiki / Documentation      | https://wiki.dfrobot.com/dfr0566/docs/22892                                                                          |
 | Camera                                    | https://www.waveshare.com/wiki/RPi_Camera_(H)                                                                        |
 | CHP-20GP-180                              | https://www.airsoftmotor.com/micro-dc-reduction-motor/planetary-gear-motor/chp-20gp-180-dc-planetary-gear-motor.html |
 | LM2596                                    | https://www.ti.com/product/LM2596                                                                                    |
