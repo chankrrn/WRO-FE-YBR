@@ -274,23 +274,37 @@ When we built the new version of the robot, we changed the LiDAR mounting positi
 
 ## 4.3 BNO055 IMU
 
-<img width="282" height="239" alt="IMU" src="https://github.com/user-attachments/assets/15e91a09-cf60-4824-845d-28d4c9bf8de7" />
+**Purpose:** The BNO055 is used to provide heading and orientation information for the robot's navigation system.
 
-**Purpose:** Orientation and heading feedback.
+**Why we chose it:** We chose the BNO055 because it provides integrated sensor fusion of the accelerometer, gyroscope, and magnetometer. This allows the robot to obtain a stable orientation estimate without having to implement the sensor-fusion algorithm ourselves.
 
-The Gravity BNO055 provides orientation and heading information for the control system.
+More importantly, our navigation system does not require an absolute heading such as geographic North. It mainly needs to know how far the robot has rotated relative to its starting direction. This makes the BNO055 suitable as a relative heading reference.
 
-**Placement:** The IMU is mounted **underneath the LiDAR** in the current robot.
+**Placement:** The BNO055 is mounted underneath the RPLiDAR.
 
-### Design Evolution
+**Why this position:** The IMU was moved from the previous robot design, where it was mounted beside the Raspberry Pi I/O Expansion HAT. The new position underneath the LiDAR provides a cleaner electrical and mechanical layout and reduces interference with other components and wiring.
 
-In the previous robot version, the IMU was mounted beside the Raspberry Pi I/O Expansion HAT. This position occupied useful space around the electronics and made the arrangement more crowded.
+### Problem
 
-When building the new robot, we relocated the IMU underneath the LiDAR to make better use of the available space and reduce obstruction around the Raspberry Pi I/O Expansion HAT.
+The robot does not perform a complete BNO055 calibration procedure before each run.
 
-### Problems / Limitations
+A full magnetometer calibration would require moving the robot through multiple orientations and waiting for the BNO055 calibration status to reach the required level. This is not practical on the competition starting area and is unnecessary for the robot's navigation strategy because the robot does not use magnetic North as its primary reference.
 
-No significant functional problem was observed with the BNO055 itself during development.
+Without full magnetometer calibration, the heading can gradually drift during a long run. Therefore, the IMU is treated primarily as a relative heading reference, while LiDAR-based localization provides an additional source of positional information.
+
+### Final Solution
+
+Instead of performing full calibration, the robot uses a short startup settling period followed by heading initialization.
+
+After the BNO055 is connected, the system waits approximately 1 second to allow the sensor-fusion algorithm to settle. When the start condition is triggered, the current heading is captured as the robot's initial heading.
+
+The initial heading is then treated as the robot's local reference direction:
+
+Initial IMU Heading = Local 0° Direction
+
+The actual numerical heading is not important. For example, if the sensor reports 37° or 200°, that value becomes the reference for the current run.
+
+Subsequent turns are calculated relative to this reference rather than relative to geographic North.
 
 ---
 
@@ -387,9 +401,45 @@ The wiring diagram shows the physical connections used in the final robot and pr
 
 ---
 
-# 7. Calibration and Sensor Setup
+# 7. Calibration & Initialization
 
-## 7.1 Camera
+## 7.1 Calibration & Initialization Overview
+
+The electrical and sensing system uses different types of calibration and initialization depending on the sensor.
+
+It is important to distinguish between sensor calibration and runtime initialization.
+
+The camera and LiDAR may require calibration or parameter adjustment to obtain reliable measurements. The BNO055, however, is not fully magnetometer-calibrated before every competition run.
+
+Instead, the robot uses a local heading initialization strategy.
+
+The general startup sequence is:
+
+```text
+Power On
+   |
+   v
+Initialize Sensors
+   |
+   v
+BNO055 settles for ~1 second
+   |
+   v
+Wait for Start
+   |
+   v
+Capture Initial Heading
+   |
+   v
+Initial Heading = Local Reference
+   |
+   v
+Begin Navigation
+```
+
+This approach was selected because the robot only requires a consistent heading relative to its starting orientation.
+
+## 7.2 Camera
 
 The main camera adjustment during development was the field of view.
 
@@ -403,7 +453,7 @@ The main camera adjustment during development was the field of view.
 
 ---
 
-## 7.2 LiDAR
+## 7.3 LiDAR
 
 The main LiDAR adjustment was its physical mounting angle.
 
@@ -415,11 +465,34 @@ The main LiDAR adjustment was its physical mounting angle.
 
 ---
 
-## 7.3 IMU
+## 7.4 IMU
 
-No major functional problem was observed with the IMU during development.
+**Problem:** The BNO055 can provide absolute heading using its magnetometer, but full calibration requires moving the robot through multiple orientations. This is inconvenient before a competition run and is unnecessary because the robot only needs to know its rotation relative to its starting direction.
 
-[ADD ACTUAL IMU CALIBRATION PROCEDURE OR VALUES ONLY IF AVAILABLE]
+**Adjustment:** Instead of performing a full magnetometer calibration, the system waits approximately 1 second after connecting to the BNO055 to allow the sensor-fusion data to settle. When the start condition is triggered, the current heading is recorded as the `initial_heading`.
+
+**Method:**
+
+```text
+BNO055 Connected
+       |
+       v
+Wait ~1 Second
+       |
+       v
+Capture Initial Heading
+       |
+       v
+Initial Heading = Local 0°
+```
+
+Subsequent turns are calculated relative to this initial heading rather than geographic North. For example, a 90° clockwise turn changes the target heading by approximately 90°.
+
+The system also uses a `compass_offset` to relate the IMU heading to the field coordinate system, while `compass_sign` accounts for the physical orientation of the IMU.
+
+**Result:** This provides a fast and practical heading reference without requiring full magnetometer calibration before each run.
+
+**Limitation:** Because the magnetometer is not fully calibrated, heading drift can occur over longer runs. LiDAR-based localization is therefore used alongside the IMU to reduce dependence on the IMU as the only source of navigation information.
 
 ---
 
