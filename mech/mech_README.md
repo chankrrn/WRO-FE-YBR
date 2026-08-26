@@ -376,7 +376,7 @@ ___
 
 ## Mechanical Parts
 
-### __- Motor():__ CHP-20-GP180 DC 12V (Gear Ratio 1:19)™
+### __- Motor():__ CHP-20GP-180 DC 12V (Gear Ratio 1:19)™
 <image src="https://github.com/chankrrn/WRO-FE-YBR/blob/main/other/DrivingMotor1.png" width = "400"> <image src="https://github.com/chankrrn/WRO-FE-YBR/blob/main/other/DrivingMotor2.jpg" width = "500">
 
 We selected the **CHP-20GP-180 DC 12V gear motor** with a **1:19 gear ratio**. It has a dual-phase quadrature encoder, which gives us real-time feedback on speed and rotation. This allows the robot to control its position more accurately.
