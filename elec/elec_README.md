@@ -649,7 +649,7 @@ This is particularly important for distance-based movement.
 
 ## 5.5 DFR0566 IO Expansion HAT for Raspberry Pi
 
-<img width="500" alt="DFR0566 IO Expansion HAT" src="https://www.dfrobot.com/product-1930.html" />
+<img width="250" height="250" alt="IO Expansion HAT for Raspberry Pi" src="https://github.com/user-attachments/assets/8b4d94f5-aa58-4ed3-8f8b-6d8c36019284" />
 
 **Purpose:** Raspberry Pi I/O expansion and peripheral interfacing.
 
