@@ -76,6 +76,11 @@ Link to the full wiring diagram in `schemes/Wiring Diagram.png` and the schemati
 
 ### 4.1 Raspberry Pi environment
 
+1. Install the Pi OS if you have not [Install Guilde](https://www.raspberrypi.com/documentation/computers/getting-started.html#imager-install)
+	**Note:** We use the normal Pi OS (64-bit)
+2.	After downloading Pi OS you have to Enable **[Remote SSH](https://www.raspberrypi.com/documentation/computers/remote-access.html#ssh)** and **[I2C](https://www.raspberrypi.com/documentation/computers/configuration.html#i2c)*
+
+
 ```bash
 # OS used, version
 # e.g. Raspberry Pi OS (64-bit), kernel version X
