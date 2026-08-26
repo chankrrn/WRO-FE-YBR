@@ -9,8 +9,6 @@ vehicle using only this file plus the design-reasoning docs in `mech/mech_README
 
 ## 1. Bill of Materials
 
-## 1. Bill of Materials
-
 List every part needed, with the exact model/part number, quantity, and where in the repo its
 CAD/schematic lives. Example table — fill in with your actual parts:
 
@@ -65,23 +63,23 @@ Electrical Base
 
 3. **Assemble drivetrain** — Mount motor, install differential and bearing to the chassis.
 
-<img width="300" src="other/Drivetrains.jpg" />
+	<img width="300" src="other/Drivetrains.jpg" />
 
 4. **Mount the Uno base and Servo**
 
-<img width="300" src="other/Servo and Uno.jpg" />
+	<img width="300" src="other/Servo and Uno.jpg" />
 
 5. **Mount steering system** — Install the [Steering Axle](mech/models/SteeringAxle.stl), assemble the [Steering Mount](mech/models/Top_SteeringMount.stl) to the [Steering Arm](mech/models/L_SteeringArm.stl), and mount it to the Axle
 
-<img width="300" src="other/Steering system.jpg" />
+	<img width="300" src="other/Steering system.jpg" />
 
 6. **Assemble the parts** — Mount the Uno and connect the step-down(XL4015) to the Uno motor shield , and mount on the Back Part
 
-<img width="300" src="other/Arduino mount.jpg" />
+	<img width="300" src="other/Arduino mount.jpg" />
 
 7. **Mount LiDAR and IMU** — Mount the IMU on the plate and the screw to the pillar before putting on the Lidar. And mount it to the Base
 
-<img width="300" src="other/Lidar mount.jpg" />
+	<img width="300" src="other/Lidar mount.jpg" />
 
    **Note:** *why* each is placed there (see `mech/mech_README.md` for full reasoning)
 
@@ -162,11 +160,11 @@ uv run python main.py qualification --dry-run
 In the Arduino IDE you need to Install two libraries **[Servo.h](https://docs.arduino.cc/libraries/servo/)** and **[PID_v2.h](https://docs.arduino.cc/libraries/pid_v2/)**
 1. Click on the Library Manager on the left bar
 2. 
-<img src="other/Screenshot-Open-lib_manager.png" width="800">
+	<img src="other/Screenshot-Open-lib_manager.png" width="800">
 
 3. Search **Servo** and **PID_v2** and click install
 
-<img src="other/Screenshot-Install-Servo.png" width="395"> <img src="other/Screenshot-Install-PID_V2.png" width="395">
+	<img src="other/Screenshot-Install-Servo.png" width="395"> <img src="other/Screenshot-Install-PID_V2.png" width="395">
 
 
 ## 5. Compile & Upload
