@@ -184,7 +184,7 @@ The complete robot uses one **3S LiPo battery** as its primary power source.
 | Nominal voltage | 11.1 V |
 | Fully charged voltage | Approximately 12.6 V |
 | Capacity | 1100 mAh |
-| Exact manufacturer / model | **[TODO: Verify whether the final battery is labeled Helix or Helicox. Current documents contain both names.]** |
+| Exact manufacturer / model | Helicox |
 
 The nominal 11.1 V value does not mean that the battery remains at exactly 11.1 V throughout a run.
 
