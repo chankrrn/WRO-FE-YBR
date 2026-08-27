@@ -43,8 +43,8 @@
 
 # Contents
 
-1. [Project Overview](#1-project-overview)
-2. [Our Team](#2-our-team)
+1. [Our Team](#1-our-team)
+2. [Project Overview](#2-project-overview)
 3. [Final Robot](#3-final-robot)
 4. [Engineering Development Process](#4-engineering-development-process)
 5. [System Architecture](#5-system-architecture)
@@ -62,9 +62,60 @@
 
 ---
 
-# 1. Project Overview
+# 1. Our Team
 
-## 1.1 About YBR-SUNFLOWER
+## 1.1 Team Members
+
+We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
+
+| Member | Primary Responsibility | Supporting Responsibilities |
+|---|---|---|
+| **Peradon Nimsongprasert** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
+| **Chanakarn Yimsakul** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
+| **Thanphisit Sakulvitulthai** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
+
+**Mentor:** Punnapon Tanasnitikul
+
+> **[TODO: Confirm the exact wording of every team member's role before final submission. Roles should reflect actual work completed by each member.]**
+
+---
+
+## 1.2 Team Photo
+
+> **[TODO: Add final team photograph]**
+>
+> Recommended file:
+>
+> `team-photos/team-final.jpg`
+
+Recommended photograph:
+
+- all three team members,
+- final robot visible,
+- clean background,
+- landscape orientation,
+- sufficient resolution for GitHub and judging.
+
+---
+
+## 1.3 How We Work as a Team
+
+Our development process requires mechanical, electrical and software work to be integrated continuously.
+
+A mechanical modification can change steering behavior.  
+A sensor-placement change can affect localization.  
+A power-system change can affect computing reliability.  
+A software change can reveal mechanical limitations that were not obvious during static testing.
+
+For this reason, subsystem decisions are discussed and tested as part of the complete robot rather than being developed independently until the end.
+
+> **[TODO: Add 2–4 sentences describing how the team actually divides work, reviews changes and performs testing together.]**
+
+---
+
+# 2. Project Overview
+
+## 2.1 About YBR-SUNFLOWER
 
 **YBR-SUNFLOWER** is an autonomous self-driving vehicle developed for the **WRO 2026 Future Engineers** competition by a three-member student team from the Science–Mathematics English Program at Yothinburana School, Thailand.
 
@@ -84,7 +135,7 @@ We deliberately prioritize predictable autonomous behavior over maximum theoreti
 
 ---
 
-## 1.2 Competition Challenge
+## 2.2 Competition Challenge
 
 The WRO Future Engineers competition requires the vehicle to operate fully autonomously on a field whose configuration is not completely known before the round begins.
 
@@ -111,7 +162,7 @@ For this reason, our final software does not depend on one fixed prerecorded pat
 
 ---
 
-## 1.3 Competition Constraints That Influenced Our Design
+## 2.3 Competition Constraints That Influenced Our Design
 
 | Constraint | Engineering Response |
 |---|---|
@@ -128,7 +179,7 @@ For this reason, our final software does not depend on one fixed prerecorded pat
 
 ---
 
-## 1.4 Engineering Design Philosophy
+## 2.4 Engineering Design Philosophy
 
 A major design decision throughout this project was:
 
@@ -150,57 +201,6 @@ This principle influenced:
 - and software tuning.
 
 The result is a vehicle designed to produce predictable behavior repeatedly rather than relying on aggressive maximum-speed operation.
-
----
-
-# 2. Our Team
-
-## 2.1 Team Members
-
-We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
-
-| Member | Primary Responsibility | Supporting Responsibilities |
-|---|---|---|
-| **Peradon Nimsongprasert** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
-| **Chanakarn Yimsakul** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
-| **Thanphisit Sakulvitulthai** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
-
-**Mentor:** Punnapon Tanasnitikul
-
-> **[TODO: Confirm the exact wording of every team member's role before final submission. Roles should reflect actual work completed by each member.]**
-
----
-
-## 2.2 Team Photo
-
-> **[TODO: Add final team photograph]**
->
-> Recommended file:
->
-> `team-photos/team-final.jpg`
-
-Recommended photograph:
-
-- all three team members,
-- final robot visible,
-- clean background,
-- landscape orientation,
-- sufficient resolution for GitHub and judging.
-
----
-
-## 2.3 How We Work as a Team
-
-Our development process requires mechanical, electrical and software work to be integrated continuously.
-
-A mechanical modification can change steering behavior.  
-A sensor-placement change can affect localization.  
-A power-system change can affect computing reliability.  
-A software change can reveal mechanical limitations that were not obvious during static testing.
-
-For this reason, subsystem decisions are discussed and tested as part of the complete robot rather than being developed independently until the end.
-
-> **[TODO: Add 2–4 sentences describing how the team actually divides work, reviews changes and performs testing together.]**
 
 ---
 
