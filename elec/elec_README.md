@@ -1807,8 +1807,7 @@ The final architecture therefore uses different conversion paths while maintaini
 
 ## Main Power
 
-- 3S 11.1 V LiPo, 1100 mAh
-- **[TODO: Confirm exact battery brand/model]**
+- Helicox 3S 11.1 V LiPo, 1100 mAh
 
 ## Power Conversion
 
@@ -1985,18 +1984,16 @@ The final repository should use official manufacturer documentation wherever pos
 
 | Component / Topic | Reference |
 |---|---|
-| Raspberry Pi 5 | Raspberry Pi official Raspberry Pi 5 documentation |
-| Arduino UNO R4 Minima | Arduino official hardware documentation |
-| RPLiDAR C1 | SLAMTEC / manufacturer documentation |
-| Gravity BNO055 + BMP280 | DFRobot SEN0253 product documentation |
-| DFR0566 IO Expansion HAT | DFRobot DFR0566 product documentation and wiki |
+| Raspberry Pi 5 | https://www.raspberrypi.com/products/raspberry-pi-5/ |
+| Arduino UNO R4 Minima | https://docs.arduino.cc/hardware/uno-r4-minima |
+| RPLiDAR C1 | https://www.slamtec.com/en/C1 |
+| Gravity BNO055 + BMP280 | https://www.dfrobot.com/product-1793.html /  |
+| DFR0566 IO Expansion HAT | https://wiki.dfrobot.com/dfr0566/docs/22892 |
 | Camera | Final camera manufacturer / supplier documentation |
 | CHP-20GP-180 | Motor manufacturer / supplier specification |
-| LM2596 | Texas Instruments LM2596 documentation |
-| XL4015 | XLSEMI XL4015 documentation |
-| L298P Motor Shield | DFRobot motor-shield documentation |
-
-> **[TODO: In the final cleanup pass, convert this table to direct official links and remove any obsolete reseller links where an official manufacturer source exists.]**
+| LM2596 | https://www.ti.com/product/LM2596 |
+| XL4015 | https://www.xlsemi.com/datasheet/XL4015-5A-36V-DC-DC-Converter.pdf |
+| L298P Motor Shield | https://www.mouser.com/en/ProductDetail/STMicroelectronics/L298P?qs=lDh9v96ogBZNJERYYNX11w%3D%3D / https://www.instructables.com/Tutorial-L289P-Motor-Driver-and-IR-Sensor/ |
 
 ---
 
