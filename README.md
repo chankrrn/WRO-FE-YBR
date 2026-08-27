@@ -1,398 +1,1332 @@
-# WRO-FE-YBR-SUNFLOWER
+# YBR-SUNFLOWER
 
-## YBR-SUNFLOWER  — WRO 2026 Future Engineers
+<div align="center">
 
-Welcome to **YBR-SUNFLOWER's documentation** for the **WRO 2026 Future Engineers** competition.
+## WRO 2026 Future Engineers
 
-We are a three-member team from the **Science–Mathematics English Program at Yothinburana School, Thailand**. Our project is an autonomous self-driving vehicle designed to navigate the WRO Future Engineers competition field using a combination of computer vision, distance sensing, orientation feedback, motor control, and autonomous decision-making.
+### Official Engineering Documentation
 
-This repository contains our robot's mechanical design, electrical and sensing architecture, software, CAD files, wiring documentation, and development records.
+**Yothinburana School — Science–Mathematics English Program**  
+**Thailand**
+
+<br>
+
+> **[TODO: Add final hero image of the completed YBR-SUNFLOWER robot]**
+>
+> Recommended: one clean landscape photograph showing the complete final robot.
+
+<br>
+
+**Autonomous Self-Driving Vehicle · Mechanical Engineering · Electrical & Sensor Architecture · Localization · Computer Vision · Autonomous Navigation**
+
+</div>
+
+---
+
+## Documentation Quick Links
+
+| Documentation | Purpose |
+|---|---|
+| [Mechanical Design](mech/mech_README.md) | Chassis, drivetrain, steering, CAD, materials, mechanical calculations, trade-offs and iterations |
+| [Electrical & Sensor System](elec/elec_README.md) | Power architecture, controllers, sensors, wiring, calibration, interfaces and reliability |
+| [Software Architecture](software/software_README.md) | Localization, path planning, Pure Pursuit, computer vision, sensor fusion, obstacle strategy and parking |
+| [Build & Reproduction Guide](BUILD.md) | Complete assembly, wiring, software setup, upload, verification and troubleshooting procedure |
+| [Source Code](src/) | Raspberry Pi and Arduino competition software |
+| [Schematics](schemes/) | Electrical schematic and physical wiring diagrams |
+| [Mechanical Models](mech/models/) | CAD and 3D-printable mechanical parts |
+| [Robot Photos](robot-photos/) | Final robot photographs |
+| [Engineering Process](engineering-process/) | Development, assembly, soldering, coding, testing and prototype evidence |
+| [Videos](video/) | Test and competition demonstration videos |
+| [Version History](CHANGELOG.md) | Major engineering versions and repository release notes |
 
 ---
 
 # Contents
 
-* [Our Team](#our-team)
-* [Our Robot](#our-robot)
-* [Mobility and Mechanical Design](#mobility-and-mechanical-design)
-* [Power and Sensor Architecture](#power-and-sensor-architecture)
-* [Software Architecture and Obstacle Management](#software-architecture-and-obstacle-management)
-* [System Thinking and Engineering Decisions](#system-thinking-and-engineering-decisions)
-* [Build / Compile / Upload](#build--compile--upload)
-* [Repository Structure](#repository-structure)
+1. [Project Overview](#1-project-overview)
+2. [Our Team](#2-our-team)
+3. [Final Robot](#3-final-robot)
+4. [Engineering Development Process](#4-engineering-development-process)
+5. [System Architecture](#5-system-architecture)
+6. [Mobility and Mechanical Engineering](#6-mobility-and-mechanical-engineering)
+7. [Power and Sensor Architecture](#7-power-and-sensor-architecture)
+8. [Software Architecture and Autonomous Strategy](#8-software-architecture-and-autonomous-strategy)
+9. [Systems Thinking and Major Engineering Decisions](#9-systems-thinking-and-major-engineering-decisions)
+10. [Testing, Validation and Failure Analysis](#10-testing-validation-and-failure-analysis)
+11. [Competition Demonstrations](#11-competition-demonstrations)
+12. [Build and Reproducibility](#12-build-and-reproducibility)
+13. [Repository Structure](#13-repository-structure)
+14. [Version History and Development Milestones](#14-version-history-and-development-milestones)
+15. [WRO Engineering Documentation Map](#15-wro-engineering-documentation-map)
+16. [References and Related Documentation](#16-references-and-related-documentation)
 
 ---
 
-# Our Team
+# 1. Project Overview
 
-We are **YBR-SUNFLOWER**, a team from the Science–Mathematics English Program at Yothinburana School, Thailand.
+## 1.1 About YBR-SUNFLOWER
 
-Our team consists of three students:
+**YBR-SUNFLOWER** is an autonomous self-driving vehicle developed for the **WRO 2026 Future Engineers** competition by a three-member student team from the Science–Mathematics English Program at Yothinburana School, Thailand.
 
-* **Peradon Nimsongprasert**
-* **Chanakarn Yimsakul**
-* **Thanphisit Sakulvitulthai**
+The vehicle combines mechanical design, embedded control, electrical engineering, computer vision, LiDAR localization, orientation sensing and autonomous navigation into one integrated system.
 
-Our mentor is **Punnapon Tanasnitikul**.
+The robot was not developed as a set of independent components. Mechanical, electrical and software decisions were repeatedly changed together as testing revealed limitations in earlier designs.
 
-We were brought together by our interest in robotics and enjoy learning, solving problems, and turning our ideas into working systems through competition.
+Our main engineering priorities are:
 
-### Team Roles
+1. **Precision**
+2. **Stability**
+3. **Reliability**
+4. **Repeatability**
+5. **Reproducibility**
 
-> Roles are described according to each member's contribution to the development process.
-
-| Member                    | Main Responsibility |
-| ------------------------- | ------------------- |
-| Peradon Nimsongprasert    | [ADD ROLE]          |
-| Chanakarn Yimsakul        | [ADD ROLE]          |
-| Thanphisit Sakulvitulthai | [ADD ROLE]          |
+We deliberately prioritize predictable autonomous behavior over maximum theoretical speed.
 
 ---
 
-# Our Robot
+## 1.2 Competition Challenge
 
-<table>
-  <tr>
-    <td align="center"><strong>Top View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/top.jpg" width="300"></td>
-    <td align="center"><strong>Front View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/front.jpg" width="300"></td>
-    <td align="center"><strong>Left View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/left.jpg" width="300"></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>Bottom View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/bottom.jpg" width="300"></td>
-    <td align="center"><strong>Back View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/back.jpg" width="300"></td>
-    <td align="center"><strong>Right View</strong><br><img src="https://github.com/chankrrn/WRO-FE-YBR/blob/5f683eff9a8eb1d3e4e44c368519a343264e0744/robot-photos/right.jpg" width="300"></td>
-  </tr>
-</table>
+The WRO Future Engineers competition requires the vehicle to operate fully autonomously on a field whose configuration is not completely known before the round begins.
 
-<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage1.png" width="700" height="400">
-
-<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage2.png" width="700" height="400">
-
-<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage3.png" width="700" height="400">
-
-<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/b513354a630ec0d0f7143e4fd617df6cad310518/other/ComponentsImage4.png" width="700" height="400">
-
-<img src="https://github.com/chankrrn/WRO-FE-YBR/blob/6b0eed2ec69b003c0b4ab057b13127d00ccb34aa/other/ComponentsImage5.png" width="700" height="400">
-
-
-## Overview
-
-Our robot is a compact four-wheeled autonomous vehicle designed for the WRO Future Engineers challenge.
-
-The robot combines:
-
-* A Raspberry Pi 5 for high-level computation
-* An Arduino UNO R4 Minima for low-level motor and steering control
-* A DC geared motor with encoder for drivetrain control
-* A servo motor for steering
-* LiDAR for distance and environmental information
-* A camera for visual detection
-* An IMU for orientation and heading information
-* A start button for autonomous competition operation
-
-The final robot has an approximate dimension of:
-
-**230 × 140 × 130 mm**
-
-The complete mechanical and electrical design is documented in the `mech` and `elec` directories.
-
----
-
-## Robot Photos
-
-The `robot-photos` directory contains photographs of the robot from multiple directions, including top and bottom views.
-
----
-
-## Performance Videos
-
-### Test Run
-
-[Add test video link]
+The competition contains two major driving challenges.
 
 ### Open Challenge
 
-[Add Open Challenge video link]
+The vehicle must autonomously complete three laps while responding to the randomized track configuration and driving direction.
 
 ### Obstacle Challenge
 
-[Add Obstacle Challenge video link]
+The vehicle must:
+
+1. complete three autonomous laps,
+2. detect red and green traffic pillars,
+3. pass each traffic pillar on the correct side,
+4. adapt to randomized obstacle positions,
+5. identify the parking situation,
+6. and perform the required parallel-parking maneuver.
+
+The starting position, driving direction and field configuration may change between rounds.
+
+For this reason, our final software does not depend on one fixed prerecorded path from one fixed starting point.
 
 ---
 
-# Mobility and Mechanical Design
+## 1.3 Competition Constraints That Influenced Our Design
 
-## Robot Design
-
-Our vehicle uses a four-wheel automotive-style configuration with a dedicated drivetrain and steering mechanism.
-
-The main mechanical design includes:
-
-* **Drive Motor:** CHP-20GP-180 DC geared motor with dual-phase encoder
-* **Steering:** GEEKSERVO 2 kg 360° servo
-* **Wheels:** LEGO Tire 43.2 × 22 ZR and 30.4 mm reinforced-rim wheel
-* **3D-Printed Structures:** Custom components designed and produced for our vehicle
-
-Detailed CAD models and mechanical documentation can be found in the `mech` directory.
-
-
+| Constraint | Engineering Response |
+|---|---|
+| Fully autonomous operation | All sensing, localization, decision-making and actuator control run onboard |
+| Randomized field configuration | LiDAR-based localization and field-coordinate navigation |
+| Randomized driving direction | Path direction can be selected during initialization |
+| Red / green traffic pillars | Camera-based color recognition and obstacle mapping |
+| Parallel parking requirement | Distance-based movement and dedicated parking sequence |
+| Maximum robot dimensions | Compact stacked mechanical and electrical layout |
+| Three-minute run limit | Efficient initialization and autonomous execution |
+| One main power switch and one competition start button | Separate SPST main switch and ZX-Switch01 start control |
+| Limited onboard power | Single 3S LiPo with separated power branches |
+| Limited physical space | Layered chassis and compact sensor placement |
 
 ---
 
-## Drivetrain Philosophy
+## 1.4 Engineering Design Philosophy
 
-One of our main mechanical design decisions was to prioritize **precision, stability, and controllability over maximum speed**.
+A major design decision throughout this project was:
 
-We selected a higher gear ratio to provide more available torque. Although this reduces maximum speed, the additional torque allows the robot to move more reliably at low speed and improves control during precise maneuvers.
+> **Precision, stability and repeatability are more important to our robot than maximum speed.**
 
-During prototype testing, we found that insufficient torque made low-speed movement and acceleration from a stop difficult to control. This led us to further optimize the drivetrain and gearbox.
+This principle influenced:
 
----
+- motor selection,
+- drivetrain reduction,
+- steering geometry,
+- chassis rigidity,
+- bearing implementation,
+- sensor selection,
+- sensor placement,
+- power distribution,
+- localization,
+- path tracking,
+- steering control,
+- and software tuning.
 
-## Motor Selection
-
-<img width="400" alt="image" src=other/DrivingMotor1.png />
-
-We selected the **CHP-20GP-180**, a brushed DC motor with a dual-phase quadrature encoder.
-
-The encoder allows us to measure motor rotation and provides feedback for more precise motor control.
-
-We considered two gearbox configurations:
-
-| Gear Ratio | Maximum Speed |
-| ---------- | ------------: |
-| 1:5        |      1350 RPM |
-| 1:19       |       390 RPM |
-
-We selected the **1:19 configuration** because our design philosophy prioritizes torque, precision, and stability over maximum speed.
+The result is a vehicle designed to produce predictable behavior repeatedly rather than relying on aggressive maximum-speed operation.
 
 ---
 
-## Gearbox Development
+# 2. Our Team
 
-<image src=/mech/models/Powertrains.png width = "800">
+## 2.1 Team Members
 
-During the prototype stage, we used a **28:28 gearbox**, giving a **1:1 ratio**.
+We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
 
-Testing showed that the available torque was too low for our desired low-speed behavior. The robot struggled to accelerate smoothly from a stop and was difficult to control accurately at low speeds.
+| Member | Primary Responsibility | Supporting Responsibilities |
+|---|---|---|
+| **Peradon Nimsongprasert** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
+| **Chanakarn Yimsakul** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
+| **Thanphisit Sakulvitulthai** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
 
-For the final design, we developed a custom **3D-printed 16-tooth gear** that could connect directly to the motor without requiring the additional gear adapter used in the prototype.
+**Mentor:** Punnapon Tanasnitikul
 
-The final gearbox uses a **16:28 ratio**.
-
-With this gearbox, testing showed a significant improvement in low-speed controllability and overall precision.
-
-Detailed mechanical development and CAD files are available in:
-
-[`mech/mech_README.md`](mech/mech_README.md)
+> **[TODO: Confirm the exact wording of every team member's role before final submission. Roles should reflect actual work completed by each member.]**
 
 ---
 
-# Power and Sensor Architecture
+## 2.2 Team Photo
 
-The robot uses a combination of distance sensing, computer vision, orientation sensing, encoder feedback, and a physical start button.
+> **[TODO: Add final team photograph]**
+>
+> Recommended file:
+>
+> `team-photos/team-final.jpg`
 
-## Sensors
+Recommended photograph:
 
-### RPLiDAR C1
-
-The LiDAR provides 2D distance measurements around the robot and is used to obtain information about walls, traffic signs, and the parking area.
-
-### Raspberry Pi Night Vision Camera
-
-The camera is used for visual detection, including identification of colored traffic signs and parking-related visual information.
-
-### Gravity BNO055 IMU
-
-The BNO055 provides orientation and heading information and is used to support stable motion and heading control.
-
-### Motor Encoder
-
-The CHP-20GP-180 encoder provides feedback about motor rotation, speed, and direction.
-
-### ZX-Switch01
-
-The external switch is used as the robot's competition start button.
+- all three team members,
+- final robot visible,
+- clean background,
+- landscape orientation,
+- sufficient resolution for GitHub and judging.
 
 ---
 
-## Computing Architecture
+## 2.3 How We Work as a Team
 
-### Raspberry Pi 5
+Our development process requires mechanical, electrical and software work to be integrated continuously.
 
-The Raspberry Pi 5 is the main high-level computing platform.
+A mechanical modification can change steering behavior.  
+A sensor-placement change can affect localization.  
+A power-system change can affect computing reliability.  
+A software change can reveal mechanical limitations that were not obvious during static testing.
 
-It processes information from the LiDAR, camera, and IMU and determines the robot's navigation and driving commands.
+For this reason, subsystem decisions are discussed and tested as part of the complete robot rather than being developed independently until the end.
 
-### Arduino UNO R4 Minima
-
-The Arduino UNO R4 Minima performs lower-level control of:
-
-* Drive motor
-* Steering servo
-* Encoder feedback
-* Start button
-
-This separation allows high-level processing and low-level motor control to be handled independently.
+> **[TODO: Add 2–4 sentences describing how the team actually divides work, reviews changes and performs testing together.]**
 
 ---
 
-## Power Architecture
+# 3. Final Robot
 
-Our electrical system is powered by a **Helix 1100 mAh 11.1 V 3S LiPo battery**.
+## 3.1 Robot at a Glance
 
-The battery supply is divided into separate regulated power branches for the computing system and the motor/control system.
+| Category | Final Configuration |
+|---|---|
+| Robot type | Four-wheel automotive-style autonomous vehicle |
+| Main computer | Raspberry Pi 5 |
+| Low-level controller | Arduino UNO R4 Minima |
+| Drive motor | CHP-20GP-180 brushed DC geared motor with quadrature encoder |
+| Internal motor gearbox | 19:1 reduction |
+| External drivetrain | 16-tooth motor gear → 28-tooth differential gear |
+| Steering | Servo-driven Ackermann-style steering |
+| Steering servo | GEEKSERVO 2 kg 360° servo |
+| Distance sensing | RPLiDAR C1 |
+| Vision | Raspberry Pi Night Vision Camera |
+| Orientation sensing | Gravity BNO055 IMU |
+| Drive feedback | Dual-phase motor encoder |
+| Pi I/O interface | DFR0566 IO Expansion HAT |
+| Motor driver | L298P Motor Shield |
+| Main battery | 11.1 V 3S LiPo, 1100 mAh |
+| Power architecture | Separate computing and motor/control branches |
+| Final dimensions | Approximately **230 × 140 × 130 mm** |
+| Final weight | **[TODO: Measure final competition weight]** |
+| Final physical version | Version 3 |
 
-### Raspberry Pi Branch
+---
 
-The Raspberry Pi is supplied through an **LM2596 step-down converter**.
+## 3.2 Final Robot — Six-View Documentation
 
-The output is tuned to approximately **5.1 V** to compensate for voltage losses through wiring and connectors.
+The following photographs document the final competition robot from all required directions.
+
+### Front / Rear / Left
+
+| Front View | Rear View | Left View |
+|---|---|---|
+| **[TODO: Add final front photograph]** | **[TODO: Add final rear photograph]** | **[TODO: Add final left photograph]** |
+
+### Right / Top / Bottom
+
+| Right View | Top View | Bottom View |
+|---|---|---|
+| **[TODO: Add final right photograph]** | **[TODO: Add final top photograph]** | **[TODO: Add final bottom photograph]** |
+
+Recommended file structure:
+
+```text
+robot-photos/
+├── front.jpg
+├── rear.jpg
+├── left.jpg
+├── right.jpg
+├── top.jpg
+└── bottom.jpg
+```
+
+---
+
+## 3.3 Annotated Final Robot Layout
+
+This section should allow a judge to understand the physical system without first reading every subsystem document.
+
+### Overall Component Layout
+
+> **[TODO: Add NEW annotated final robot layout image]**
+>
+> The image should label at least:
+>
+> - Raspberry Pi 5
+> - DFR0566 IO Expansion HAT
+> - Arduino UNO R4 Minima
+> - RPLiDAR C1
+> - BNO055 IMU
+> - Camera
+> - Drive motor
+> - Encoder
+> - Steering servo
+> - L298P Motor Shield
+> - LM2596
+> - XL4015
+> - Battery
+> - Main switch
+> - Start button
+> - Power-distribution connectors
+
+### Mechanical Layout
+
+> **[TODO: Add annotated mechanical layout / drivetrain image]**
+
+Recommended labels:
+
+- front steering assembly,
+- Ackermann linkage,
+- servo,
+- front axle,
+- drive motor,
+- 16T drive gear,
+- differential,
+- rear axle,
+- bearings,
+- wheelbase,
+- track width.
+
+### Internal Electronics Layout
+
+> **[TODO: Add photograph of the robot with covers / upper structure removed so that wiring and controllers are visible.]**
+
+Detailed mechanical and electrical layout documentation is available in:
+
+- [`mech/mech_README.md`](mech/mech_README.md)
+- [`elec/elec_README.md`](elec/elec_README.md)
+
+---
+
+# 4. Engineering Development Process
+
+The final robot is the result of multiple design iterations.
+
+Our development followed the repeated engineering cycle:
+
+```text
+PLAN
+  ↓
+BUILD
+  ↓
+TEST
+  ↓
+IDENTIFY PROBLEM
+  ↓
+MODIFY
+  ↓
+TEST AGAIN
+```
+
+We use version numbers to document major physical architecture changes rather than presenting only the final result.
+
+---
+
+## 4.1 Development Timeline
+
+| Version | Mechanical Development | Electrical / Sensor Development | Software Development | Main Outcome |
+|---|---|---|---|---|
+| **V1 — Initial Prototype** | Initial printed chassis and 1:1 external drivetrain | Ultrasonic + light-sensor sensing concept | Arduino-side control; complete Raspberry Pi autonomous driving not yet implemented | Initial hardware concept and drivetrain testing |
+| **V2 — LiDAR Prototype** | 21T drive gear, Ackermann steering, bearings and expanded structure | LiDAR introduced; ultrasonic and light sensor removed; IMU relocated | Navigation development and tuning became the main focus | More complete autonomous sensing architecture |
+| **V3 — Final Robot** | Robot rebuilt, 16T drive gear, stronger rear structure and final component layout | Final sensor placement, final wiring and separated power architecture | Localization, racing line, Pure Pursuit, obstacle mapping and competition software | Current competition platform |
+
+> V1 did not have a complete Raspberry Pi autonomous competition run. We therefore do not claim autonomous performance results for that version.
+
+---
+
+## 4.2 Prototype Comparison
+
+### Version 1
+
+> **[TODO: Add V1 prototype photograph]**
+
+**Main purpose:** establish the initial drivetrain, steering and sensing concept.
+
+### Version 2
+
+> **[TODO: Add V2 multi-view photographs or 2×3 image grid]**
+
+**Main purpose:** integrate LiDAR-based sensing and begin complete autonomous navigation development.
+
+### Version 3
+
+> **[TODO: Add V3 final robot photograph beside V1 and V2 for direct comparison]**
+
+**Main purpose:** final mechanical rebuild and integrated competition architecture.
+
+---
+
+## 4.3 Team Engineering Process
+
+The repository should show not only what the final robot looks like, but also how it was created.
+
+### Mechanical Assembly
+
+> **[TODO: Add photograph of the team assembling the chassis / drivetrain / steering system]**
+
+Recommended evidence:
+
+- drivetrain assembly,
+- bearing installation,
+- steering assembly,
+- 3D-printed part fitting,
+- mechanical revision.
+
+### Electronics Assembly and Soldering
+
+> **[TODO: Add photograph of soldering, connector preparation or wiring work]**
+
+Recommended evidence:
+
+- soldering,
+- power-distribution wiring,
+- converter installation,
+- sensor connections,
+- connector assembly,
+- cable management.
+
+### Software Development
+
+> **[TODO: Add photograph of team member(s) writing or debugging code]**
+
+Recommended evidence:
+
+- VS Code / terminal,
+- Raspberry Pi SSH session,
+- simulator,
+- camera debug interface,
+- LiDAR visualization.
+
+### Robot Testing
+
+> **[TODO: Add photograph of the team performing track testing]**
+
+Recommended evidence:
+
+- Open Challenge testing,
+- obstacle testing,
+- sensor calibration,
+- steering testing,
+- parking testing,
+- debugging after a failed run.
+
+Additional development evidence is stored in:
+
+[`engineering-process/`](engineering-process/)
+
+---
+
+# 5. System Architecture
+
+## 5.1 High-Level Robot Architecture
+
+The robot is divided into five interacting engineering subsystems:
+
+1. **Mechanical platform**
+2. **Power system**
+3. **Sensing**
+4. **Computing and control**
+5. **Autonomous software**
+
+> **[TODO: Add NEW high-level system architecture block diagram]**
+
+Recommended diagram structure:
+
+```text
+                           SENSORS
+              ┌──────────────┼───────────────┐
+              │              │               │
+            LiDAR          Camera           IMU
+              │              │               │
+              └──────────────┼───────────────┘
+                             │
+                             v
+                      Raspberry Pi 5
+                             │
+              ┌──────────────┼───────────────┐
+              │              │               │
+          Localization   Vision System   Path Planning
+              │              │               │
+              └──────────────┼───────────────┘
+                             │
+                       Pure Pursuit
+                             │
+                        USB Serial
+                             │
+                             v
+                    Arduino UNO R4
+                       │          │
+                       v          v
+                  Drive Motor   Steering
+                       │
+                    Encoder
+```
+
+The exact interfaces and software modules are documented in the electrical and software documentation.
+
+---
+
+## 5.2 Control Responsibility
+
+### Raspberry Pi 5 — High-Level Control
+
+The Raspberry Pi is responsible for:
+
+- LiDAR processing,
+- camera processing,
+- IMU reading,
+- localization,
+- field mapping,
+- obstacle detection,
+- racing-line generation,
+- path tracking,
+- autonomous decisions,
+- and generation of steering / motor commands.
+
+### Arduino UNO R4 Minima — Low-Level Control
+
+The Arduino is responsible for:
+
+- drive-motor actuation,
+- steering-servo actuation,
+- quadrature encoder reading,
+- start-button input,
+- and execution of commands received from the Raspberry Pi.
+
+The two controllers communicate over USB Serial at **115200 baud**.
+
+---
+
+## 5.3 Sensor Roles
+
+| Sensor | Primary Information | Used By |
+|---|---|---|
+| RPLiDAR C1 | Environment geometry and distance | Localization, clearance and navigation |
+| BNO055 IMU | Relative orientation / heading reference | Heading resolution and navigation |
+| Camera | Red / green pillar recognition | Obstacle mapping |
+| Motor encoder | Drive-motor rotation | Low-level distance feedback |
+| Start switch | Competition start command | Run initialization |
+
+No single sensor is treated as sufficient for every task.
+
+The software intentionally assigns each sensor only to the type of information for which it is useful.
+
+---
+
+# 6. Mobility and Mechanical Engineering
+
+The complete mechanical documentation is available in:
+
+## [`mech/mech_README.md`](mech/mech_README.md)
+
+The mechanical system was developed around the same design philosophy used throughout the project:
+
+> **Predictable controllability is more valuable than maximum speed.**
+
+---
+
+## 6.1 Drivetrain
+
+The final drivetrain combines:
+
+- CHP-20GP-180 motor,
+- internal 19:1 gearbox,
+- custom 16-tooth motor drive gear,
+- 28-tooth LEGO differential gear,
+- rear differential,
+- bearing-supported axle,
+- and LEGO-compatible wheels.
+
+The external drivetrain was developed through several iterations:
+
+```text
+V1: 28T → 28T
+        1:1
+
+V2: 21T → 28T
+     Increased reduction
+
+V3: 16T → 28T
+     Final reduction
+```
+
+The progressive reduction increased available wheel torque and improved low-speed controllability at the cost of maximum speed.
+
+Detailed calculations, CAD and drivetrain reasoning are documented in the mechanical README.
+
+---
+
+## 6.2 Steering
+
+The front steering system uses an **Ackermann-style geometry** driven by a GEEKSERVO steering servo.
+
+The final steering assembly includes:
+
+- steering axle,
+- left and right steering arms,
+- linkage,
+- servo bracket,
+- upper and lower structural mounts.
+
+The design allows the inside and outside front wheels to follow different turning radii rather than forcing both wheels through the same steering angle.
+
+---
+
+## 6.3 Mechanical Manufacturing
+
+Most structural and custom mechanical components are 3D printed.
+
+The team uses both:
+
+- **ABS**
+- **ABS-GF**
+
+depending on the required balance between:
+
+- toughness,
+- stiffness,
+- dimensional stability,
+- contact behavior,
+- and ease of manufacturing.
+
+Detailed material selection and CAD files are documented in the mechanical README.
+
+---
+
+# 7. Power and Sensor Architecture
+
+The complete electrical documentation is available in:
+
+## [`elec/elec_README.md`](elec/elec_README.md)
+
+---
+
+## 7.1 Power Architecture
+
+The robot uses one **11.1 V 3S LiPo battery** as its main power source.
+
+The electrical architecture separates the system into dedicated power branches rather than directly supplying every subsystem from one shared rail.
+
+### Computing Branch
+
+The Raspberry Pi uses an LM2596-based regulated supply.
+
+The Pi supply is adjusted to approximately:
+
+**5.1 V**
+
+to provide sufficient voltage at the Raspberry Pi after wiring and connector losses.
 
 ### Motor / Control Branch
 
-The motor-side system uses an **XL4015 step-down converter** and an **L298P Motor Shield** connected to the Arduino UNO R4 Minima.
+The motor and control electronics use a separate power branch through the XL4015 and motor-control system.
 
-The purpose of separating the power branches is to reduce the effect of motor current changes on the Raspberry Pi and improve system stability.
+Separating the computing branch from actuator-related loads reduces the chance that rapid motor or servo current changes disturb the Raspberry Pi.
 
-Detailed electrical architecture, wiring, power calculations, component information, and calibration methods are documented in:
-
-[`elec/elec_README.md`](elec/elec_README.md)
+> **[TODO: In the final electrical rewrite, confirm and document the exact XL4015 output voltage measured on the completed robot.]**
 
 ---
 
-# Software Architecture and Obstacle Management
+## 7.2 Final Sensor Architecture
 
-The robot's software is divided between high-level processing on the Raspberry Pi and low-level control on the Arduino UNO R4 Minima.
+The original sensing concept changed significantly during development.
 
-The Raspberry Pi processes sensor information and determines the robot's navigation behavior.
-
-The Arduino receives control commands and handles the drivetrain, steering, encoder feedback, and start sequence.
-
-The final software architecture and obstacle-management strategy are documented in:
-
-[`src/`](src/)
-
-and will be described in greater detail in:
-
-[`software/software_README.md`](software/software_README.md)
-
-[Add software architecture diagram / state machine here.]
-
----
-
-# System Thinking and Engineering Decisions
-
-Our robot was developed as a complete system rather than as independent mechanical, electrical, and software components.
-
-Mechanical, electrical, and software decisions affect one another.
-
-For example:
-
-* The drivetrain gear ratio affects acceleration, low-speed control, and the behavior required from the software.
-* Sensor selection determines what information is available to the navigation system.
-* Power distribution affects the reliability of the Raspberry Pi and motor system.
-* Encoder feedback allows the control system to use motor movement information for more precise operation.
-* The computing architecture determines how sensor data can be processed and converted into control commands.
-
-One of our main design philosophies was to prioritize **precision, stability, and repeatability over maximum speed**.
-
-This philosophy influenced the selection of the drivetrain gear ratio, motor configuration, gearbox design, sensor architecture, and control strategy.
-
-The development process was iterative. We built prototypes, tested them, identified problems, and modified the design based on the observed behavior of the robot.
-
-Detailed engineering decisions are documented throughout the `mech`, `elec`, and software documentation.
-
----
-
-# Build / Compile / Upload
-
-## Building Instruction
-
-The building instruction is in the [`BUILD.md`](BUILD.md)
-
-## Hardware
-
-The robot requires the following main hardware:
-
-* Raspberry Pi 5
-* Arduino UNO R4 Minima
-* DFRobot Pi OI Expansion HAT
-* L298P Motor Shield
-* CHP-20GP-180 DC geared motor with encoder
-* GEEKSERVO steering servo
-* RPLiDAR C1
-* Raspberry Pi Camera
-* BNO055 IMU
-* ZX-Switch01
-* 11.1 V 3S LiPo battery
-* LM2596 step-down converter
-* XL4015 step-down converter
-
-## Source Code
-
-The robot's source code is stored in:
-
-[`src/`](src/)
-
-## Mechanical Files
-
-Mechanical design files and 3D-printable components are stored in:
-
-[`mech/`](mech/)
-
-## Electrical Files
-
-Electrical diagrams and documentation are stored in:
-
-[`elec/`](elec/)
-
-and:
-
-[`schemes/`](schemes/)
-
----
-
-# Repository Structure
+### Initial Concept
 
 ```text
-WRO-FE-YBR/
+Camera
++
+Ultrasonic Sensors
++
+Light Sensor
++
+IMU
+```
+
+### Final Concept
+
+```text
+Camera
++
+RPLiDAR C1
++
+BNO055 IMU
++
+Motor Encoder
+```
+
+LiDAR replaced the ultrasonic / light-sensor approach because its 2D environmental information matched our localization and navigation strategy more effectively.
+
+---
+
+## 7.3 Sensor Placement Iterations
+
+Two important physical sensing problems were identified during development.
+
+### Camera Field of View
+
+**Problem:** the original camera lens provided a limited field of view.
+
+**Change:** the lens was replaced with a wider-angle configuration.
+
+**Result:** approximately 60° field of view.
+
+### LiDAR Orientation
+
+**Problem:** an excessive LiDAR mounting angle distorted the 2D representation of the environment.
+
+**Change:** the LiDAR mounting orientation was corrected closer to parallel with the field.
+
+**Result:** improved 2D scan geometry.
+
+The complete sensor-placement reasoning is documented in the electrical README.
+
+---
+
+# 8. Software Architecture and Autonomous Strategy
+
+The complete software documentation is available in:
+
+## [`software/software_README.md`](software/software_README.md)
+
+Our final software architecture is based on a different question from our original camera-reactive concept.
+
+Instead of asking:
+
+> **"What should I steer away from right now?"**
+
+the final system asks:
+
+> **"Where am I on the field, where should I be, and how should I reach that point?"**
+
+This change led to the final localization-based architecture.
+
+---
+
+## 8.1 Autonomous Navigation Pipeline
+
+The main software pipeline is:
+
+```text
+LiDAR + IMU
+     │
+     v
+ Localization
+(x, y, heading)
+     │
+     v
+ Racing Line
+     │
+     v
+Target Lookahead Point
+     │
+     v
+ Pure Pursuit
+     │
+     v
+Steering + Speed Command
+     │
+     v
+Arduino
+     │
+     ├── Drive Motor
+     └── Steering Servo
+```
+
+---
+
+## 8.2 Localization
+
+The robot uses a **particle filter** to estimate its position on the known WRO field.
+
+The localizer uses:
+
+- LiDAR scan geometry,
+- estimated robot motion,
+- IMU heading information,
+- and the known field map.
+
+The estimated pose contains:
+
+```text
+X position
+Y position
+Heading
+Confidence
+```
+
+This allows the rest of the navigation system to reason in field coordinates rather than only reacting to the immediate camera image.
+
+---
+
+## 8.3 Racing Line and Pure Pursuit
+
+The robot generates a smooth closed path around the WRO field.
+
+Instead of using a steering PID to continuously react to wall offset, the final navigation system uses **Pure Pursuit**.
+
+Pure Pursuit selects a point ahead of the robot on the target path and calculates the steering required to approach that point.
+
+The principal trade-off is the lookahead distance:
+
+| Lookahead | Advantage | Disadvantage |
+|---|---|---|
+| Short | Accurate local tracking | Can oscillate at higher speed |
+| Long | Smoother and more stable | Can cut corners |
+
+The software therefore adjusts lookahead according to the driving condition.
+
+---
+
+## 8.4 Obstacle Strategy
+
+The camera detects the red and green traffic pillars.
+
+The robot does not switch into a completely separate obstacle-avoidance controller.
+
+Instead:
+
+1. the camera identifies the pillar,
+2. estimates its bearing and distance,
+3. transforms the detection into field coordinates,
+4. stores it in a persistent block map,
+5. offsets the racing line around the pillar,
+6. and allows the same Pure Pursuit controller to follow the modified path.
+
+This keeps normal path tracking and obstacle handling inside one unified navigation system.
+
+---
+
+## 8.5 Sensor Fusion
+
+Different sensors are trusted for different information.
+
+| Sensor | Trusted For | Not Primarily Used For |
+|---|---|---|
+| LiDAR | Position, scan geometry, clearance | Pillar color |
+| IMU | Relative orientation / heading quadrant | Long-term absolute position |
+| Camera | Pillar color, bearing and apparent distance | Wall localization |
+| Encoder / motor feedback | Drive movement feedback | Absolute field position |
+
+When sensor information conflicts, the software applies explicit rules rather than assuming every sensor is equally reliable.
+
+Detailed arbitration and failure-handling behavior are documented in the software README.
+
+---
+
+## 8.6 Parking
+
+The final-round software includes a dedicated parking maneuver.
+
+Current high-level parking sequence:
+
+1. position the robot relative to the parking structure,
+2. reverse while turning into the parking space,
+3. reverse in a straighter trajectory,
+4. apply the final steering correction to become parallel with the outer wall,
+5. stop.
+
+> **[TODO: Add parking state-machine diagram after the final parking implementation is locked.]**
+
+> **[TODO: Add parking success-rate / repeatability result from real track testing.]**
+
+---
+
+# 9. Systems Thinking and Major Engineering Decisions
+
+The robot was developed as one complete system.
+
+The following table summarizes some of the most important decisions.
+
+| Engineering Decision | Alternative / Earlier Design | Reason for Final Choice | Trade-off |
+|---|---|---|---|
+| 19:1 motor gearbox | Faster 1:5 option | More torque and better low-speed control | Lower maximum speed |
+| 16:28 external drivetrain | 28:28 and 21:28 prototypes | Improved low-speed controllability | Additional speed reduction |
+| Ackermann-style steering | Simpler steering geometry | Better automotive turning behavior | Increased mechanical complexity |
+| LiDAR-based sensing | Ultrasonic + light sensor | Richer environmental information for localization | Higher software complexity |
+| Wider-angle camera | Original narrow lens | Larger visual field | Increased image distortion at edges |
+| Pi + Arduino architecture | One controller for everything | Separate high-level computing from actuator control | More communication interfaces |
+| Separate power branches | One shared low-voltage rail | Reduce motor-related disturbance to Pi supply | Additional converter and wiring |
+| Relative IMU reference | Full startup magnetometer calibration | Faster and more practical competition startup | Reduced dependence on absolute magnetic heading |
+| Particle-filter localization | Immediate camera-only reaction | Robot can reason about its position on the known field | More computation |
+| Pure Pursuit | Reactive steering / competing correction loops | Simple geometric path tracking with clear tuning behavior | Requires a reliable pose |
+| Adjustable camera mount | Fixed camera position | Allows angle tuning without redesigning the chassis | More printed parts / joints |
+| ABS + ABS-GF | One material for every part | Material selected according to stiffness / toughness requirement | More manufacturing complexity |
+
+Detailed evidence for these decisions is distributed across the mechanical, electrical and software documentation.
+
+---
+
+## 9.1 Subsystem Interaction
+
+### Mechanical → Software
+
+Changing drivetrain reduction changes:
+
+- acceleration,
+- maximum speed,
+- low-speed controllability,
+- steering correction timing,
+- and the software speed profile.
+
+### Mechanical → Electrical
+
+Component placement determines:
+
+- cable routing,
+- converter position,
+- sensor mounting,
+- electronics accessibility,
+- and weight distribution.
+
+### Electrical → Software
+
+Sensor architecture determines what information the software can use.
+
+Moving from ultrasonic + light sensing to LiDAR changed the software from local reactive sensing toward field localization.
+
+### Software → Mechanical
+
+Software testing revealed real steering behavior that differed from assumed steering geometry.
+
+This required the control model to represent the actual physical steering response rather than only the CAD geometry.
+
+---
+
+# 10. Testing, Validation and Failure Analysis
+
+Testing is used to change the robot design, not only to confirm that the final system works.
+
+---
+
+## 10.1 Software Testing Without the Robot
+
+The software repository includes simulation and test tools that can run important parts of the real navigation software without requiring the complete robot.
+
+Examples include:
+
+```text
+test_navigation.py
+test_driving.py
+test_steering.py
+test_color_picker.py
+```
+
+These tools allow:
+
+- localization testing,
+- random-start trials,
+- steering-parameter sweeps,
+- steering calibration,
+- color-threshold selection,
+- and rapid iteration before using limited physical track time.
+
+---
+
+## 10.2 Measured Steering Behavior
+
+Testing identified that the real steering geometry differed from the original assumed value.
+
+The steering calibration process measured approximately:
+
+> **21% more turning than the original assumed full-lock steering value.**
+
+Steering-response testing also measured approximately:
+
+> **0.35 s to reach 63% of the steering response.**
+
+These measurements are important because the real mechanical response affects Pure Pursuit tracking and high-speed stability.
+
+---
+
+## 10.3 Development Problems and Responses
+
+| Problem | Investigation / Observation | Engineering Change | Result |
+|---|---|---|---|
+| Low drivetrain torque | Robot difficult to control smoothly at low speed | 28:28 → 21:28 → 16:28 external drivetrain | Improved low-speed controllability |
+| Narrow camera view | Insufficient visible area | Wider-angle camera lens | Approximately 60° FOV |
+| Distorted LiDAR map | LiDAR mounting angle not sufficiently level | Repositioned LiDAR | Improved 2D environment representation |
+| Crowded electronics | IMU beside Pi I/O HAT | Relocated IMU under LiDAR | Cleaner physical layout |
+| Limited ultrasonic architecture | Needed richer environmental information | Replaced ultrasonic/light-sensor concept with LiDAR | Enabled localization-based navigation |
+| Motor-related power changes | Computing and actuator loads interact electrically | Separate power branches | Reduced dependence of Pi supply on actuator branch |
+| Steering-model error | Real vehicle turned differently from assumed geometry | Developed steering calibration tools | More accurate control model |
+| Sensor disagreement | Sensors provide different types of information | Explicit sensor arbitration | More predictable failure behavior |
+| Software exception | Program can terminate unexpectedly | Guaranteed cleanup / motor stop in finalization logic | Robot does not intentionally continue driving after Python failure |
+
+---
+
+## 10.4 Final Physical Test Results
+
+This section should contain only results that were actually measured by the team.
+
+| Test | Trials | Success / Measurement | Evidence |
+|---|---:|---|---|
+| Open Challenge complete run | **[TODO]** | **[TODO]** | **[TODO: video / log]** |
+| Obstacle pillar passing | **[TODO]** | **[TODO]** | **[TODO: video / log]** |
+| Parallel parking | **[TODO]** | **[TODO]** | **[TODO: video / log]** |
+| Wall-contact test | **[TODO]** | **[TODO]** | **[TODO]** |
+| Localization convergence | **[TODO]** | **[TODO]** | Software debug logs |
+| Steering calibration | **[TODO]** | ~21% difference from original assumption | Steering test |
+| Steering response | **[TODO]** | ~0.35 s to 63% response | Steering-lag test |
+| Power stability under driving load | **[TODO]** | **[TODO: measured voltages]** | **[TODO]** |
+
+> **Do not replace TODO values with estimated numbers. Only include measurements that were actually recorded.**
+
+---
+
+## 10.5 Engineering Testing Evidence
+
+> **[TODO: Add testing photo 1 — steering / drivetrain]**
+
+> **[TODO: Add testing photo 2 — LiDAR / localization debug]**
+
+> **[TODO: Add testing photo 3 — obstacle detection]**
+
+> **[TODO: Add testing photo 4 — parking / final track run]**
+
+Additional evidence:
+
+[`engineering-process/testing/`](engineering-process/testing/)
+
+---
+
+# 11. Competition Demonstrations
+
+WRO Future Engineers documentation requires autonomous-driving video evidence for the competition challenges.
+
+## 11.1 Open Challenge
+
+> **[TODO: Add public / unlisted YouTube link]**
+>
+> Required content:
+>
+> - autonomous movement,
+> - at least 30 seconds of autonomous driving,
+> - robot clearly visible,
+> - preferably a complete run.
+
+**Video:** `[TODO: OPEN CHALLENGE VIDEO]`
+
+---
+
+## 11.2 Obstacle Challenge
+
+> **[TODO: Add public / unlisted YouTube link]**
+>
+> Recommended content:
+>
+> - autonomous movement,
+> - red / green traffic-pillar interaction,
+> - multiple turns,
+> - parking sequence if available,
+> - at least 30 seconds of autonomous driving.
+
+**Video:** `[TODO: OBSTACLE CHALLENGE VIDEO]`
+
+---
+
+## 11.3 Additional Testing Videos
+
+Optional additional evidence:
+
+- drivetrain test,
+- steering calibration,
+- LiDAR localization,
+- camera detection,
+- full competition run,
+- parking test.
+
+See:
+
+[`video/`](video/)
+
+---
+
+# 12. Build and Reproducibility
+
+The complete reproduction procedure is documented in:
+
+# [`BUILD.md`](BUILD.md)
+
+`BUILD.md` is intended to allow another team to reproduce the robot using the design files and source code in this repository.
+
+It contains:
+
+1. bill of materials,
+2. mechanical manufacturing,
+3. mechanical assembly,
+4. electrical wiring,
+5. Raspberry Pi setup,
+6. Arduino setup,
+7. compile and upload instructions,
+8. first-power verification,
+9. sensor verification,
+10. actuator verification,
+11. first autonomous run,
+12. troubleshooting.
+
+---
+
+## 12.1 Reproduction Resources
+
+| Resource | Location |
+|---|---|
+| Mechanical design reasoning | [`mech/mech_README.md`](mech/mech_README.md) |
+| Electrical design reasoning | [`elec/elec_README.md`](elec/elec_README.md) |
+| Software design reasoning | [`software/software_README.md`](software/software_README.md) |
+| Build procedure | [`BUILD.md`](BUILD.md) |
+| Source code | [`src/`](src/) |
+| CAD / 3D files | [`mech/models/`](mech/models/) |
+| Electrical schematic | [`schemes/Schematic Diagram.png`](schemes/Schematic%20Diagram.png) |
+| Wiring diagram | [`schemes/Wiring Diagram.png`](schemes/Wiring%20Diagram.png) |
+| Final robot photographs | [`robot-photos/`](robot-photos/) |
+| Development evidence | [`engineering-process/`](engineering-process/) |
+
+---
+
+## 12.2 First-Run Verification
+
+Before autonomous testing, the build guide verifies:
+
+- power-converter outputs,
+- Raspberry Pi startup,
+- Arduino connection,
+- motor direction,
+- steering center,
+- encoder feedback,
+- LiDAR communication,
+- camera operation,
+- IMU response,
+- start-button behavior,
+- and basic straight / turn movement.
+
+This staged verification reduces the chance that several untested subsystems fail simultaneously during the first autonomous run.
+
+---
+
+# 13. Repository Structure
+
+The repository is organized by engineering function rather than storing all documentation in one large directory.
+
+```text
+WRO-FE-YBR-SUNFLOWER/
+│
+├── README.md
+│
+├── BUILD.md
+├── CHANGELOG.md
+├── LICENSE.md
+│
+├── mech/
+│   ├── mech_README.md
+│   └── models/
+│       ├── CAD files
+│       ├── STL files
+│       └── [TODO: slicer / 3MF files if available]
 │
 ├── elec/
 │   └── elec_README.md
 │
-├── mech/
-│   ├── models/
-│   └── mech_README.md
+├── software/
+│   └── software_README.md
 │
-├── other/
-│
-├── robot-photos/
+├── src/
+│   ├── Arduino/
+│   │   ├── Main.ino
+│   │   └── libraries/
+│   │
+│   └── Raspberrypi/
+│       ├── main.py
+│       ├── tasks/
+│       ├── classes/
+│       ├── utils/
+│       ├── test_*.py
+│       ├── pyproject.toml
+│       └── uv.lock
 │
 ├── schemes/
 │   ├── README.md
 │   ├── Schematic Diagram.png
 │   └── Wiring Diagram.png
 │
-├── src/
+├── robot-photos/
+│   ├── front.jpg
+│   ├── rear.jpg
+│   ├── left.jpg
+│   ├── right.jpg
+│   ├── top.jpg
+│   └── bottom.jpg
 │
 ├── team-photos/
+│   └── [TODO: final team photo]
+│
+├── engineering-process/
+│   ├── README.md
+│   │
+│   ├── prototypes/
+│   │   ├── v1/
+│   │   ├── v2/
+│   │   └── v3/
+│   │
+│   ├── mechanical/
+│   │   ├── assembly/
+│   │   └── manufacturing/
+│   │
+│   ├── electrical/
+│   │   ├── soldering/
+│   │   └── wiring/
+│   │
+│   ├── software/
+│   │   ├── coding/
+│   │   └── debugging/
+│   │
+│   └── testing/
+│       ├── mechanical/
+│       ├── sensors/
+│       ├── software/
+│       └── competition/
 │
 ├── video/
 │
-├── LICENSE.md
-└── README.md
+└── docs/
+    └── [TODO: engineering report / supporting documentation]
 ```
 
 ---
 
-# Conclusion
+# 14. Version History and Development Milestones
 
-YBR SUNFLOWER's WRO Future Engineers robot was developed through an iterative engineering process combining mechanical design, electronics, sensing, and software.
+The Git history is part of the engineering documentation because it shows that the robot was developed iteratively rather than uploaded only as a final code dump.
 
-Our main design philosophy is to prioritize **precision, stability, reliability, and repeatability** rather than maximizing a single performance factor such as top speed.
+## 14.1 Physical Versions
 
-The documentation in this repository records the design and development of the robot and provides the technical resources required to understand and reproduce the system.
+| Version | Major Change | Status |
+|---|---|---|
+| V1 | Initial chassis, 1:1 external drivetrain and original sensing concept | Archived prototype |
+| V2 | Ackermann steering, bearings, 21T drivetrain gear and LiDAR architecture | Functional prototype |
+| V3 | New chassis, 16T drivetrain gear, final electrical layout and competition architecture | Current robot |
 
-As development continues, additional testing results, software documentation, and final competition materials will be added to the repository.
-****
+---
+
+## 14.2 Repository Milestones
+
+| Milestone | Date | Commit / Release | Description |
+|---|---|---|---|
+| Initial development | **[TODO]** | **[TODO: commit link]** | Early mechanical / software development |
+| Prototype integration | **[TODO]** | **[TODO: commit link]** | Major subsystem integration |
+| LiDAR architecture | **[TODO]** | **[TODO: commit link]** | Navigation architecture change |
+| Final mechanical rebuild | **[TODO]** | **[TODO: commit link]** | Version 3 robot |
+| Competition software | **[TODO]** | **[TODO: commit link]** | Final qualification / obstacle architecture |
+| Documentation release | **[TODO]** | **[TODO: release link]** | Competition documentation version |
+
+Detailed release information:
+
+[`CHANGELOG.md`](CHANGELOG.md)
+
+> **[TODO: Create GitHub Release for the submitted competition version and tag the exact commit used for judging.]**
+
+---
+
+# 15. WRO Engineering Documentation Map
+
+This repository separates detailed engineering information by subsystem so that each part of the robot can be evaluated and reproduced clearly.
+
+| WRO Engineering Area | Primary Evidence | Additional Evidence |
+|---|---|---|
+| **Mobility and Mechanical Design** | [`mech/mech_README.md`](mech/mech_README.md) | CAD, drivetrain iterations, material selection, robot photos |
+| **Power and Sensor Architecture** | [`elec/elec_README.md`](elec/elec_README.md) | Schematics, wiring, power budget, sensor placement and calibration |
+| **Software Architecture and Obstacle Strategy** | [`software/software_README.md`](software/software_README.md) | Source code, localization, Pure Pursuit, object detection, parking and tests |
+| **Systems Thinking and Engineering Decisions** | [Section 9](#9-systems-thinking-and-major-engineering-decisions) | Prototype history, trade-offs, failure analysis and subsystem interactions |
+| **Reproducibility and GitHub Quality** | [`BUILD.md`](BUILD.md) | CAD, code, wiring, repository structure, test workflow, Git history and release notes |
+
+---
+
+## 15.1 Evidence Philosophy
+
+We distinguish between:
+
+- **manufacturer specifications,**
+- **calculated values,**
+- **software configuration values,**
+- **observed behavior,**
+- and **team-measured test results.**
+
+Quantitative performance values are only reported as measurements when the team actually recorded them.
+
+This prevents unmeasured estimates from being presented as experimental results.
+
+---
+
+# 16. References and Related Documentation
+
+## Internal Documentation
+
+- [`mech/mech_README.md`](mech/mech_README.md) — Mechanical engineering
+- [`elec/elec_README.md`](elec/elec_README.md) — Electrical and sensing
+- [`software/software_README.md`](software/software_README.md) — Software and autonomy
+- [`BUILD.md`](BUILD.md) — Complete reproduction guide
+- [`CHANGELOG.md`](CHANGELOG.md) — Version and release history
+- [`schemes/`](schemes/) — Electrical diagrams
+- [`src/`](src/) — Competition source code
+- [`engineering-process/`](engineering-process/) — Development evidence
+
+## External References
+
+> **[TODO: Add official WRO 2026 Future Engineers rules link]**
+
+Component datasheets and manufacturer references are maintained in the subsystem documentation where they are directly relevant to the engineering decisions.
+
+---
+
+# Final Summary
+
+YBR-SUNFLOWER is the result of an iterative engineering process that connects mechanical design, electrical architecture, sensing and autonomous software.
+
+The project evolved from an initial prototype using a simpler drivetrain and sensing concept into a localization-based autonomous vehicle using:
+
+- a torque-focused drivetrain,
+- Ackermann-style steering,
+- LiDAR localization,
+- relative IMU heading,
+- camera-based traffic-pillar detection,
+- Pure Pursuit path tracking,
+- separate high-level and low-level controllers,
+- and structured power distribution.
+
+The repository documents not only the final robot, but also the decisions, problems, trade-offs, testing and iterations that produced it.
+
+Our goal is that another team should be able to understand **what we built, why we built it this way, how it works, how it was tested, and how to reproduce it** from the documentation contained here.
+
+---
+
+<div align="center">
+
+### YBR-SUNFLOWER
+
+**WRO 2026 Future Engineers**
+
+Yothinburana School · Thailand
+
+**Mechanical · Electrical · Software · Autonomous Systems**
+
+</div>
