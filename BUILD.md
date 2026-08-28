@@ -209,52 +209,76 @@ Autonomous Testing
 
 # 3. Bill of Materials
 
-The following table lists the primary components used by the Version 3 competition robot.
+This section lists the main components required to reproduce the final **YBR-SUNFLOWER Version 3 robot**.
 
-## 3.1 Computing and Control
+Where possible, the exact model used by our team is listed together with the original purchasing link used during development.
 
-| Component | Exact Model | Qty | Important Specification |
-|---|---|---:|---|
-| Main computer | Raspberry Pi 5 | 1 | Final robot uses 8 GB version |
-| Low-level controller | Arduino UNO R4 Minima | 1 | Non-Wi-Fi model |
-| Raspberry Pi I/O interface | DFR0566 IO Expansion HAT | 1 | Raspberry Pi GPIO / peripheral breakout |
-| Motor driver | L298P Motor Shield | 1 | Arduino motor-control interface |
+> Some purchasing links may become unavailable over time. The important reproduction information is the component model and specification.
 
 ---
 
-## 3.2 Sensors
+## 3.1 Main Electronic Components
 
-| Component | Exact Model | Qty | Purpose |
-|---|---|---:|---|
-| LiDAR | RPLiDAR C1 | 1 | Environmental geometry / localization |
-| Camera | Raspberry Pi Night Vision Camera | 1 | Traffic-pillar vision |
-| IMU | DFRobot Gravity BNO055 + BMP280 / SEN0253 | 1 | Relative heading |
-| Encoder | Integrated with CHP-20GP-180 | 1 | Motor rotation feedback |
-| Start switch | ZX-Switch01 | 1 | Competition start input |
+| Category | Component | Qty | Notes | Purchase Link |
+|---|---|---:|---|---|
+| Compute | Raspberry Pi 5 | 1 | 8 GB version used by our team | https://gammaco.com/gammaco/Raspberry_Pi_GB_89RD014.html |
+| Compute | Arduino UNO R4 Minima | 1 | Standard non-Wi-Fi version | https://www.ortech-online.com/product/1370 |
+| Motor | CHP-20GP-180 DC geared motor with encoder | 1 | 19:1 gear ratio | https://th.shp.ee/dcTw6X4o |
+| Steering | GEEKSERVO 2 kg 360° Servo | 1 | LEGO-compatible steering servo | https://th.shp.ee/xjXZcp6A |
+| Sensing | RPLiDAR C1 | 1 | Main 2D environmental sensor | https://www.dfrobot.com/product-2803.html |
+| Sensing | Raspberry Pi Night Vision Camera | 1 | Used for traffic-pillar detection | https://th.cytron.io/p-fish-eye-lense-raspberry-pi-5mp-ir-camera |
+| Sensing | Gravity BNO055 IMU | 1 | DFRobot SEN0253 | https://www.dfrobot.com/product-1793.html |
+| Control | L298P Motor Shield | 1 | Drive-motor control | https://th.shp.ee/DExzLgGb |
+| Control | IO Expansion HAT for Raspberry Pi 5 / 4B / 3B+ | 1 | DFR0566 | https://www.dfrobot.com/product-1930.html |
+| Control | ZX-Switch01 Start Button | 1 | Competition start input | https://inex.co.th/home/product/zx-switch01/ |
+| Power | Helicox 1100 mAh 11.1 V 3S LiPo | 1 | Main battery | https://sl1nk.com/tpaqu28 |
+| Power | LM2596 Step-Down Converter | 1 | Adjusted to approximately 5.1 V | https://www.ortech-online.com/product/212 |
+| Power | XL4015 Step-Down Converter | 1 | **[TODO: Verify final output voltage]** | https://www.ortech-online.com/product/206 |
+| Power | Quick Wire Connectors | 2 | PCT-21 and D1-2 | https://th.shp.ee/pKZ9582e |
 
 ---
 
-## 3.3 Actuators
+## 3.2 Mechanical Components
 
-| Component | Exact Model | Qty | Important Specification |
-|---|---|---:|---|
-| Drive motor | CHP-20GP-180 | 1 | 12 V, 19:1 gearbox, AB encoder |
-| Steering servo | GEEKSERVO 2 kg 360° Servo | 1 | LEGO-compatible mounting |
+| Component | Qty | Notes | Purchase / File Reference |
+|---|---:|---|---|
+| LEGO Technic 28T Differential | 1 | Rear drivetrain | **[TODO: Add purchase link if available]** |
+| LEGO Tire 43.2 × 22 ZR | 4 | Final tires | **[TODO: Add purchase link if available]** |
+| LEGO Reinforced Wheel Rim | 4 | Used with final tires | **[TODO: Add purchase link if available]** |
+| Rear Bearings | **[TODO]** | Add exact model / dimensions | **[TODO]** |
+| Rear Axles / Shafts | **[TODO]** | Add exact type / dimensions | **[TODO]** |
+| Structural Pillars / Spacers | **[TODO]** | Add dimensions / quantity | **[TODO]** |
+| Screws / Nuts / Washers | **[TODO]** | Add final sizes and quantities | **[TODO]** |
+| Custom 3D-Printed Parts | 1 set | See mechanical CAD files | [`mech/models/`](mech/models/) |
 
 ---
 
-## 3.4 Power System
+## 3.3 Wiring and Consumables
 
-| Component | Qty | Final Configuration |
-|---|---:|---|
-| 3S LiPo battery | 1 | 11.1 V nominal, 1100 mAh |
-| LM2596 step-down converter | 1 | ~5.1 V Raspberry Pi branch |
-| XL4015 step-down converter | 1 | **[TODO: Measure and record final output voltage]** |
-| D1-2 quick-wire connector | **[TODO: Verify quantity]** | Positive distribution |
-| PCT-21 quick-wire connector | **[TODO: Verify quantity]** | Common negative / ground |
-| SPST main power switch | 1 | Main electrical power |
+| Item | Qty / Length | Notes | Purchase Link |
+|---|---|---|---|
+| Raspberry Pi ↔ Arduino USB Data Cable | 1 | USB Serial communication | **[TODO]** |
+| RPLiDAR Adapter / USB Cable | 1 | LiDAR communication | **[TODO]** |
+| Raspberry Pi CSI Camera Cable | 1 | Camera interface | **[TODO]** |
+| BNO055 I²C / Gravity Cable | 1 | IMU communication | **[TODO]** |
+| Power Wire | **[TODO]** | Add wire gauge and approximate length | **[TODO]** |
+| Signal Wire | **[TODO]** | Low-current signal wiring | **[TODO]** |
+| Heat-Shrink Tubing | As required | Electrical insulation | **[TODO]** |
+| Solder | As required | Electrical assembly | **[TODO]** |
+| Cable Ties | As required | Cable management | **[TODO]** |
 
-> **[TODO: Verify the exact battery manufacturer name. Existing documentation currently contains both "Helix" and "Helicox".]**
+---
+
+## 3.4 3D Printing Materials
+
+| Material | Purpose | Purchase Link |
+|---|---|---|
+| Bambu Lab ABS | General structural and impact-tolerant parts | **[TODO: Add original purchase link if available]** |
+| Bambu Lab ABS-GF | Parts requiring greater stiffness and dimensional stability | **[TODO: Add original purchase link if available]** |
+
+The detailed reason for selecting ABS and ABS-GF is documented in:
+
+[`mech/mech_README.md`](mech/mech_README.md)
 
 ---
 
