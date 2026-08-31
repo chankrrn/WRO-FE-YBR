@@ -75,15 +75,13 @@ The final architecture uses:
 
 ## 1.1 Final Electrical Hardware Layout
 
-<img width="700" height="600" alt="Base Plate View" src="../other/ComponentsImage1.png" />
+| Base Plate | Front Section | Middle Section |
+|---|---|---|
+| <img width="700" height="600" alt="Base Plate View" src="../other/ComponentsImage1.png" /> | <img width="700" height="600" alt="Right View" src="../other/ComponentsImage2.png" /> | <img width="700" height="600" alt="Left View" src="../other/ComponentsImage3.png" /> |
 
-<img width="700" height="600" alt="Right View" src="../other/ComponentsImage2.png" />
-
-<img width="700" height="600" alt="Left View" src="../other/ComponentsImage3.png" />
-
-<img width="700" height="600" alt="Front View 1" src="../other/ComponentsImage4.png" />
-
-<img width="700" height="600" alt="Front View 2" src="../other/ComponentsImage5.png" />
+| Upper Back Section | Lower Back Section |
+|---|---|
+| <img width="700" height="600" alt="Front View 1" src="../other/ComponentsImage4.png" /> | <img width="700" height="600" alt="Front View 2" src="../other/ComponentsImage5.png" /> |
 
 The annotated photographs show the physical relationship between the controllers, sensors, power electronics, actuators, and wiring in the Version 3 robot.
 
