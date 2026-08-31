@@ -222,7 +222,7 @@ route_spacing_mm = 350.0
 approach_mm = 450.0
 # How far past a pillar the plan holds its offset before returning to the
 # line. Raise it if the robot clips pillars with its back end on the way out.
-exit_mm = 350.0
+exit_mm = 200.0
 # How many pillars one plan reaches through. Beyond three the far ones are
 # replanned before they are reached anyway.
 max_gates = 3

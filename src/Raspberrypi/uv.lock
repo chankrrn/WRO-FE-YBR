@@ -146,7 +146,7 @@ dependencies = [
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "opencv-python" },
     { name = "pyserial" },
-    { name = "rpi-gpio" },
+    { name = "rpi-gpio", marker = "sys_platform == 'linux'" },
     { name = "rplidarc1" },
     { name = "smbus2" },
 ]
@@ -158,7 +158,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.0" },
     { name = "opencv-python", specifier = ">=4.10" },
     { name = "pyserial", specifier = ">=3.5" },
-    { name = "rpi-gpio", specifier = ">=0.7.1" },
+    { name = "rpi-gpio", marker = "sys_platform == 'linux'", specifier = ">=0.7.1" },
     { name = "rplidarc1", specifier = ">=0.1.3" },
     { name = "smbus2", specifier = ">=0.6.1" },
 ]
