@@ -173,7 +173,7 @@ The major electrical requirements are:
 
 # 3. Power Architecture
 
-# 3.1 Main Battery
+## 3.1 Main Battery
 
 The complete robot uses one **3S LiPo battery** as its primary power source.
 
@@ -194,7 +194,7 @@ Because the battery voltage is variable and is higher than the supply required b
 
 ---
 
-# 3.2 High-Level Power Distribution
+## 3.2 High-Level Power Distribution
 
 The final design divides the battery supply into two principal branches:
 
@@ -227,7 +227,7 @@ All connected subsystems therefore share a common electrical reference.
 
 ---
 
-# 3.3 Computing Branch
+## 3.3 Computing Branch
 
 The computing branch supplies the Raspberry Pi and its Pi-side interface electronics.
 
@@ -252,7 +252,7 @@ The Raspberry Pi supply is separated from the motor/control branch because the P
 
 ---
 
-## 3.3.1 Raspberry Pi Supply Validation
+### 3.3.1 Raspberry Pi Supply Validation
 
 The Raspberry Pi 5 has a load-dependent current requirement.
 
@@ -281,7 +281,7 @@ This is more useful for validating the actual robot than relying only on the max
 
 ---
 
-# 3.4 Motor / Control Branch
+## 3.4 Motor / Control Branch
 
 The second branch supplies the motor/control-side system through the XL4015.
 
@@ -307,7 +307,7 @@ Until this measurement is confirmed, this document intentionally does not claim 
 
 ---
 
-## 3.4.1 Why the Branches Are Separated
+### 3.4.1 Why the Branches Are Separated
 
 Drive motors and steering servos do not draw constant current.
 
@@ -329,7 +329,7 @@ The design objective is:
 
 ---
 
-# 3.5 Power Distribution Hardware
+## 3.5 Power Distribution Hardware
 
 The final power-distribution structure uses:
 
@@ -360,9 +360,9 @@ The electrical design must also consider:
 
 ---
 
-# 4.1 Reference Load Table
+## 4.1 Reference Load Table
 
-The table below distinguishes between **reference specifications** and values that still require measurement on the completed robot.
+The table below distinguishes between **reference specifications** and **values**.
 
 | Component | Supply | Reference / Known Current | Peak / Stall | Evidence Type |
 |---|---:|---:|---:|---|
@@ -510,7 +510,7 @@ Arduino UNO R4 Minima
 
 ---
 
-# 5.1 Raspberry Pi 5
+## 5.1 Raspberry Pi 5
 
 **Purpose:** High-level perception, localization and navigation.
 
@@ -538,7 +538,7 @@ Instead, actuator requests are sent to the Arduino.
 
 ---
 
-# 5.2 DFR0566 IO Expansion HAT
+## 5.2 DFR0566 IO Expansion HAT
 
 <img width="250" height="250" alt="IO Expansion HAT for Raspberry Pi" src="https://github.com/user-attachments/assets/8b4d94f5-aa58-4ed3-8f8b-6d8c36019284" />
 
@@ -570,7 +570,7 @@ Its purpose is mainly to:
 
 ---
 
-## 5.2.1 Interface Role
+### 5.2.1 Interface Role
 
 The camera and LiDAR use their own Raspberry Pi interfaces.
 
@@ -578,7 +578,7 @@ The HAT is mainly important for Raspberry Pi-side GPIO / I²C peripherals such a
 
 ---
 
-# 5.3 Arduino UNO R4 Minima
+## 5.3 Arduino UNO R4 Minima
 
 **Purpose:** Low-level actuator and interface controller.
 
@@ -602,7 +602,7 @@ Arduino
 
 ---
 
-# 5.4 Raspberry Pi ↔ Arduino Communication
+## 5.4 Raspberry Pi ↔ Arduino Communication
 
 The two controllers communicate through **USB Serial**.
 
@@ -626,7 +626,7 @@ The detailed software interpretation of these messages is documented in:
 
 ---
 
-## 5.4.1 Response Messages
+### 5.4.1 Response Messages
 
 | Response | Meaning |
 |---|---|
@@ -681,7 +681,7 @@ This is why the final system uses multiple sensing modalities.
 
 ---
 
-# 6.2 Sensor Trade-off Summary
+## 6.2 Sensor Trade-off Summary
 
 | Final Sensor | Earlier / Alternative Approach | Advantage of Final Choice | Trade-off |
 |---|---|---|---|
@@ -693,21 +693,17 @@ This is why the final system uses multiple sensing modalities.
 
 ---
 
-# 6.3 Camera — Raspberry Pi Night Vision Camera
+## 6.3 Camera — Raspberry Pi Night Vision Camera
 
 <img width="213" height="213" alt="Camera" src="https://github.com/user-attachments/assets/d7751474-46d0-48a2-b5eb-e41289d2c9b4" />
 
 **Purpose:** Visual traffic-pillar sensing.
 
-The camera provides information that cannot be obtained from LiDAR distance data alone.
-
-In particular, LiDAR can detect that an object exists but cannot determine whether the WRO traffic pillar is **red or green**.
-
-The camera therefore provides the color information required by the Obstacle Challenge.
+The camera provides essential information that cannot be obtained from LiDAR distance data alone. While LiDAR can detect the presence and distance of an object, it cannot identify its color, such as whether a WRO traffic pillar is **red or green**. Therefore, the camera is used to provide the color information needed for the robot to correctly respond to the Obstacle Challenge.
 
 ---
 
-## 6.3.1 Why a Camera Is Necessary
+### 6.3.1 Why a Camera Is Necessary
 
 ```text
 LiDAR:
@@ -719,11 +715,11 @@ Object color
 Visual appearance
 ```
 
-The two sensors therefore solve different problems rather than duplicating one another.
+Therefore, the two sensors serve different purposes. This allows them to complement each other rather than duplicate the same function.
 
 ---
 
-## 6.3.2 Camera Field of View Development
+### 6.3.2 Camera Field of View Development
 
 The original lens provided a relatively narrow visible area.
 
@@ -740,13 +736,13 @@ Until this is confirmed, this document intentionally does not claim one of those
 
 ---
 
-# 6.4 RPLiDAR C1
+## 6.4 RPLiDAR C1
 
 <img width="358" height="355" alt="LiDAR" src="https://github.com/user-attachments/assets/04993f0c-df40-4ea0-91fa-db8690b847c1" />
 
 **Purpose:** 2D environmental-distance sensing.
 
-The RPLiDAR C1 provides distance measurements around the vehicle.
+The RPLiDAR C1 provides distance measurements around the vehicle, allowing the software to understand the robot’s surroundings and detect nearby objects.
 
 Its information is used by the software for:
 
@@ -766,13 +762,9 @@ Baud rate: 460800
 
 ---
 
-## 6.4.1 Why LiDAR Replaced Ultrasonic Sensors
+### 6.4.1 Why LiDAR Replaced Ultrasonic Sensors
 
-The initial sensing concept used ultrasonic sensors.
-
-Ultrasonic sensors provide distance information in individual directions.
-
-The final navigation strategy required richer spatial information around the robot.
+The initial sensing concept relied on ultrasonic sensors, which provided distance measurements in individual directions. However, the final navigation strategy required more detailed spatial information around the robot.
 
 The LiDAR provides a 2D scan of the surrounding field and therefore better supports:
 
@@ -781,11 +773,11 @@ The LiDAR provides a 2D scan of the surrounding field and therefore better suppo
 - position estimation,
 - and localization on the known WRO field.
 
-For this reason, the sensor architecture changed from discrete ultrasonic measurements to LiDAR-based environmental sensing.
+As a result, the sensor architecture was changed from discrete ultrasonic measurements to LiDAR-based environmental sensing.
 
 ---
 
-# 6.5 BNO055 IMU — Gravity 10 DOF IMU AHRS
+## 6.5 BNO055 IMU — Gravity 10 DOF IMU AHRS
 
 <img width="282" height="239" alt="IMU" src="https://github.com/user-attachments/assets/903cb715-8ac6-4622-b98d-e1724477d0ca" />
 
@@ -793,13 +785,8 @@ The robot uses the **DFRobot Gravity 10 DOF IMU AHRS BNO055 + BMP280 (SEN0253)**
 
 **Purpose:** Relative heading and orientation reference.
 
-The BNO055 internally combines information from:
+TThe BNO055 combines data from its built-in accelerometer, gyroscope, and magnetometer to calculate the robot’s orientation. It then provides fused orientation data to the Raspberry Pi, allowing the system to monitor the robot’s heading and movement more reliably.
 
-- accelerometer,
-- gyroscope,
-- magnetometer.
-
-It provides fused orientation outputs to the Raspberry Pi.
 
 ### Interface
 
@@ -811,29 +798,19 @@ via DFR0566 interface
 
 ---
 
-## 6.5.1 Why the IMU Is Used
+### 6.5.1 Why the IMU Is Used
 
-LiDAR localization provides information relative to the field geometry.
-
-The IMU provides an independent orientation reference.
-
-The two sources complement one another.
-
-The robot does not require geographic North as the primary navigation reference.
-
-Instead, the software mainly uses relative orientation from the starting direction together with LiDAR-based localization.
+LiDAR localization provides information about the robot’s position relative to the field geometry, while the IMU provides an independent reference for its orientation. These two sources complement each other to improve the robot’s overall navigation. Instead of relying on geographic North as the primary reference, the software mainly determines the robot’s orientation relative to its starting direction and combines this with LiDAR-based localization to navigate the known WRO field.
 
 ---
 
-# 6.6 Motor Encoder — CHP-20GP-180
+## 6.6 Motor Encoder — CHP-20GP-180
 
 <img width="299" height="280" alt="Motor Encoder" src="https://github.com/user-attachments/assets/8a20d44b-b5ab-425f-985f-b26f82f73660" />
 
 **Purpose:** Drive-motor rotation feedback.
 
-The motor contains a dual-channel Hall-effect encoder.
-
-The Arduino reads both encoder channels using quadrature decoding.
+The motor is equipped with a dual-channel Hall-effect encoder that generates two signals for tracking the motor’s rotation. The Arduino reads both encoder channels using quadrature decoding, allowing the system to determine the direction and amount of motor rotation for more precise movement control.
 
 Existing documentation uses:
 
@@ -855,34 +832,27 @@ This distinction should be documented accurately because the encoder is physical
 
 ---
 
-## 6.6.1 Why Encoder Feedback Is Useful
+### 6.6.1 Why Encoder Feedback Is Useful
+Without an encoder, the control system only knows the PWM signal sent to the motor, which does not guarantee a specific physical rotation. 
 
-Without an encoder, the control system only knows what motor PWM was commanded.
-
-PWM does not guarantee an exact physical rotation because actual movement varies with:
+Actual motor movement can vary depending on factors such as:
 
 - battery voltage,
 - friction,
 - mechanical load,
 - and acceleration.
 
-Encoder feedback gives the controller direct information about motor rotation.
-
-This is particularly important for:
-
-- controlled-distance movement,
-- parking,
-- and repeatable drivetrain behavior.
+Encoder feedback provides the controller with direct information about the motor’s actual rotation, allowing for more accurate and consistent movement. This is especially important for controlled-distance movement, precise parking, and achieving repeatable drivetrain performance.
 
 ---
 
-# 6.7 ZX-Switch01 Competition Start Switch
+## 6.7 ZX-Switch01 Competition Start Switch
 
 <img width="234" height="231" alt="Touch Sensor" src="https://github.com/user-attachments/assets/dbe4f1f2-d705-40a1-bc5b-98a68d8a5cdf" />
 
 **Purpose:** Physical competition-start input.
 
-The start switch is connected to the Arduino and allows the robot to remain powered and initialized while waiting for the official start command.
+The start switch is connected to the Arduino and allows the robot to remain powered and fully initialized while waiting for the official start command. Once the start signal is given, the Arduino can trigger the robot’s programmed operation.
 
 Current pin assignment:
 
@@ -902,19 +872,9 @@ ZX-Switch01
 
 ---
 
-# 6.8 Removed Sensor — Light Sensor
+## 6.8 Removed Sensor — Light Sensor
 
-The first prototype included a light sensor beneath the front steering structure.
-
-Its original purpose was to detect the blue and orange field markings and assist with deciding when the robot should turn.
-
-After the architecture changed to LiDAR-based localization, this sensor was no longer required.
-
-The light sensor was therefore removed from the final sensing architecture.
-
-This is important because the final sensor configuration was not created only by adding more sensors.
-
-Some sensors were intentionally removed when their information became redundant.
+The first prototype included a light sensor mounted beneath the front steering structure to detect the blue and orange field markings and help determine when the robot should turn. However, after the navigation architecture was changed to LiDAR-based localization, the information provided by the light sensor was no longer necessary. The sensor was therefore removed from the final sensing architecture. This shows that the final sensor configuration was not simply created by adding more sensors, but by evaluating the role of each sensor and removing those whose information became redundant.
 
 ---
 
@@ -922,16 +882,11 @@ Some sensors were intentionally removed when their information became redundant.
 
 Sensor placement directly affects measurement quality.
 
-A correct electrical connection is not enough if a sensor is mounted at the wrong:
-
-- height,
-- angle,
-- orientation,
-- or position.
+A correct electrical connection alone is not sufficient to ensure reliable sensor operation. Sensors must also be mounted at the appropriate height, angle, orientation, and position so that they can accurately collect the information required by the robot’s control and navigation systems.
 
 ---
 
-# 7.1 Placement Summary
+## 7.1 Placement Summary
 
 | Sensor | Final Placement | Main Placement Reason |
 |---|---|---|
@@ -944,25 +899,12 @@ A correct electrical connection is not enough if a sensor is mounted at the wron
 
 ---
 
-# 7.2 Camera Placement
+## 7.2 Camera Placement
 
-The camera is mounted above much of the robot structure.
+The camera is mounted above most of the robot’s structure to minimize obstruction from the chassis, steering components, wiring, and other electronics. This elevated position provides the visual system with a clearer view of the field and traffic pillars. 
 
-The upper position reduces obstruction from:
+The camera mount is also mechanically adjustable, allowing its viewing angle to be changed without redesigning the entire chassis. This flexibility is important because camera performance can be affected by both the field geometry and the lighting conditions during competition.
 
-- chassis components,
-- steering parts,
-- wiring,
-- and other electronics.
-
-This gives the visual system a clearer view toward the field and traffic pillars.
-
-The camera mount is mechanically adjustable so that its angle can be changed without redesigning the complete chassis.
-
-This is useful because camera performance depends on both:
-
-- field geometry,
-- and competition lighting.
 
 > **[TODO: Add measured final camera height above the field.]**
 
@@ -970,27 +912,21 @@ This is useful because camera performance depends on both:
 
 ---
 
-# 7.3 LiDAR Placement
+## 7.3 LiDAR Placement
 
-The WRO field is primarily planar.
+The WRO field is primarily planar, while the LiDAR produces a 2D scan within a specific sensing plane. To accurately represent the walls and surrounding objects, the LiDAR must be mounted so that its scanning plane remains approximately parallel to the field surface. This ensures that the distance measurements are consistent and useful for localization and navigation.
 
-The LiDAR produces a 2D scan plane.
-
-For the scan to represent walls and surrounding objects correctly, this sensing plane should remain approximately parallel to the field surface.
 
 ---
 
-## 7.3.1 Development Problem
+### 7.3.1 Development Problem
 
-In an earlier robot configuration, the LiDAR was mounted at an excessive angle relative to the ground.
+In an earlier robot configuration, the LiDAR was mounted at an excessive angle relative to the ground, causing its 2D scanning plane to intersect the surrounding environment at inconsistent heights. As a result, the environmental data did not accurately represent the expected top-down geometry of the WRO field, reducing the reliability of LiDAR-based localization and navigation.
 
-This meant that the 2D scan intersected the surrounding geometry at inconsistent heights.
-
-The resulting environmental representation did not match the expected top-down field geometry.
 
 ---
 
-## 7.3.2 Final Change
+### 7.3.2 Final Change
 
 The LiDAR was repositioned closer to parallel with the field.
 
@@ -1012,44 +948,23 @@ This improved the usefulness of LiDAR measurements for 2D localization.
 
 ---
 
-# 7.4 IMU Placement
+## 7.4 IMU Placement
 
-The BNO055 was originally mounted beside the Raspberry Pi I/O Expansion HAT.
+The BNO055 was originally mounted beside the Raspberry Pi I/O Expansion HAT. Although this configuration worked electrically, it created a crowded electronics area with limited space for wiring and component organization. 
 
-This configuration worked electrically but created a crowded electronics area.
+In the redesigned robot, the IMU was moved underneath the LiDAR to make better use of the available space, reduce wiring congestion around the Raspberry Pi, and achieve a cleaner integration with the final mechanical structure. 
 
-In the redesigned robot, the IMU was moved underneath the LiDAR.
+This position also places the IMU farther from some of the dense electronics and power wiring around the Raspberry Pi. Since the BNO055 includes a magnetometer, nearby magnetic fields may affect heading measurements; 
 
-Reasons include:
-
-- better use of available space,
-- reduced wiring congestion around the Raspberry Pi,
-- cleaner component organization,
-- and improved integration with the final mechanical structure.
-
-The position also moves the IMU away from some of the dense electronics and power wiring around the Raspberry Pi area.
-
-Because the BNO055 includes a magnetometer, nearby magnetic fields are considered as a potential source of heading error.
-
-However:
-
-> We do not claim that the final IMU position completely eliminates magnetic interference because this has not been quantitatively measured.
+> however, we do not claim that the final IMU position completely eliminates magnetic interference because this effect has not been quantitatively measured.
 
 ---
 
 # 8. Calibration, Initialization and Signal Quality
 
-It is important to distinguish between:
+It is important to distinguish between **calibration** and **initialization**. 
 
-### Calibration
-
-Adjusting a measurement system so that its values better match reality.
-
-### Initialization
-
-Establishing a runtime reference when the robot starts.
-
-The sensors in our robot do not all use the same method.
+**Calibration** involves adjusting a measurement system so that its readings more accurately reflect real-world values, while **initialization** establishes a reference for the sensors when the robot starts operating. These processes serve different purposes, and the sensors used in our robot do not all rely on the same method.
 
 ---
 
@@ -1065,25 +980,17 @@ The sensors in our robot do not all use the same method.
 
 ---
 
-# 8.2 Camera Configuration
+## 8.2 Camera Configuration
 
-The major camera hardware change was replacing the original narrower lens with a wider-angle lens.
+The main camera hardware change was replacing the original narrow lens with a wider-angle configuration. On the software side, red and green traffic-pillar detection uses color thresholds tuned from actual camera images rather than assuming ideal RGB values.
 
-The software also uses color thresholds for traffic-pillar detection.
+Lighting remains an important source of uncertainty. The current software therefore includes tools that allow HSV values to be sampled from real images and used to adjust the detection ranges.
 
-The thresholds are tuned from actual camera images rather than assuming ideal RGB colors.
-
-Lighting conditions remain an important source of uncertainty.
-
-The current software includes tools for selecting HSV color ranges from real images.
-
-Detailed image-processing calibration is documented in:
-
-[`../software/software_README.md`](../software/software_README.md)
+Detailed image-processing calibration is documented in: [`../software/software_README.md`](../software/software_README.md)
 
 ---
 
-# 8.3 LiDAR Alignment
+## 8.3 LiDAR Alignment
 
 The primary hardware-side LiDAR calibration is physical orientation.
 
@@ -1098,25 +1005,17 @@ Result:
 2D scan corresponds more closely to field geometry
 ```
 
-The LiDAR does not require the same type of startup reference as the IMU.
-
-Its measurements are interpreted against the known WRO field geometry by the navigation software.
+The LiDAR does not require the same type of startup reference as the IMU. Instead, its distance measurements are interpreted by the navigation software in relation to the known geometry of the WRO field, allowing the robot to determine its position and navigate based on the surrounding field structure.
 
 ---
 
-# 8.4 BNO055 Initialization and Relative Heading
+## 8.4 BNO055 Initialization and Relative Heading
 
-The robot does **not** perform a complete BNO055 magnetometer-calibration routine before every competition run.
-
-This is intentional.
-
-The autonomous system does not need to know geographic North.
-
-It needs a repeatable reference relative to the robot's starting orientation.
+The robot does **not** perform a complete magnetometer-calibration routine before every competition run. This is intentional because the navigation system does not require geographic North; it needs a useful orientation reference relative to the robot's starting direction.
 
 ---
 
-## 8.4.1 Startup Settling
+### 8.4.1 Startup Settling
 
 After communication with the BNO055 is established, the software waits approximately:
 
@@ -1128,7 +1027,7 @@ This gives the BNO055 fusion output a short period to settle before it is used.
 
 ---
 
-## 8.4.2 Initial Heading Capture
+### 8.4.2 Initial Heading Capture
 
 After the competition start condition is triggered, the current heading is stored as the initial reference.
 
@@ -1160,7 +1059,7 @@ The exact raw numerical heading is less important than the difference from the s
 
 ---
 
-## 8.4.3 Field-Coordinate Offset
+### 8.4.3 Field-Coordinate Offset
 
 The localization software can also apply a compass offset when relating raw IMU orientation to the field coordinate system.
 
@@ -1180,23 +1079,19 @@ This is a coordinate convention rather than a full magnetometer calibration.
 
 ---
 
-## 8.4.4 IMU Limitation
+### 8.4.4 IMU Limitation
 
 Because the system does not wait for a complete magnetometer calibration before every run, absolute heading should not be treated as perfectly reliable over long periods or in every magnetic environment.
 
-The software therefore does not depend on the IMU as the only localization source.
+Therefore, the software does not rely on the IMU as the only source of localization.
 
-LiDAR geometry provides an additional orientation and position reference.
+Instead, LiDAR-based field geometry provides an additional reference for determining the robot’s orientation and position, improving the overall reliability of navigation.
 
 ---
 
-# 8.5 Encoder Calibration / Interpretation
+## 8.5 Encoder Calibration / Interpretation
 
-The encoder conversion depends on:
-
-- encoder pulses per revolution,
-- quadrature multiplication,
-- gearbox ratio.
+The conversion between encoder signals and physical rotation depends on the encoder pulses per revolution, quadrature decoding factor, and gearbox ratio.
 
 Existing documentation calculates:
 
@@ -1212,7 +1107,7 @@ Once verified, this relationship can be used to convert encoder counts into driv
 
 ---
 
-# 8.6 Noise, Interference and Environmental Effects
+## 8.6 Noise, Interference and Environmental Effects
 
 The final sensor and power architecture considers several different sources of measurement or electrical instability.
 
@@ -1227,15 +1122,14 @@ The final sensor and power architecture considers several different sources of m
 | Sensor unavailable | Missing navigation information | Software device checks / degraded behavior where supported |
 | Encoder electrical noise / incorrect counts | Motion-estimation error | Quadrature decoding and documented wiring |
 
-Not all of these effects have been measured quantitatively.
+Not all of these effects have been measured quantitatively. Therefore, when quantitative evidence is unavailable, they are documented as **risk considerations** rather than being presented as proven reductions in failure or error rates.
 
-Where quantitative evidence is unavailable, they are documented as **risk considerations**, not proven measured failure reductions.
 
 ---
 
 # 9. Interface and Pin Assignment
 
-# 9.1 Arduino Pin Assignment
+## 9.1 Arduino Pin Assignment
 
 | Function | Arduino Pin |
 |---|---|
@@ -1247,16 +1141,11 @@ Where quantitative evidence is unavailable, they are documented as **risk consid
 | Competition Start Switch | A0 |
 | Pi Communication | USB |
 
-The encoder uses both channels for quadrature decoding.
-
-The drive motor uses:
-
-- PWM for motor power request,
-- digital direction output.
+The encoder uses both channels to detect the motor’s rotation and direction. The drive motor uses PWM to control its power and a digital signal to control its direction.
 
 ---
 
-# 9.2 Raspberry Pi Device Interfaces
+## 9.2 Raspberry Pi Device Interfaces
 
 | Device | Interface | Default Device / Bus |
 |---|---|---|
@@ -1266,11 +1155,10 @@ The drive motor uses:
 | DFR0566 | Raspberry Pi GPIO header | Pi header |
 | Camera | CSI | Raspberry Pi camera interface |
 
-USB identification logic in the software is used to distinguish the Arduino from the LiDAR interface where possible.
 
 ---
 
-# 9.3 Motor Encoder Wiring
+## 9.3 Motor Encoder Wiring
 
 Current documented encoder wiring:
 
@@ -1283,13 +1171,12 @@ Current documented encoder wiring:
 | Blue | Hall Sensor 5 V |
 | White | Motor Power - |
 
-The electrical wiring diagram should always be treated as the final reference if the physical harness changes.
 
 ---
 
 # 10. Wiring Architecture
 
-# 10.1 Schematic Diagram
+## 10.1 Schematic Diagram
 
 ![Schematic Diagram](../schemes/Schematic%20Diagram.png)
 
@@ -1321,7 +1208,7 @@ Negative / Ground -> PCT-21
 
 ---
 
-# 10.2 Physical Wiring Diagram
+## 10.2 Physical Wiring Diagram
 
 ![Wiring Diagram](../schemes/Wiring%20Diagram.png)
 
@@ -1341,7 +1228,7 @@ Both should be used when reproducing the system.
 
 ---
 
-# 10.3 High-Level Electrical Architecture
+## 10.3 High-Level Electrical Architecture
 
 ```text
                          3S LiPo Battery
@@ -1383,25 +1270,21 @@ Raspberry Pi 5
 
 ---
 
-# 10.4 Common Ground
+## 10.4 Common Ground
 
-The Raspberry Pi, Arduino, sensors, and control electronics require compatible electrical references for their signals.
-
-The negative wiring is therefore distributed through the common-ground system.
-
-This is particularly important where signals cross between independently regulated branches.
+The Raspberry Pi, Arduino, sensors, and control electronics need a common electrical reference for their signals. Therefore, the negative connections are connected through a common-ground system. This is especially important when signals are shared between different power branches.
 
 ---
 
 # 11. Electrical and Sensor Development — V1 to V3
 
-The sensing architecture changed significantly during development.
-
-The final system was not created by selecting every current sensor at the beginning.
+The sensing architecture changed significantly during development. The final system was developed gradually, with sensors being added, tested, and removed based on the robot’s actual requirements rather than selecting all of the sensors at the beginning.
 
 ---
 
-# 11.1 Version 1 — Initial Sensing Concept
+## 11.1 Version 1 — Initial Sensing Concept
+
+<img width="500" height="550" alt="V1" src="https://github.com/user-attachments/assets/2cd51408-8423-43bb-8a1c-9e98e6d49be4" />
 
 Version 1 used the initial sensing concept:
 
@@ -1422,21 +1305,17 @@ The initial idea was:
 - camera for visual sensing,
 - ultrasonic sensors for front distance,
 - light sensor for track-marking information,
-- IMU for orientation.
+- and IMU for orientation.
 
-At this stage, the complete Raspberry Pi autonomous navigation system had not yet been implemented.
+At this stage, the complete Raspberry Pi autonomous navigation system had not yet been implemented. 
 
-Therefore:
-
-> No complete autonomous-performance result is claimed for Version 1.
+> Therefore, no complete autonomous-performance results are claimed for Version 1.
 
 ---
 
-# 11.2 Architecture Change
+## 11.2 Architecture Change
 
-During development, the sensing strategy changed fundamentally.
-
-The final software required environmental information that was better suited to localization.
+During development, the sensing strategy changed significantly. The final software required more detailed environmental information to support accurate localization and navigation.
 
 This led to the change:
 
@@ -1447,15 +1326,11 @@ Ultrasonic + Light Sensor
        RPLiDAR C1
 ```
 
-The ultrasonic sensors and light sensor were removed.
-
-This was not simply a component replacement.
-
-It changed what information the robot had available.
+The ultrasonic sensors and light sensor were removed as the sensing strategy changed. This was more than a component replacement; it changed the type of information available to the robot. The final system mainly used LiDAR and camera data for navigation and localization.
 
 ---
 
-# 11.3 Version 2 — LiDAR-Based Prototype
+## 11.3 Version 2 — LiDAR-Based Prototype
 
 Version 2 introduced:
 
@@ -1480,7 +1355,7 @@ The LiDAR provided environmental geometry that allowed the software to move towa
 
 ---
 
-# 11.4 Version 3 — Final Electrical Architecture
+## 11.4 Version 3 — Final Electrical Architecture
 
 Version 3 retained the main V2 sensing concept but rebuilt the physical platform and electrical layout.
 
@@ -1493,11 +1368,11 @@ Major final changes included:
 - separated computing and motor/control branches,
 - final wiring architecture,
 - final component mounting,
-- final start interface.
+- and final start interface.
 
 ---
 
-# 11.5 Electrical / Sensor Evolution Summary
+## 11.5 Electrical / Sensor Evolution Summary
 
 | Version | Sensor Architecture | Power / Electrical Change | Reason |
 |---|---|---|---|
@@ -1509,9 +1384,7 @@ Major final changes included:
 
 # 12. Testing and Reliability Iteration
 
-The electrical and sensing system was developed through repeated testing.
-
-The most important changes were caused by observed problems rather than aesthetic preference.
+The electrical and sensing system was developed through repeated testing and evaluation. Most major changes were made to solve problems found during testing rather than for aesthetic purposes.
 
 ---
 
@@ -1585,15 +1458,14 @@ Final:
 Camera + LiDAR + IMU + Encoder
 ```
 
-This is one of the largest system-level changes in the robot because the electrical sensor architecture directly enabled a different software-navigation architecture.
+This was one of the major system-level changes in the robot, as the electrical and sensor architecture directly influenced and enabled a different software-navigation architecture.
+
 
 ---
 
 ## 12.5 Power Architecture Iteration
 
-The final architecture separates the Raspberry Pi conversion path from the motor/control conversion path.
-
-The reason is to reduce the probability that rapidly changing actuator current affects the Raspberry Pi supply.
+The final architecture uses separate conversion paths for the Raspberry Pi and the motor control system. This separation helps reduce the risk of changes in motor current affecting the power supply to the Raspberry Pi.
 
 > **[TODO: Add measured Pi voltage during simultaneous acceleration + steering if possible. This would provide direct reliability evidence for the separated power architecture.]**
 
@@ -1616,10 +1488,6 @@ The reason is to reduce the probability that rapidly changing actuator current a
 ---
 
 # 13. Failure Modes, Noise and Risk Mitigation
-
-Level-6 engineering documentation must consider how the system may fail, not only how it behaves when everything is correct.
-
----
 
 ## 13.1 Electrical Failure Modes
 
@@ -1653,8 +1521,6 @@ Level-6 engineering documentation must consider how the system may fail, not onl
 
 # 13.3 Failure Detection
 
-A failure mode is most useful when there is also a way to detect it.
-
 | Condition | Detection Method |
 |---|---|
 | Arduino unavailable | `/dev/ttyACM0` / serial initialization |
@@ -1670,9 +1536,7 @@ A failure mode is most useful when there is also a way to detect it.
 
 # 14. System-Level Engineering Decisions and Trade-offs
 
-Electrical architecture affects both mechanical design and software capability.
-
-The final design therefore contains several explicit engineering trade-offs.
+The electrical architecture affects both the mechanical design and the capabilities of the software. Therefore, the final design includes several deliberate engineering trade-offs to balance these different requirements.
 
 | Decision | Alternative | Benefit | Cost / Trade-off |
 |---|---|---|---|
@@ -1687,7 +1551,7 @@ The final design therefore contains several explicit engineering trade-offs.
 
 ---
 
-# 14.1 Electrical → Mechanical
+## 14.1 Electrical → Mechanical
 
 Electrical components require physical mounting space.
 
@@ -1699,11 +1563,11 @@ Examples:
 - the IMU position changed because of electronics congestion,
 - cable routing affects structural placement.
 
-Electrical packaging therefore influenced the final mechanical design.
+Therefore, electrical packaging influenced the final mechanical design.
 
 ---
 
-# 14.2 Electrical → Software
+## 14.2 Electrical → Software
 
 The sensor architecture determines what information the software can use.
 
@@ -1721,17 +1585,13 @@ LiDAR + Camera + IMU + Encoder
 
 enabled a fundamentally different navigation strategy.
 
-LiDAR made field-localization approaches possible.
+LiDAR provides the geometric information required for field localization, while the camera supplies traffic-pillar color information that LiDAR cannot measure. The IMU provides heading context, and the encoder provides information about drivetrain rotation.
 
-Camera remained necessary for color information.
-
-IMU provides heading context.
-
-Encoder provides drivetrain movement feedback.
+The electrical sensor architecture therefore directly enabled the final localization and obstacle-handling software.
 
 ---
 
-# 14.3 Mechanical → Electrical / Sensor Quality
+## 14.3 Mechanical → Electrical / Sensor Quality
 
 Mechanical alignment also affects sensing.
 
@@ -1756,17 +1616,13 @@ This is why sensor placement and electrical design cannot be evaluated independe
 
 ---
 
-# 14.4 Most Important Electrical Decision
+## 14.4 Most Important Electrical Decision
 
 One of the most important electrical decisions was:
 
-> **We chose a separated power-distribution architecture instead of treating every load as one shared low-voltage system because the Raspberry Pi and the actuators have very different electrical behavior.**
+> To use a separated power-distribution architecture rather than treating all loads as one shared low-voltage system.
 
-The Raspberry Pi requires stable computing power.
-
-The motor and servo create rapidly changing loads.
-
-The final architecture therefore uses different conversion paths while maintaining a shared ground reference.
+This was because the Raspberry Pi requires a stable power supply, while the motor and servo can create rapidly changing electrical loads. Therefore, the final architecture uses separate conversion paths for the computing and actuator systems while maintaining a shared ground reference.
 
 ---
 
@@ -1824,9 +1680,7 @@ The final architecture therefore uses different conversion paths while maintaini
 
 ---
 
-# 15.1 Final Electrical Unknowns to Resolve
-
-Before final submission, the following values should be physically verified because current repository documents are not fully consistent:
+## 15.1 Final Electrical Unknowns to Resolve
 
 | Item | Required Verification |
 |---|---|
@@ -1839,13 +1693,9 @@ Before final submission, the following values should be physically verified beca
 | Pi loaded rail voltage | Measure during final software |
 | Pi branch current | Measure under representative load |
 
-These TODOs are intentionally visible rather than hiding uncertain values.
-
 ---
 
 # 16. Electrical Reproducibility
-
-A second team should not have to infer the electrical design from photographs alone.
 
 The electrical system should be reproduced using:
 
@@ -1860,7 +1710,7 @@ The electrical system should be reproduced using:
 
 ---
 
-# 16.1 Minimum Reproduction Map
+## 16.1 Minimum Reproduction Map
 
 ```text
 MAIN POWER
@@ -1889,7 +1739,7 @@ PCT-21 Common Ground
 
 ---
 
-# 16.2 Controller / Sensor Connections
+## 16.2 Controller / Sensor Connections
 
 ```text
 Raspberry Pi 5
@@ -1915,7 +1765,7 @@ Raspberry Pi 5
 
 ---
 
-# 16.3 Pre-Power Verification
+## 16.3 Pre-Power Verification
 
 Before connecting sensitive electronics:
 
@@ -1953,7 +1803,7 @@ The detailed physical build sequence is documented in:
 
 ---
 
-# 16.4 Electrical Verification Checklist
+## 16.4 Electrical Verification Checklist
 
 Before the first autonomous run:
 
@@ -1978,8 +1828,6 @@ Before the first autonomous run:
 
 # 17. References
 
-The final repository should use official manufacturer documentation wherever possible.
-
 | Component / Topic | Reference |
 |---|---|
 | Raspberry Pi 5 | https://www.raspberrypi.com/products/raspberry-pi-5/ |
@@ -1995,7 +1843,7 @@ The final repository should use official manufacturer documentation wherever pos
 
 ---
 
-# Final Electrical Summary
+## Final Electrical Summary
 
 The final electrical and sensing architecture of YBR-SUNFLOWER developed through several major changes rather than remaining fixed from the first prototype.
 
