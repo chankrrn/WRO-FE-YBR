@@ -247,26 +247,9 @@ This section should will allow you to understand the physical system without fir
 
 ### Overall Component Layout
 
-> **[TODO: Add NEW annotated final robot layout image]**
->
-> The image should label at least:
->
-> - Raspberry Pi 5
-> - DFR0566 IO Expansion HAT
-> - Arduino UNO R4 Minima
-> - RPLiDAR C1
-> - BNO055 IMU
-> - Camera
-> - Drive motor
-> - Encoder
-> - Steering servo
-> - L298P Motor Shield
-> - LM2596
-> - XL4015
-> - Battery
-> - Main switch
-> - Start button
-> - Power-distribution connectors
+<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/bd50684dcc13163beae399e9623f2a18dc44b98a/other/Layout1.png">
+
+<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/bd50684dcc13163beae399e9623f2a18dc44b98a/other/Layout2.png">
 
 ### Mechanical Layout
 
