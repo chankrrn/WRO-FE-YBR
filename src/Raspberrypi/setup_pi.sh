@@ -3,7 +3,9 @@
 # Fresh-Pi setup for the WRO Future Engineers robot code.
 #
 # Target: Raspberry Pi 5, Raspberry Pi OS Bookworm/Trixie (64-bit).
-# Run it once on a new Pi, from inside the cloned repo:
+# Run it once on a new Pi, from inside the cloned repo. Raspberry Pi OS ships
+# with git already, so this works on a clean flash; if `git --version` errors,
+# `sudo apt update && sudo apt install -y git` first.
 #
 #     git clone https://github.com/chankrrn/WRO-FE-YBR.git
 #     cd WRO-FE-YBR/src/Raspberrypi

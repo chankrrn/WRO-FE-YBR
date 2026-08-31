@@ -380,6 +380,18 @@ class NavigationManager:
     # HEADING
     # ========================================================================
 
+    @property
+    def compass_anchored(self):
+        """
+        True when the compass has been told which way is which on the field.
+
+        Until it has, field_heading() returns the IMU's RAW heading, whose
+        zero is wherever the sensor happened to boot - so the quadrant it
+        picks is arbitrary but repeatable, which is worse than random. See
+        set_start_heading.
+        """
+        return self.compass is not None and self._compass_offset is not None
+
     def set_start_heading(self, field_heading_deg):
         """
         Anchors the compass: says "whatever the IMU reads right now, the robot
