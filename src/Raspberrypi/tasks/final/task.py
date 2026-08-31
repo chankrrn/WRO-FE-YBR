@@ -5,179 +5,95 @@ side its colour dictates.
     GREEN -> the robot passes on the block's LEFT
     RED   -> the robot passes on the block's RIGHT
 
-Nothing about the base lap-following changes here - steering, lookahead,
-speed and lidar safety are all inherited untouched from PathDrivingTask (see
-tasks/path_task.py). This file answers exactly one question,
-`target_lateral_mm()`: how far sideways the racing line should sit at a given
-point on the lap, so pure pursuit bends around a pillar the same way it
-follows any other point on the track. Everything else here exists to compute
-that one number correctly.
+This round used to work by bending the racing line sideways: a pillar produced
+a lateral offset, the offset was eased in and out with Beziers, and pure
+pursuit followed the bent line. The idea was sound and the arithmetic was
+careful, but the model had a hole in it. The offset the geometry asked for was
+routinely more than the corridor could give - 525mm of demand into 1000mm of
+corridor - so it was clamped, and NOTHING DOWNSTREAM KNEW. A pass planned at
+300mm and a pass clamped to 25mm produced the same confident line, the same
+status output, and one collision.
+
+So the round now plans the ordinary way instead: it names GOAL POSES the robot
+has to reach - beside each pillar, on the correct side, squared up with the
+track - and asks GoalPlanner for a curvature-bounded path through them, which
+it then sweeps with the robot's own footprint before driving it. Everything
+about that lives in classes/goal_planner.py and classes/dubins.py; this file
+supplies the goals, decides when to re-plan, and slows down when the planner
+says a pass is going to be tight.
+
+What did NOT change: lap counting, the speed profile, the lidar backstop, the
+parking manoeuvre, and pure pursuit itself. The follower was never the
+problem - it was being handed a line that had quietly stopped meaning what it
+said.
+
+One thing this round has to do before any of that is work out where it is.
+The robot starts INSIDE a parking space, between two walls that stick 200mm
+out from the outer wall and are not in the map the particle filter matches
+against. Every beam that hits one is unexplained, so the filter either refuses
+to converge or converges somewhere wrong - and a wrong pose at tick zero is a
+wrong plan for the whole round. See _wait_for_localization.
 """
 import math
 import time
 from collections import namedtuple
 
 import cv2
-import numpy as np
 
 from classes.block_map import BLOCK_SIZE_MM
-from classes.parking import (WALL_LENGTH_MM, BayFinder, BayFrame,
-                             ParkingController, bay_pose, section_of,
-                             wall_rects)
+from classes.goal_planner import GoalPlanner, Obstacle
+from classes.parking import (BayFinder, BayFrame, ParkingController,
+                             section_of, wall_rects)
 from tasks.path_task import PathDrivingTask
-from utils.angle_utils import clamp
 from utils.enums import Color
 
 # `lateral` is positive to the right of travel (see RacingLine.project).
-# Passing a block on its LEFT means the robot ends up to the left of it,
-# i.e. a negative offset from the block's own position.
+# Passing a block on its LEFT means the robot ends up to the left of it, i.e.
+# a negative offset from the block's own position. Measured in the TRAVEL
+# frame, so it is the same number whichever way round the loop is being
+# driven - which way that maps to on the mat is RacingLine's problem.
 SIDE_FOR_COLOR = {Color.GREEN: -1.0, Color.RED: +1.0}
 
 CAMERA_EVERY_N_TICKS = 2
 
-# One pillar's claim on the line: how far sideways it wants the line (`target`,
-# absolute, in the travel frame) and how much of that claim applies right now
-# (`weight`, 0-1). `block` and `gap` are carried along for the status line -
-# "the camera can see it" and "the line is acting on it" are different
-# questions, and the second one is the one that is hard to see from outside.
-# One point on the lap's offset profile. The profile is nothing but a list of
-# these joined by cubic Beziers, which is what makes it continuous by
-# construction rather than by arithmetic that has to be checked - see
-# FinalTask._build_line.
-Node = namedtuple("Node", "progress offset")
-
-# One stretch between two nodes, ready to evaluate: where it starts, how long
-# it is, and the offsets it runs between.
-Span = namedtuple("Span", "start length begin end")
-
-# Where a transition's two inner control points sit along it, as a fraction of
-# its length. Both ends of the curve are horizontal whatever these are - a
-# cubic Bezier's tangent at P0 points at P1, and P1 sits level with P0 - so the
-# handles do not decide WHETHER the line joins smoothly, only how much of the
-# transition is spent turning:
+# One pillar the plan is steering around: where it is, which way to pass it,
+# and when it was last actually confirmed.
 #
-#     0.33   the smoothstep this used to be, exactly
-#     lower  leaves the straight sooner and turns more evenly - gentler in the
-#            middle, sharper where it joins
-#     higher holds the straight longer and turns harder in the middle
-#
-# The peak lean of a symmetric transition works out at offset / (length x
-# (1 - handle)), so 0.33 leans at 1.5 x offset / length and 0.5 at 2x.
-DEFAULT_HANDLE = 1.0 / 3.0
+# The plan is built from THIS, not from nav.blocks.confirmed() directly. A
+# plan rebuilt from live confirmations every tick does not degrade when a
+# frame is missed, it is DELETED - the goal beside the pillar vanishes and the
+# path snaps back to the racing line the moment BlockMap drops a track, which
+# at range it does readily, because a pillar 2m off is a handful of pixels and
+# MAX_MISSES is six frames. That flicker lands on the approach, where the
+# pillar is furthest and the detection worst, and never on the exit, where it
+# is close and solid.
+Pillar = namedtuple("Pillar", "x y color last_seen")
 
-# The least of the gap between two pillars that each of their flat parts keeps
-# when the curve joining them cannot be given the length it wants - see
-# _share_gap. Also how much of a late pillar's whole sighting distance goes to
-# its flat part rather than to easing into it.
-MIN_PADDING_SHARE = 0.1
+# Two sightings closer together than this are the same pillar. Comfortably
+# bigger than BlockMap's own ASSOCIATION_RADIUS_MM (180mm), since anything
+# closer than this could not be dodged as a separate pillar anyway.
+SAME_PILLAR_MM = 250.0
 
-# How much clear lap the competition guarantees either side of a parking
-# space: nothing is placed nearer to one than this. It is what lets the bay
-# guard cover only the bay instead of the whole section it sits in - wherever
-# the bay turns out to be, no pillar's pass is beside it, so the line is on or
-# near the racing line there and already clear of a bay wall. See
-# FinalTask._bay_wall_limit_mm.
-PILLAR_FREE_MM = 500.0
-
-# How finely the corridor is measured along a dodge's whole reach when working
-# out how much of it will fit. The features it has to catch - a corner arc, the
-# parking bay's window - are hundreds of mm wide.
-BOUNDS_SAMPLE_MM = 50.0
-
-# How far the profile has to move at the pursuit target before it counts as a
-# jump worth easing rather than an ordinary refinement worth following. A
-# pillar arriving moves it by most of a dodge; the map nudging one that is
-# already there moves it by a millimetre or two.
-CATCHUP_DEADBAND_MM = 10.0
-
-# How much of a dodge a corner may quietly take before setup says so loudly.
-# On a well-proportioned line the corner is a few mm tighter than the straights
-# and the shortfall is not worth a WARNING; it is when the arcs are small
-# enough to eat a real part of the clearance that it matters.
-CORNER_CUT_TOLERANCE = 0.1
-
-# Two sightings this far apart along the lap are the same pillar. Ramp anchors
-# are remembered against a POSITION on the track rather than against a tracked
-# block, because a block is not a stable thing to hang anything on: lose it for
-# MAX_MISSES frames and BlockMap drops it, and the re-detection that follows is
-# a new track with a new uid and no history. Comfortably wider than BlockMap's
-# own ASSOCIATION_RADIUS_MM (180mm), since anything closer than this along the
-# lap could not be dodged as a separate pillar anyway.
-ANCHOR_SAME_PILLAR_MM = 200.0
-
-# One remembered pillar: where it is (`progress`, `lateral`), which way to
-# pass it (`color`), how early it was first seen (`anchor`), and when it was
-# last actually confirmed.
-#
-# The line is steered off THIS, not off nav.blocks.confirmed() directly. A
-# dodge recomputed from live confirmations every tick does not degrade when a
-# frame is missed, it is DELETED - the offset snaps to centre and back out
-# again the moment BlockMap drops a track, which at range it does readily,
-# because a pillar 2m off is a handful of pixels and MAX_MISSES is six frames.
-# That flicker lands on the approach, where the pillar is furthest and the
-# detection worst, and never on the exit, where it is close and solid.
-Pillar = namedtuple("Pillar", "progress lateral color anchor last_seen")
-
-
-def _bezier_t(x, lead, settle):
-    """
-    The curve parameter at along-track fraction `x` of a transition.
-
-    A cubic Bezier is parametric - moving `t` evenly does not move evenly along
-    the track - so reading the offset at a given point on the lap means solving
-    for `t` first. Newton on a well-behaved monotonic cubic, from a starting
-    guess that is already close; four passes take it to well under a
-    millimetre, and there is nothing here that can fail to converge because the
-    handles are clamped to keep the curve monotonic along the track.
-    """
-    t = clamp(x, 0.0, 1.0)
-    for _ in range(4):
-        one = 1.0 - t
-        # B(t) with control points 0, lead, 1 - settle, 1
-        value = (3.0 * one * one * t * lead
-                 + 3.0 * one * t * t * (1.0 - settle)
-                 + t * t * t)
-        slope = 3.0 * (one * one * lead
-                       + 2.0 * one * t * (1.0 - settle - lead)
-                       + t * t * settle)
-        if slope <= 1e-9:
-            break
-        t = clamp(t - (value - x) / slope, 0.0, 1.0)
-    return t
-
-
-def _bezier_ease(fraction, lead, settle):
-    """
-    Eases 0 -> 1 across a transition, as a cubic Bezier with both ends
-    horizontal.
-
-    The four points the curve is drawn through are (0, 0), (lead, 0),
-    (1 - settle, 1) and (1, 1), in units of the transition's own length. The
-    two middle ones are the handles: they sit level with the ends, which is
-    what makes the line leave and arrive parallel to the racing line, and their
-    positions ALONG the transition are the tuning.
-
-    With both handles at 1/3 this is exactly 3t^2 - 2t^3, the smoothstep the
-    profile used before, so leaving them alone changes nothing.
-    """
-    t = _bezier_t(clamp(fraction, 0.0, 1.0), lead, settle)
-    return t * t * (3.0 - 2.0 * t)
+# How far behind the robot a pillar is forgotten. Measured from the robot's
+# own progress rather than the pursuit target, and generous, because a pillar
+# dropped while the tail is still going past it takes its goal with it and
+# lets the plan fold back early - which is the one moment the exit goal exists
+# to prevent. See GoalPlanner._build_goals.
+FORGET_BEHIND_MM = 700.0
 
 
 class FinalTask(PathDrivingTask):
     """
-    PathDrivingTask with the racing line bent sideways around each pillar.
+    PathDrivingTask with a goal-based planner in place of the racing line.
 
-    Rather than a separate avoidance controller fighting the path follower,
-    the pillar just moves the line: `target_lateral_mm` returns where the
-    line should sit at a given point on the lap, and pure pursuit follows it
-    as it would follow anything else.
+    Every tick the robot still projects itself onto the racing line for lap
+    counting and speed, exactly as qualification does. What it STEERS at comes
+    from GoalPlanner instead: a checked, curvature-bounded path through the
+    goals beside the pillars ahead.
 
-    Because the offset is a function of PROGRESS, not of what is in shot, the
-    robot starts easing across well before it reaches a pillar and is already
-    on the correct side when it arrives - and it keeps doing so for pillars
-    the camera has since looked away from, because they live in nav.blocks,
-    not in the current frame.
+    With no pillars in sight the plan is the racing line, goal for goal, so
+    the round degrades to qualification's behaviour rather than to something
+    new and untested when the camera sees nothing.
     """
 
     name = "final"
@@ -186,22 +102,23 @@ class FinalTask(PathDrivingTask):
     def __init__(self, context, config=None, **kwargs):
         super().__init__(context, config=config, **kwargs)
         # Pillars being steered around, held across detection dropouts.
-        # See _update_pillar_memory.
         self._pillars = []
-        # The lap's offset profile, rebuilt each tick - see _build_line.
-        self._line = []
-        self._wanted_line = []
-        # How far the line currently sits from the profile, and the point on
-        # the lap where that gap applies in full - see _settle_bias.
-        self._bias = 0.0
-        self._bias_from = 0.0
-        # The parking bay: which section it is in, where along that section,
-        # and where that lands on the lap. None until it has been found.
+        self.planner = None
+        self._plan = None
+        self._planned_pillars = 0
+        self._replan_reason = "first plan"
+        self._plans_made = 0
+        # The parking bay: which section it is in, and the manoeuvre itself.
         self._start_section = None
         self._bay = None
         self._bay_progress = None
         self._bay_finder = None
         self._parking = None
+        self._left_the_bay = False
+
+    # ========================================================================
+    # SETUP
+    # ========================================================================
 
     def setup(self):
         super().setup()
@@ -209,6 +126,23 @@ class FinalTask(PathDrivingTask):
             print("WARNING: no camera - the final round will drive the plain "
                   "racing line and ignore the pillars")
         self._apply_map_range()
+
+        self.planner = GoalPlanner(
+            self.context.nav.map, self.path,
+            min_radius_mm=self._steerable_radius_mm(),
+            robot_half_width_mm=float(self.setting("blocks.robot_half_width_mm")),
+            robot_front_mm=float(self.setting("goals.robot_front_mm")),
+            robot_rear_mm=float(self.setting("goals.robot_rear_mm")),
+            clearance_mm=float(self.setting("blocks.clearance_mm")),
+            min_clearance_mm=float(self.setting("goals.min_clearance_mm")),
+            wall_clearance_mm=float(self.setting("blocks.wall_clearance_mm")),
+            horizon_mm=float(self.setting("goals.horizon_mm")),
+            route_spacing_mm=float(self.setting("goals.route_spacing_mm")),
+            max_gates=int(self.setting("goals.max_gates")),
+            approach_mm=float(self.setting("goals.approach_mm")),
+            exit_mm=float(self.setting("goals.exit_mm")))
+        print(self.planner)
+
         pose = self.context.nav.get_pose()
         self._start_section = section_of(pose.x, pose.y, self.context.nav.map)
         print(f"Parking bay expected in the {self._start_section} section")
@@ -219,242 +153,190 @@ class FinalTask(PathDrivingTask):
                 min_gap_mm=float(self.setting("parking.detect_min_gap_mm")),
                 max_gap_mm=float(self.setting("parking.detect_max_gap_mm")),
                 min_scans=int(self.setting("parking.detect_min_scans")))
-        self._warn_if_dodge_wont_fit()
-        self._warn_if_approach_is_out_of_reach()
-        self._warn_if_corners_wont_take_the_dodge()
-        self._warn_if_the_bay_guard_blocks_a_dodge()
-        self._warn_if_transitions_are_too_short()
+        self._warn_if_the_corridor_is_too_narrow()
+        self._warn_if_the_horizon_is_too_short()
+        self._replan(pose, "setup")
+
+    def _steerable_radius_mm(self):
+        """
+        The tightest arc the plan is allowed to contain: the robot's own
+        turning circle with turn_radius_margin kept in hand.
+
+        A path drawn at exactly full lock is one the robot can only just hold
+        with nothing left to correct tracking error with, so every millimetre
+        of error becomes a millimetre it can never recover. The margin is what
+        the follower corrects inside.
+        """
+        return (self.pursuit.min_turn_radius_mm
+                * float(self.setting("blocks.turn_radius_margin")))
+
+    def _warn_if_the_corridor_is_too_narrow(self):
+        """
+        Says at setup whether the clearance being asked for is one the field
+        can actually give, instead of leaving it to be discovered as a clamp.
+
+        The corridor here is 1000mm wide and fixed. A pass wants the block's
+        half-diagonal, the robot's half width and clearance_mm out of it, all
+        measured from wherever the pillar happens to sit - so a clearance
+        above about a third of the corridor cannot be met for any pillar that
+        is not on the racing line, and above half of it cannot be met at all.
+        The old default was 430mm into a 500mm half-corridor, which is why
+        every pass was clamped and every clamp was silent.
+        """
+        clearance = float(self.setting("blocks.clearance_mm"))
+        half = float(self.setting("blocks.robot_half_width_mm"))
+        needed = BLOCK_SIZE_MM * math.sqrt(2.0) / 2.0 + half + clearance
+        room = min(self.path.lateral_room_mm(
+            float(self.setting("blocks.wall_clearance_mm")) + half))
+        if needed > room:
+            print(f"WARNING: blocks.clearance_mm={clearance:.0f} needs "
+                  f"{needed:.0f}mm of offset but the corridor gives {room:.0f}mm - "
+                  f"a pillar more than {room - needed + clearance:.0f}mm off the "
+                  f"racing line cannot get it. Passes will be reported "
+                  f"COMPROMISED; lower it to about "
+                  f"{max(20.0, room - needed + clearance):.0f}.")
+        else:
+            print(f"Pillar passes ask {needed:.0f}mm of offset, corridor gives "
+                  f"{room:.0f}mm")
+
+    def _warn_if_the_horizon_is_too_short(self):
+        """
+        A plan the robot can outrun is a plan it drives off the end of, and a
+        follower clamped to the last point of a stale plan stops steering.
+        """
+        reach = self.pursuit.lookahead_distance(float(self.setting("speed.base")))
+        horizon = float(self.setting("goals.horizon_mm"))
+        if horizon < reach * 3.0:
+            print(f"WARNING: goals.horizon_mm={horizon:.0f} is short against a "
+                  f"{reach:.0f}mm lookahead - raise it to at least "
+                  f"{reach * 3.0:.0f} so the plan always reaches past where "
+                  f"pure pursuit is aiming.")
 
     def _apply_map_range(self):
         """
-        Lets this round push the range at which a pillar gets mapped at all,
-        because that - not approach_mm - is what really decides how early the
-        line can start moving.
+        Lets this round push the range at which a pillar gets mapped at all.
 
         block_map's own MAX_MAPPING_RANGE_MM stays the default and the reason
         for it still holds: ObjectSolver ranges a pillar off its apparent
         height, so the error grows with the square of distance and a far
         pillar lands on the map in roughly the right direction but not the
-        right place. What makes it worth raising ANYWAY is the shape of the
-        ramp - a smoothstep leaves the far end with zero slope, so the first
-        part of the sweep, which is the part fed by the worst position
-        estimate, moves the line barely at all, and the estimate has tightened
-        up by the time the offset actually matters. The cost that does not
-        wash out is a false positive at range: a red smudge on the wall now
-        gets a vote on the line 2m out instead of being ignored.
+        right place.
+
+        Raising it matters less than it did. Under the old profile the offset
+        was a SCHEDULE that had to start early, so mapping range was the real
+        limit on how gently a dodge could begin. A goal is not a schedule - it
+        is a pose, and the path to it is planned from wherever the robot
+        actually is - so a pillar confirmed late gets a shorter, firmer
+        approach rather than a step. What a long range still buys is warning;
+        what it still costs is a red smudge on the wall getting a vote.
         """
         reach = self.setting("blocks.map_range_mm")
         if not reach:
             return
         blocks = self.context.nav.blocks
-        print(f"Pillar mapping range: {blocks.max_range_mm:.0f}mm -> {float(reach):.0f}mm "
-              f"(blocks.map_range_mm)")
+        print(f"Pillar mapping range: {blocks.max_range_mm:.0f}mm -> "
+              f"{float(reach):.0f}mm (blocks.map_range_mm)")
         blocks.max_range_mm = float(reach)
 
-    def _sweep_reach_mm(self):
+    # ========================================================================
+    # STARTING FROM INSIDE THE PARKING SPACE
+    # ========================================================================
+
+    def _wait_for_localization(self):
         """
-        How far ahead a sweep can actually start, given where pillars appear.
+        Find the robot - after driving it out of the parking space, if that is
+        where it started.
 
-        Three subtractions, all real: a pillar is mapped from the LENS, which
-        sits behind the robot's centre; the ramp is measured at the pursuit
-        target, which is a lookahead in FRONT of it; and HITS_TO_CONFIRM
-        sightings have to land before any of it counts, which at this speed is
-        a few more centimetres. The last one is left out here - it varies with
-        frame rate - so this is the optimistic figure.
+        The round begins with the robot parked between the two bay walls.
+        Those walls are 100mm tall, stick 200mm out from the outer wall, and
+        are NOT in FieldMap: the filter only knows the outer box and the
+        centre block. So from inside the bay a large share of the lidar's
+        beams are returns the map cannot explain, and an unexplained beam does
+        not merely add noise - it actively pushes weight onto whatever pose
+        would explain it, which is a pose somewhere else on the mat.
+
+        The result is a filter that either sits below min_pose_confidence
+        until the timeout and starts anyway on a pose it does not believe, or
+        converges hard onto a wrong one. Either way `direction_for()` may pick
+        the wrong way round the loop and the first plan is built from a lie.
+
+        Waiting longer cannot fix it, because nothing improves while the robot
+        is stationary between two walls the map does not contain. Driving out
+        does: three or four hundred millimetres forward and the scan is the
+        ordinary corridor the map describes perfectly.
+
+        So: creep out first, THEN localize. The creep is open-loop - it is the
+        one stretch of the round where there is no pose worth steering on -
+        and deliberately short and slow, since it is driven blind.
         """
-        forward_offset = self.context.nav.blocks.camera_offset_mm[0]
-        lookahead = self.pursuit.lookahead_distance(float(self.setting("speed.base")))
-        return self.context.nav.blocks.max_range_mm + forward_offset - lookahead
+        if not self.setting("start.in_parking_bay"):
+            return super()._wait_for_localization()
 
-    def _warn_if_approach_is_out_of_reach(self):
+        self._creep_out_of_the_bay()
+        # Start the search over from scratch. Whatever the filter believed
+        # from inside the bay was formed against a map missing the two walls
+        # in front of it, so it is not a prior worth keeping - it is the thing
+        # being corrected.
+        self.context.nav.start(zones=self.context.nav.map.start_zones())
+        pose = super()._wait_for_localization()
+        self._left_the_bay = True
+        print(f"Out of the parking space and localized: {pose}")
+        return pose
+
+    def _creep_out_of_the_bay(self):
         """
-        Says so when approach_mm is asking for a sweep that cannot start that
-        early, whatever it is set to.
+        Drives straight forward far enough to be clear of the bay walls.
 
-        approach_mm is a CAP on how early the line starts moving, not a
-        promise - _ramp_start takes the earliest of it, where the pillar was
-        really first seen, and where the pillar in front of it was passed. Set
-        it past what the camera can deliver and it simply stops being the
-        limit that decides anything, which from the outside looks exactly like
-        the config file not being read.
+        Open-loop and blind on purpose: there is no pose to steer on yet, and
+        a steering correction computed from a pose that is wrong is worse than
+        no correction at all. Straight ahead out of a parking space is the one
+        manoeuvre that needs neither.
+
+        Distance is dead-reckoned from the commanded speed, which is rough -
+        but the only thing it has to be right about is "further than the bay
+        walls are deep", and they are 200mm deep against a default of 600mm.
+        Overshooting into the corridor is harmless; stopping short is not, so
+        this errs long.
+
+        The filter is fed the motion as it happens, so the pose it starts from
+        afterwards is at least in the right postcode even before the first
+        scan lands.
         """
-        approach = (float(self.setting("blocks.padding_mm"))
-                    + float(self.setting("blocks.approach_mm")))
-        reach = self._sweep_reach_mm()
-        if approach <= reach:
-            return
-        print(f"WARNING: blocks.padding_mm + approach_mm is {approach:.0f}mm, but a pillar "
-              f"is not on "
-              f"the map until it is within {self.context.nav.blocks.max_range_mm:.0f}mm of "
-              f"the lens, so a sweep cannot start earlier than about {reach:.0f}mm out - "
-              f"raising approach_mm above that changes nothing. To start it earlier, "
-              f"raise blocks.map_range_mm.")
-
-    def _warn_if_dodge_wont_fit(self):
-        """
-        Checks the worst case - a pillar sitting exactly ON the racing line -
-        against how much room wall_clearance_mm actually leaves, and says so
-        if they do not fit.
-
-        Without this, a dodge that is geometrically too big for the corridor
-        does not fail loudly: `target_lateral_mm` just clamps it to whatever
-        fits, silently delivering less than clearance_mm of real air gap.
-        That clamp is the right behaviour (never dodge into a wall to give a
-        pillar more room), but finding out about it live, mid-collision, is
-        not - this says so at startup instead, in plain mm.
-        """
-        limit = self._wall_limit_mm()
-        for color in (Color.RED, Color.GREEN):
-            needed = self._required_offset_mm(color)
-            if needed > limit:
-                print(f"WARNING: a {color.value} pillar sitting on the racing "
-                      f"line would need a {needed:.0f}mm dodge, but "
-                      f"wall_clearance_mm only leaves {limit:.0f}mm of room - "
-                      f"clearance_mm will be delivered short for pillars near "
-                      f"the line. Lower blocks.clearance_mm / "
-                      f"blocks.robot_half_width_mm, or raise "
-                      f"blocks.wall_clearance_mm.")
-
-    def _warn_if_transitions_are_too_short(self):
-        """
-        Says how hard the line will have to lean, in degrees, for the dodge
-        these settings ask for - both easing into a lone pillar and crossing
-        between two that want opposite sides.
-
-        Neither is ever traded away to make the other gentler: the dodge is
-        delivered and the lean is whatever it has to be, because a steep dodge
-        gets past a pillar and a small one does not. But past about 45 degrees
-        pure pursuit stops following the line and starts cutting across it, and
-        the number that decides this is not a transition length - it is
-        clearance_mm. A 305mm dodge has to cross 610mm of corridor between an
-        adjacent green and red however much lap there is to do it in, so a
-        pair 600mm apart is steep no matter what approach_mm says.
-        """
-        offset = max(self._required_offset_mm(color)
-                     for color in (Color.RED, Color.GREEN))
-        lead, settle = self._handles()
-        rise = 1.0 - (lead + settle) / 2.0
-
-        for key, share in (("blocks.approach_mm", 1.0 - lead),
-                           ("blocks.past_mm", 1.0 - settle)):
-            length = float(self.setting(key))
-            if length > 0.0:
-                lean = math.degrees(math.atan(offset / (length * max(share, 1e-6))))
-                print(f"{key} = {length:.0f}mm eases the {offset:.0f}mm dodge in at "
-                      f"{lean:.0f} deg at its steepest")
-
-        print(f"Two pillars wanting opposite sides need the line to cross "
-              f"{2 * offset:.0f}mm, which at {self.setting('blocks.max_lean_deg'):.0f} deg "
-              f"takes {2 * offset / max(rise, 1e-6) / math.tan(math.radians(float(
-                  self.setting('blocks.max_lean_deg')))):.0f}mm of lap:")
-        for spacing in (600.0, 800.0, 1000.0, 1400.0):
-            padding = max(spacing * MIN_PADDING_SHARE,
-                          min(float(self.setting("blocks.padding_mm")),
-                              (spacing - 2 * offset / max(rise, 1e-6)) / 2.0))
-            curve = max(spacing - 2 * padding, 1e-6)
-            lean = math.degrees(math.atan(2 * offset / (curve * rise)))
-            flag = "" if lean <= 50.0 else "   <- pure pursuit will cut this"
-            print(f"    {spacing:.0f}mm apart -> {lean:.0f} deg{flag}")
-        print(f"  (lower blocks.clearance_mm to bring these down - it is the only "
-              f"thing that does; the dodge is {offset:.0f}mm because clearance_mm is "
-              f"{float(self.setting('blocks.clearance_mm')):.0f}mm)")
-
-    def _warn_if_the_bay_guard_blocks_a_dodge(self):
-        """
-        Says what the parking-bay guard will and will not take out of a dodge,
-        at startup, in mm.
-
-        This is the least obvious limit in the round: it is not in [blocks] at
-        all, it applies to part of one section, and from the driver's seat it
-        looks like the line simply refusing to go near the wall.
-        """
-        if self._start_section is None:
-            return
-        speculative = bool(self.setting("parking.guard_before_found"))
-        needed = max(self._required_offset_mm(color)
-                     for color in (Color.RED, Color.GREEN))
-        clearance = (WALL_LENGTH_MM
-                     + float(self.setting("parking.wall_margin_mm"))
-                     + float(self.setting("blocks.robot_half_width_mm")))
-        limit = max(0.0, self.path.map.outer - self.path.half - clearance)
-
-        if not speculative:
-            print(f"Parking-bay guard: {limit:.0f}mm toward the wall within "
-                  f"{float(self.setting('parking.window_mm')):.0f}mm of the bay once it is "
-                  f"found, and nowhere else - the field never puts a pillar within "
-                  f"{PILLAR_FREE_MM:.0f}mm of a parking space, so no pass is beside it. "
-                  f"Pillar dodges get the full corridor everywhere "
-                  f"(parking.guard_before_found)")
+        distance = float(self.setting("start.bay_exit_mm"))
+        speed = int(self.setting("start.bay_exit_speed"))
+        rate = self.speed_mm_per_s(abs(speed))
+        if rate <= 0.0:
+            print("WARNING: start.bay_exit_speed is 0 - not leaving the bay")
             return
 
-        where = f"toward the outer wall across the whole {self._start_section} section"
-        if needed <= limit:
-            print(f"Parking-bay guard leaves {limit:.0f}mm {where} until the bay is "
-                  f"found - enough for the {needed:.0f}mm dodge")
-            return
-        body = (limit - float(self.setting("blocks.robot_half_width_mm"))
-                - BLOCK_SIZE_MM / 2.0)
-        print(f"WARNING: parking.guard_before_found is on, so until the bay is found "
-              f"only {limit:.0f}mm is allowed {where} - but a pillar passed on that "
-              f"side needs {needed:.0f}mm, so it will be passed at {limit:.0f}mm, i.e. "
-              f"{body:.0f}mm of body gap. The field never puts a pillar within "
-              f"{PILLAR_FREE_MM:.0f}mm of a parking space, so on a competition mat this "
-              f"is protecting against a case that cannot arise - turn it off unless "
-              f"this layout puts a pillar beside the bay.")
+        print(f"Starting inside the parking space - creeping {distance:.0f}mm "
+              f"forward at speed {speed} before trusting the pose")
+        self.context.motor.steer_center()
+        self.context.motor.drive(0.0, speed)
+        driven, last = 0.0, time.monotonic()
+        # A time bound as well as a distance one: if the wheels are not
+        # actually turning, dead reckoning never reaches the distance and this
+        # would drive into the wall forever.
+        deadline = last + distance / rate * 2.5 + 1.0
+        while driven < distance and time.monotonic() < deadline:
+            time.sleep(0.02)
+            now = time.monotonic()
+            step = rate * (now - last)
+            last = now
+            driven += step
+            self.context.nav.report_motion(step, 0.0)
+        self.context.motor.drive(0.0, 0)
+        print(f"  crept {driven:.0f}mm")
 
-    def _start_section_progress(self):
-        """A progress that lies in the starting section - what the bay guard is
-        asked about when reporting what it will allow."""
-        for step in range(0, int(self.path.length), 50):
-            x, y, _ = self.path.pose_at(float(step), self.direction)
-            if section_of(x, y, self.context.nav.map) == self._start_section:
-                return float(step)
-        return 0.0
-
-    def _warn_if_corners_wont_take_the_dodge(self):
-        """
-        Says how much of a dodge the corners will take, in plain mm, at
-        startup.
-
-        This is the one limit that is invisible from the config file: nothing
-        in [blocks] mentions the corner radius, and nothing in [path] mentions
-        the dodge, but a line bent inward through an arc of radius R is an arc
-        of radius R - offset, so path.wall_margin_mm silently decides how big
-        an inward dodge can be. On the current geometry that limit is tighter
-        than clearance_mm asks for, and a pillar in a corner gets a dodge cut
-        to fit rather than the one that was configured.
-        """
-        room = self._corner_room_mm()
-        if room == float("inf"):
-            return
-        worst = max(self._required_offset_mm(color)
-                    for color in (Color.RED, Color.GREEN))
-        detail = (f"corner radius {self.path.corner_radius:.0f}mm, turning circle "
-                  f"{self.pursuit.min_turn_radius_mm:.0f}mm x "
-                  f"{float(self.setting('blocks.turn_radius_margin')):.2f}")
-        if worst <= room * (1.0 + CORNER_CUT_TOLERANCE):
-            short = max(0.0, worst - room)
-            print(f"Corners take {'the full' if short <= 0.5 else f'{room:.0f}mm of the'} "
-                  f"{worst:.0f}mm dodge ({room:.0f}mm of inward room; {detail})")
-            return
-        print(f"WARNING: a pillar in a CORNER needing to be passed on the inside "
-              f"wants a {worst:.0f}mm dodge, but bending the line inward that far "
-              f"would make it tighter than the robot can steer - only {room:.0f}mm "
-              f"is drivable ({detail}), so such a pillar gets a dodge cut to "
-              f"{room / worst * 100:.0f}%, i.e. "
-              f"{room - float(self.setting('blocks.robot_half_width_mm')) - BLOCK_SIZE_MM / 2.0:.0f}mm "
-              f"of real body clearance instead of "
-              f"{float(self.setting('blocks.clearance_mm')):.0f}mm. Lower "
-              f"blocks.clearance_mm, or LOWER path.wall_margin_mm - moving the "
-              f"racing line closer to the outer wall is what widens the corner "
-              f"arcs, and the arcs are what this is short of.")
+    # ========================================================================
+    # CONTROL LOOP
+    # ========================================================================
 
     def step(self):
         # Detection normally runs on VisionManager's thread and this does
-        # nothing - the steering reads nav.blocks, which persists between
-        # frames, not the current frame. The inline path is the fallback for
-        # when the thread could not be started at all; it is what the round
-        # used to do every other tick, and it costs the tick it runs on.
+        # nothing - the plan reads nav.blocks, which persists between frames,
+        # not the current frame. The inline path is the fallback for when the
+        # thread could not be started at all.
         if self.context.vision is None:
             if self.tick % CAMERA_EVERY_N_TICKS == 0:
                 self._update_detections()
@@ -467,9 +349,7 @@ class FinalTask(PathDrivingTask):
         try:
             # capture_for_blocks(), not capture_image() + transform_image():
             # this round reads the HSV frame and nothing else, and the full
-            # pipeline costs ~19ms a frame to produce ~1.6ms of answer. The
-            # display copy is only worth taking when the solver is going to
-            # draw on it.
+            # pipeline costs ~19ms a frame to produce ~1.6ms of answer.
             hsv = context.camera.capture_for_blocks(
                 with_display=context.object_solver.debug)
             if hsv is None:
@@ -479,15 +359,180 @@ class FinalTask(PathDrivingTask):
         except Exception as e:
             print(f"WARNING: detection failed: {e!r}")
 
+    def _track_progress(self, pose):
+        """Where we are, as the base round tracks it, plus the pillars, the
+        bay, and a new plan if this tick needs one."""
+        super()._track_progress(pose)
+        self._update_pillar_memory()
+        self._look_for_bay(pose)
+        reason = self._needs_replan(pose)
+        if reason:
+            self._replan(pose, reason)
+
     # ========================================================================
     # PILLARS
     # ========================================================================
 
-    def _track_progress(self, pose):
-        """Where we are, as the base round tracks it, plus the pillar memory."""
-        super()._track_progress(pose)
-        self._update_pillar_memory()
-        self._look_for_bay(pose)
+    def _update_pillar_memory(self):
+        """
+        The pillars the plan is steering around, refreshed from the block map
+        and HELD across the gaps in their own detection.
+
+        Two things forget a pillar: driving past it, which is also what lets
+        it be re-found on the next lap, and blocks.memory_s of silence, which
+        bounds how long a detection that turned out to be wrong can keep
+        bending the plan. Between those, a pillar that blinks out for a few
+        frames stays exactly where it was and keeps its goals.
+
+        Association is by distance in the FIELD frame rather than along the
+        lap: two pillars can share a progress while sitting on opposite sides
+        of the corridor, and merging those two would place one goal between
+        them and drive at both.
+        """
+        now = time.monotonic()
+        hold_s = float(self.setting("blocks.memory_s"))
+        kept = [pillar for pillar in self._pillars
+                if now - pillar.last_seen <= hold_s
+                and self._gap_to(pillar) > -FORGET_BEHIND_MM]
+
+        for block in self.context.nav.blocks.confirmed():
+            if block.color not in SIDE_FOR_COLOR:
+                continue
+            index = self._remembered_index(block, kept)
+            if index is not None:
+                kept[index] = Pillar(block.x, block.y, block.color, now)
+                continue
+            # A pillar already behind the forget line is one just driven past.
+            # BlockMap still has it and will keep offering it every tick, so
+            # without this it is forgotten and immediately re-adopted, over and
+            # over - which prints a fresh "pillar ahead" for something that is
+            # a metre behind, and puts a goal in the plan for a pass that has
+            # already happened.
+            if self.path.gap(self.progress, self.path.project(
+                    block.x, block.y, self.direction)[0]) <= -FORGET_BEHIND_MM:
+                continue
+            self._announce_pillar(block)
+            kept.append(Pillar(block.x, block.y, block.color, now))
+        self._pillars = kept
+
+    def _gap_to(self, pillar):
+        """How far ahead a pillar is, along the lap. Negative means passed."""
+        at, _ = self.path.project(pillar.x, pillar.y, self.direction)
+        return self.path.gap(self.progress, at)
+
+    @staticmethod
+    def _remembered_index(block, pillars):
+        """Which remembered pillar this detection refreshes, or None."""
+        best, best_distance = None, SAME_PILLAR_MM
+        for index, pillar in enumerate(pillars):
+            distance = math.hypot(block.x - pillar.x, block.y - pillar.y)
+            if distance < best_distance:
+                best, best_distance = index, distance
+        return best
+
+    def _announce_pillar(self, block):
+        gap = self.path.gap(self.progress,
+                            self.path.project(block.x, block.y, self.direction)[0])
+        side = "LEFT" if SIDE_FOR_COLOR[block.color] < 0 else "RIGHT"
+        print(f"{block.color.name} pillar {gap:+.0f}mm ahead - passing on its "
+              f"{side}")
+
+    def _obstacles(self):
+        """The remembered pillars in the form GoalPlanner wants."""
+        return [Obstacle(pillar.x, pillar.y, SIDE_FOR_COLOR[pillar.color])
+                for pillar in self._pillars]
+
+    # ========================================================================
+    # PLANNING
+    # ========================================================================
+
+    def _needs_replan(self, pose):
+        """
+        Why this tick wants a new plan, or "" to keep the one it has.
+
+        Planning is cheap (under a millisecond for a normal lap) but not free,
+        and a plan rebuilt every tick from a slightly different pose is a plan
+        whose target point jitters. So it is rebuilt on a fixed cadence, and
+        immediately whenever something it was built from has changed.
+        """
+        if self._plan is None:
+            return "no plan"
+        if len(self._pillars) != self._planned_pillars:
+            return "pillars changed"
+        if self._plan.remaining_mm(pose.x, pose.y) < self._min_plan_ahead_mm():
+            return "ran off the end"
+        if self._plan.cross_track_mm(pose.x, pose.y) > float(
+                self.setting("goals.replan_cross_track_mm")):
+            return "drifted off the plan"
+        if (time.monotonic() - self._plan.planned_at
+                > float(self.setting("goals.replan_interval_s"))):
+            return "cadence"
+        return ""
+
+    def _min_plan_ahead_mm(self):
+        """
+        How much plan has to be left in front of the robot.
+
+        Twice the lookahead: at one lookahead the target point is already
+        sitting on the last sample of the plan, which means pure pursuit has
+        stopped steering at the path and started steering at its end.
+        """
+        return 2.0 * self.pursuit.lookahead_distance(max(self.speed, 1))
+
+    def _replan(self, pose, reason):
+        self._plan = self.planner.plan(pose, self.direction, self._obstacles())
+        self._planned_pillars = len(self._pillars)
+        self._plans_made += 1
+        self._replan_reason = reason
+        if self._plan.compromised and self._plans_made % 20 == 1:
+            print(f"WARNING: plan compromised - {self._plan.reason}")
+
+    # ========================================================================
+    # TARGET - the one thing this round changes about the driving
+    # ========================================================================
+
+    def target_point(self, pose):
+        """
+        The point to chase: one lookahead along the PLAN.
+
+        The lookahead itself is unchanged - probed at speed, re-taken with the
+        curvature of the racing line over that stretch, and capped by the
+        parking approach exactly as the base round does it. Only the thing it
+        is measured along is different, and that is the whole of the
+        difference between this round and qualification.
+        """
+        reach = self.pursuit.lookahead_distance(self.speed)
+        curvature = self.path.max_curvature_between(self.progress, reach,
+                                                    self.direction)
+        lookahead = self.pursuit.lookahead_distance(self.speed, curvature)
+        _, reach_cap = self.parking_caps()
+        if reach_cap is not None:
+            lookahead = min(lookahead, float(reach_cap))
+
+        # Kept current for the base round's own overlay and status line, which
+        # still describe progress along the racing line.
+        self.aim_progress = self.progress + lookahead
+
+        if self._plan is None or len(self._plan) < 2:
+            return self.path.point_at(self.aim_progress, self.direction)
+        return self._plan.target_point(pose, lookahead)
+
+    def _choose_speed(self, pose):
+        """
+        The base round's speed, cut back where the plan is in trouble.
+
+        A compromised plan is one the planner could not give the clearance it
+        asked for - a pillar the corridor cannot accommodate, or a pass the
+        turning circle cannot hold. It is still the best plan available and it
+        is still driven, but it is driven slowly: everything that makes a
+        tight pass survivable - the lidar backstop having time to fire, a
+        tracking error staying small in millimetres, the pose staying fresh -
+        is bought with speed.
+        """
+        speed = super()._choose_speed(pose)
+        if self._plan is not None and self._plan.compromised:
+            speed = min(speed, int(self.setting("speed.compromised")))
+        return speed
 
     # ========================================================================
     # PARKING
@@ -577,712 +622,9 @@ class FinalTask(PathDrivingTask):
             return None
         return self._parking.update(pose, dt, max_steer=self.pursuit.max_steer_command)
 
-    def _update_pillar_memory(self):
-        """
-        The pillars the line is steering around, refreshed from the block map.
-
-        Two jobs. It records, once per pillar, how far ahead it was the first
-        time it could be steered on at all - the ramp anchor. And it HOLDS a
-        pillar across the gaps in its own detection, so that a dropped track
-        softens nothing; see Pillar for why that matters more than it sounds.
-
-        On the anchor:
-
-        `approach_mm` on its own is a SCHEDULE: it says the sweep starts when
-        the pillar is that far ahead, which only works while the pillar is
-        actually on the map that early - and often it is not. A block has to
-        be inside MAX_MAPPING_RANGE_MM, inside the camera cone, and seen
-        HITS_TO_CONFIRM times before confirmed() will return it at all, and
-        after a corner it can be much later than that. A pillar that first
-        appears closer than approach_mm lands mid-schedule, and the whole
-        offset the schedule says it should already have arrives in one tick -
-        the exact step the smoothstep exists to avoid, and the reason raising
-        approach_mm past what the camera can see makes the line worse rather
-        than smoother.
-
-        Anchoring each pillar's ramp to where it was really first seen turns
-        approach_mm from "start exactly here" into "start no earlier than
-        here": a late pillar gets a shorter sweep instead of a step, and
-        approach_mm can be set to what the line wants without having to also
-        be a promise about detection range.
-
-        Measured against `aim_progress` - the lookahead point pure pursuit is
-        chasing - because that is the progress the ramp is evaluated at.
-        Anchoring off the robot's own progress instead would put the first
-        evaluation a whole lookahead into the ramp, which is the step again,
-        just smaller.
-        """
-        now = time.monotonic()
-        past = (float(self.setting("blocks.padding_mm"))
-                + float(self.setting("blocks.past_mm")))
-        hold_s = float(self.setting("blocks.memory_s"))
-
-        # Kept by POSITION, and kept whether or not the pillar is confirmed
-        # this instant. A pillar that blinks out for a few frames is the same
-        # pillar when it comes back, and keeps both the sweep it had started
-        # and the offset it was already steering. Two things forget it:
-        # driving past it, which is also what lets it anchor afresh on the
-        # next lap, and hold_s of silence, which bounds how long a detection
-        # that turned out to be wrong can keep bending the line.
-        remembered = [pillar for pillar in self._pillars
-                      if self.path.gap(self.aim_progress, pillar.progress) > -past
-                      and now - pillar.last_seen <= hold_s]
-
-        for block in self.context.nav.blocks.confirmed():
-            if block.color not in SIDE_FOR_COLOR:
-                continue
-            progress, lateral = self.path.project(block.x, block.y, self.direction)
-            index = self._remembered_index(progress, remembered)
-            if index is None:
-                anchor = self.path.gap(self.aim_progress, progress)
-                self._announce_pillar(block.color, anchor)
-                remembered.append(Pillar(progress, lateral, block.color, anchor, now))
-            else:
-                # Position and colour follow the map as it refines them; the
-                # anchor never moves, or a pillar re-detected closer would
-                # restart its sweep from wherever the robot has got to.
-                remembered[index] = remembered[index]._replace(
-                    progress=progress, lateral=lateral, color=block.color, last_seen=now)
-        self._pillars = remembered
-        # The profile is rebuilt from scratch every tick rather than patched,
-        # because it is cheap (a handful of nodes) and because a profile that
-        # is edited in place is a profile whose continuity depends on the edit
-        # being right. Both versions: the one that is driven, and the one the
-        # settings asked for, which the debug view draws behind it.
-        self._settle_bias()
-
-    # ------------------------------------------------------------------------
-    # THE LINE
-    # ------------------------------------------------------------------------
-
-    def _settle_bias(self):
-        """
-        Rebuilds the profile and absorbs however much it moved AT THE POINT THE
-        ROBOT IS CHASING, so that a pillar appearing does not yank the pursuit
-        target sideways.
-
-        This is what lets _build_line ignore the robot completely. The profile
-        is a function of where the pillars are and nothing else - the same
-        curve whether the robot is beside it or on the far side of the field -
-        which is the only way it can be a stable thing to steer at. What used
-        to make that impossible was the pop-in: a pillar confirmed 400mm ahead
-        arrives with a profile that says the line should ALREADY be most of the
-        way across, and following that literally means the target teleports.
-
-        Two properties matter as much as the smoothing itself, and the first
-        version of this had neither:
-
-        LOCAL. The correction is pinned to the point on the lap where the
-        change was noticed and faded out over catchup_mm AHEAD of it. It is not
-        a shift of the whole profile. A shift of the whole profile means a
-        pillar being picked up on one side of the field moves the racing line
-        on the other side of it, which is not a smoothing, it is a lap-wide
-        offset that has nothing to do with any pillar.
-
-        FINITE. It reaches exactly zero catchup_mm later. Decaying it by a
-        fraction each tick instead makes it exponential - never actually zero,
-        just small - and since every pillar picked up AND every pillar
-        forgotten after being passed re-excites it, an exponential tail never
-        gets the chance to run out. That is what made the line take laps to
-        settle instead of a metre.
-
-        Only a real change reseeds it. A pillar's mapped position refining by a
-        millimetre a tick is already smooth and is passed straight through;
-        absorbing that would make the line lag the truth for no gain.
-        """
-        aim = self.aim_progress
-        before = self._offset_at(self._line, aim)
-        carried = self._catchup_at(aim)
-        # Spent corrections are cleared, not left lying around. `_bias_from` is
-        # a point on a LOOP, so a stale value whose window the robot drove out
-        # of a lap ago is a value whose window the robot is about to drive into
-        # again - gap() wraps, and it would re-apply at full strength.
-        if not carried:
-            self._bias = 0.0
-
-        self._line = self._build_line(capped=True)
-        self._wanted_line = self._build_line(capped=False)
-
-        after = self._offset_at(self._line, aim)
-        if float(self.setting("blocks.catchup_mm")) <= 0.0:
-            self._bias = 0.0
-            return
-        if abs(after - before) <= CATCHUP_DEADBAND_MM:
-            return          # nothing jumped - let any fade already running run
-        # Whatever it takes for the new profile to agree, right here, with what
-        # was being driven a moment ago.
-        self._bias = before + carried - after
-        self._bias_from = aim
-
-    def _catchup_at(self, progress):
-        """
-        How much of the outstanding correction still applies at `progress`:
-        all of it where the change was noticed, none of it catchup_mm further
-        on, eased between so the line slides rather than steps.
-
-        Zero everywhere outside that window, which is the point - the lap the
-        robot has already driven and the lap beyond the window are the profile
-        and nothing else.
-        """
-        if not self._bias:
-            return 0.0
-        catchup = float(self.setting("blocks.catchup_mm"))
-        if catchup <= 0.0:
-            return 0.0
-        ahead = self.path.gap(self._bias_from, progress)
-        if ahead < 0.0 or ahead >= catchup:
-            return 0.0
-        lead, settle = self._handles()
-        return self._bias * (1.0 - _bezier_ease(ahead / catchup, lead, settle))
-
-    def _build_line(self, capped=True):
-        """
-        The whole lap's offset profile, as a list of Spans to interpolate
-        across.
-
-        The profile is a chain of (progress, offset) nodes joined by cubic
-        Beziers, and every node is horizontal - the curve arrives and leaves
-        parallel to the racing line - so the whole lap is smooth by
-        CONSTRUCTION. Nothing here has to be checked for continuity afterwards,
-        which is the point: the previous profile built each pillar its own
-        curve and then added them up, and the joins between them were where
-        every artefact came from.
-
-        Each pillar lays down two nodes at its own offset, a flat part either
-        side of it that actually does the passing. Between one pillar's flat
-        part and the next there is either room to come back to the racing line,
-        in which case two more nodes at zero are laid down and the line eases
-        out and back in, or there is not, in which case the two flats are
-        joined directly and the line crosses straight from one dodge to the
-        other. That second case is the handover, and it needs no special
-        handling at all - it is one more Bezier between two nodes.
-
-        I/O:
-            capped: False builds the profile the settings ASK for, ignoring
-                    where each pillar was actually first seen and what the
-                    corridor will take. Drawn dim on the debug view next to the
-                    real one so the difference is visible.
-            return: list of Span, in increasing progress, covering the lap
-        """
-        pillars = self._spaced_out(
-            sorted(self._pillars, key=lambda pillar: pillar.progress))
-        if not pillars:
-            return []
-
-        offsets = [self._pillar_offset_mm(pillar, capped) for pillar in pillars]
-        spacings = [self.path.length if len(pillars) == 1 else
-                    self.path.gap(pillar.progress,
-                                  pillars[(index + 1) % len(pillars)].progress)
-                    % self.path.length
-                    for index, pillar in enumerate(pillars)]
-
-        # Every gap is divided BEFORE any node is placed. Doing it pillar by
-        # pillar instead lets a pillar's approach-side flat run back past the
-        # one behind it, which puts the nodes out of order along the lap - and
-        # a profile whose nodes are out of order is not a curve, it is a jump.
-        shares = [self._share_gap(offsets[index],
-                                  offsets[(index + 1) % len(pillars)],
-                                  spacings[index],
-                                  pillars[(index + 1) % len(pillars)], capped)
-                  for index in range(len(pillars))]
-
-        nodes = []
-        for index, pillar in enumerate(pillars):
-            following = (index + 1) % len(pillars)
-            after, _, room = shares[index]
-            _, before, _ = shares[index - 1]
-            nodes.extend(self._nodes_between(
-                pillar, pillars[following], offsets[index], before, after, room,
-                spacings[index], capped))
-        return self._spans_from(nodes)
-
-    def _spaced_out(self, pillars):
-        """
-        The pillars with any that sit on top of one another dropped, keeping
-        whichever of a pair was seen most recently.
-
-        _update_pillar_memory already merges sightings within
-        ANCHOR_SAME_PILLAR_MM into one pillar, so this should never have
-        anything to do. It is here because the cost of being wrong about that
-        is not a slightly worse line: two pillars a few mm apart wanting
-        opposite sides ask the profile to cross the whole corridor in those few
-        mm, which is not a steep curve, it is a JUMP - the one thing this
-        profile is built not to contain. A cheap guard against a state that
-        should be impossible is worth more than the assumption.
-        """
-        kept = []
-        for pillar in pillars:
-            if kept and abs(self.path.gap(
-                    kept[-1].progress, pillar.progress)) < ANCHOR_SAME_PILLAR_MM:
-                if pillar.last_seen > kept[-1].last_seen:
-                    kept[-1] = pillar
-                continue
-            kept.append(pillar)
-        # The loop closes, so the last one can crowd the first.
-        while len(kept) > 1 and abs(self.path.gap(
-                kept[-1].progress, kept[0].progress)) < ANCHOR_SAME_PILLAR_MM:
-            kept.pop() if kept[0].last_seen >= kept[-1].last_seen else kept.pop(0)
-        return kept
-
-    def _nodes_between(self, pillar, following, offset, before, after, room,
-                       spacing, capped):
-        """
-        The nodes from one pillar's flat part to the start of the next one's:
-        the flat itself, and whatever joins it to its neighbour.
-
-        `before` and `after` come from the two gaps either side of this pillar,
-        already divided - see _build_line - so the flat part placed here cannot
-        run into its neighbours' whatever the pillars are doing.
-        """
-        nodes = [Node(pillar.progress - before, offset),
-                 Node(pillar.progress + after, offset)]
-
-        leaving = min(float(self.setting("blocks.past_mm")), room)
-        arriving = min(float(self.setting("blocks.approach_mm")), room - leaving)
-        if room > leaving + arriving:
-            # Room to spare: come back to the racing line in between, rather
-            # than carrying a dodge along a stretch of lap that does not need
-            # one. The two nodes at zero are what hold it there.
-            nodes.append(Node(pillar.progress + after + leaving, 0.0))
-            nodes.append(Node(pillar.progress + after + room - arriving, 0.0))
-        return nodes
-
-    def _share_gap(self, offset, next_offset, spacing, following, capped):
-        """
-        How the gap between two pillars is divided: flat part for the one being
-        left, flat part for the one being reached, and the curve between them.
-
-        The CURVE is served first, which is the whole change from the previous
-        version. Two pillars on opposite sides 700mm apart need the line to
-        cross 610mm in that 700mm whatever anyone would prefer, and taking
-        padding_mm off each end first leaves 200mm to do it in - a line at 70
-        degrees to the racing line, which pure pursuit does not follow, it cuts
-        across. Sizing the curve for max_lean_deg first and giving the flats
-        what is left over spends the gap on the part that has to happen.
-
-        When even the whole gap is not enough for that lean - pillars closer
-        together than the dodge is wide - the flats keep a token share and the
-        curve takes the rest and leans as hard as it must. Steep beats absent:
-        the robot has to get round the pillar.
-
-        I/O:
-            return: (flat after this pillar, flat before the next, curve length)
-        """
-        lead, settle = self._handles()
-        rise = 1.0 - (lead + settle) / 2.0
-        lean = math.tan(math.radians(clamp(
-            float(self.setting("blocks.max_lean_deg")), 5.0, 85.0)))
-        wanted_curve = abs(next_offset - offset) / max(rise * lean, 1e-6)
-
-        padding = float(self.setting("blocks.padding_mm"))
-        floor = spacing * MIN_PADDING_SHARE
-        share = clamp((spacing - wanted_curve) / 2.0, floor, padding)
-        after = min(share, padding)
-        before_next = min(share, self._entry_padding_mm())
-        return after, before_next, spacing - after - before_next
-
-    def _spans_from(self, nodes):
-        """
-        Nodes to Spans, in order, closing the loop.
-
-        Nodes can arrive out of order or on top of one another when pillars are
-        packed tightly - a flat part that wanted to start before the previous
-        one ended. Rather than reject that, the profile is walked forwards and
-        anything that would step backwards is pulled up to where the walk has
-        got to, which turns an impossible overlap into a zero-length span.
-        """
-        spans, walked = [], nodes[0].progress
-        for index, node in enumerate(nodes):
-            following = nodes[(index + 1) % len(nodes)]
-            start = max(walked, node.progress)
-            finish = (nodes[0].progress + self.path.length
-                      if index == len(nodes) - 1 else following.progress)
-            spans.append(Span(start, max(0.0, finish - start),
-                              node.offset, following.offset))
-            walked = start
-        return spans
-
-    def _pillar_offset_mm(self, pillar, capped):
-        """
-        Where the line has to sit beside this pillar: its own lateral position
-        plus the room the robot needs to get past it on the right side.
-
-        Capped by the tightest the corridor gets ANYWHERE the dodge reaches,
-        not just beside the pillar - see _tightest_bounds_mm. Capping the
-        offset the curve is built from, rather than clipping the curve
-        afterwards, is what keeps it a clean Bezier: a clip flattens the top
-        into a plateau and puts a corner at each end of it, which is the
-        artefact this profile exists to avoid.
-
-        The usual case is a corner. A line held `d` mm inside an arc of radius
-        R is itself an arc of radius R - d, so an inward dodge spends the
-        corner radius one for one - at d = R the offset line collapses to a
-        point and past that it turns inside out.
-        """
-        offset = (pillar.lateral + SIDE_FOR_COLOR[pillar.color]
-                  * self._required_offset_mm(pillar.color))
-        if not capped:
-            return offset
-        low, high = self._tightest_bounds_mm(pillar)
-        return clamp(offset, low, high)
-
-    def _tightest_bounds_mm(self, pillar):
-        """
-        The biggest offset this pillar's dodge can take without any part of it
-        leaving the corridor - flat part and transitions alike.
-
-        The obvious version of this measures the narrowest the corridor gets
-        anywhere the dodge reaches and caps the offset at that. It is wrong in
-        both directions at once. Measured over the whole dodge it is far too
-        harsh: the transitions reach 1.6m either side of the pillar, so a
-        pillar anywhere within 1.6m of the parking bay's guarded section had
-        its whole pass cut to what the guard allows, which on this geometry
-        halved the clearance at pillars nowhere near the bay. Measured over the
-        flat part alone it is too lax the other way: the transition then runs
-        into the tight stretch carrying an offset the corridor will not take,
-        and the pointwise clamp flattens it - a 151mm slice out of the ramp
-        with a 74-degree corner at each end of the flat spot.
-
-        Both come from asking the wrong question. The transitions do not need
-        the full width - they need whatever the profile is actually AT that
-        point. A ramp passing a tight spot at 30% of its offset needs 30% of
-        the room, so the offset it permits is the room divided by 30%. Taking
-        the smallest of those round the whole dodge gives the largest offset
-        that fits everywhere, with nothing left for the clamp to remove.
-        """
-        padding = float(self.setting("blocks.padding_mm"))
-        approach = float(self.setting("blocks.approach_mm"))
-        past = float(self.setting("blocks.past_mm"))
-        lead, settle = self._handles()
-
-        low, high = -float("inf"), float("inf")
-        gap = -(padding + past)
-        while gap <= padding + approach:
-            here = gap
-            gap += BOUNDS_SAMPLE_MM
-            # How much of the offset the profile carries this far from the
-            # pillar - 1 across the flat part, easing to 0 at the ends.
-            if abs(here) <= padding:
-                fraction = 1.0
-            elif here > 0.0:
-                fraction = 1.0 - _bezier_ease((here - padding) / approach, lead, settle)
-            else:
-                fraction = 1.0 - _bezier_ease((-here - padding) / past, lead, settle)
-            if fraction <= 1e-3:
-                continue
-            here_low, here_high = self._lateral_bounds_mm(pillar.progress - here)
-            low = max(low, here_low / fraction)
-            high = min(high, here_high / fraction)
-        return low, high
-
-    def _entry_padding_mm(self):
-        """The flat part on a pillar's approach side."""
-        return float(self.setting("blocks.padding_mm"))
-
-    def _handles(self):
-        """The two Bezier handle positions, clamped to keep the curve
-        monotonic along the track."""
-        lead = clamp(float(self.setting("blocks.bezier_lead")), 0.02, 0.9)
-        settle = clamp(float(self.setting("blocks.bezier_settle")), 0.02, 0.9)
-        if lead + settle > 1.0:
-            scale = 1.0 / (lead + settle)
-            lead, settle = lead * scale, settle * scale
-        return lead, settle
-
-    def _steerable_radius_mm(self):
-        """
-        The tightest arc a dodge is allowed to put in the line: the robot's own
-        turning circle with turn_radius_margin kept in hand, because a line it
-        can only just hold leaves nothing to correct tracking error with.
-        """
-        return (self.pursuit.min_turn_radius_mm
-                * float(self.setting("blocks.turn_radius_margin")))
-
-    def _corner_room_mm(self):
-        """
-        How far the line may be shifted toward the inside of a bend before the
-        shifted line is tighter than the robot can steer. Every corner on this
-        loop is the same arc, so one of them answers for all four.
-        """
-        spans = self.path.bend_spans(self.direction)
-        if not spans:
-            return float("inf")
-        return self.path.inward_limit_mm(
-            (spans[0][0] + spans[0][1]) / 2.0, self.direction,
-            self._steerable_radius_mm())
-
-    def _announce_pillar(self, color, anchor_mm):
-        """
-        Says how far out a pillar was when it was first confirmed, the moment
-        that is decided, and says so LOUDLY when that is too late to take up
-        the dodge in time.
-
-        The dodge itself no longer changes shape for a late pillar - the
-        profile is a function of where the pillars are and nothing else, so
-        every pillar gets the same curve (see _build_line). What being seen
-        late costs is the DISTANCE to slide onto that curve: the line starts
-        wherever it was and closes the gap over catchup_mm, so a pillar
-        confirmed 400mm out is passed part-way across rather than fully across.
-
-        That makes this the number to watch when a pass looks shallow, and it
-        is one that cannot be tuned into existence - approach_mm cannot help a
-        pillar the camera has not found yet.
-        """
-        catchup = float(self.setting("blocks.catchup_mm"))
-        if anchor_mm >= catchup:
-            print(f"{color.value} pillar first seen {anchor_mm:.0f}mm out - "
-                  f"room to take the dodge up in full")
-            return
-        if anchor_mm <= -float(self.setting("blocks.padding_mm")):
-            # Behind us in LAP terms, which is routine rather than alarming:
-            # the camera sees clean across the field, so most of what it picks
-            # up on a corner belongs to a stretch of track already driven. It
-            # does not need dodging from here - the lap comes back round to it.
-            return
-        reached = clamp(anchor_mm / catchup, 0.0, 1.0) * 100.0
-        print(f"WARNING: {color.value} pillar first seen only {anchor_mm:.0f}mm out, so "
-              f"the line reaches about {reached:.0f}% of its dodge before passing it "
-              f"(catchup_mm is {catchup:.0f}). Raising approach_mm cannot help this "
-              f"pillar - raising blocks.map_range_mm "
-              f"({self.context.nav.blocks.max_range_mm:.0f}mm), or fixing why it was "
-              f"seen late, is what would.")
-
-    def _remembered_index(self, progress, pillars):
-        """
-        Where in `pillars` the pillar at that progress is remembered, or None.
-
-        Matched by distance along the lap rather than by identity, because
-        identity is not stable - see ANCHOR_SAME_PILLAR_MM.
-        """
-        for index, pillar in enumerate(pillars):
-            if abs(self.path.gap(pillar.progress, progress)) <= ANCHOR_SAME_PILLAR_MM:
-                return index
-        return None
-
-    def _required_offset_mm(self, color):
-        """
-        How far from the PILLAR'S OWN position the robot's steered centerline
-        must sit for its body to actually clear it by clearance_mm.
-
-        Three parts, all real mm: clearance_mm is the gap you want between
-        the robot's body and the pillar's face; robot_half_width_mm converts
-        that from a body-relative gap into a centerline-relative one, since
-        pure pursuit steers the centerline, not the edge; BLOCK_SIZE_MM/2
-        reaches from the pillar's own center out to its near face.
-
-        Nothing here depends on the colour except the optional per-colour pad,
-        which is 0 by default and meant to stay there: red and green are the
-        same block and the robot is the same width going past either, so the
-        dodge is the same SIZE for both and only its direction differs (see
-        SIDE_FOR_COLOR). A non-zero pad is for living with a detection that
-        mis-ranges one colour, not for being more careful on one side - and it
-        costs real clearance, because the wider offset is the first thing the
-        wall clamp takes back. See blocks.red_extra_clearance_mm.
-        """
-        extra_key = {Color.RED: "blocks.red_extra_clearance_mm",
-                     Color.GREEN: "blocks.green_extra_clearance_mm"}[color]
-        return (float(self.setting("blocks.clearance_mm"))
-               + float(self.setting("blocks.robot_half_width_mm"))
-               + float(self.setting(extra_key))
-               + BLOCK_SIZE_MM / 2.0)
-
-    def _wall_room_mm(self):
-        """
-        How far the steered centerline may move each way before the robot's
-        BODY would be closer than wall_clearance_mm to the outer wall or the
-        centre block.
-
-        Returned as two numbers rather than one, because the corridor is not
-        symmetric about the racing line unless wall_margin_mm centres it - and
-        collapsing them to the smaller gives up real room on the wider side for
-        no reason. On the current geometry that was costing every dodge toward
-        the centre block 52mm it could have had.
-
-        Same body-vs-centerline correction either way: without adding
-        robot_half_width_mm back in, this caps the centerline's distance from
-        the wall, not the body's, and the body ends up wall_clearance_mm short
-        of the real wall by however wide the chassis is.
-
-        I/O:
-            return: (toward_wall_mm, toward_block_mm)
-        """
-        wall = (float(self.setting("blocks.wall_clearance_mm"))
-                + float(self.setting("blocks.robot_half_width_mm")))
-        return self.path.lateral_room_mm(wall)
-
-    def _wall_limit_mm(self):
-        """The tighter of the two sides - what a dodge can count on either
-        way, and what the startup fit check is measured against."""
-        return min(self._wall_room_mm())
-
-    def _bay_wall_limit_mm(self, progress):
-        """
-        How far the line may move TOWARD THE OUTER WALL near the parking bay,
-        or None where the bay does not constrain it.
-
-        The bay walls stick 200mm out from the outer wall. `wall_clearance_mm`
-        assumes a flat wall, so on the current numbers it lets the body reach
-        80mm from it - straight through a bay wall. This is the fix.
-
-        It applies AT THE BAY and nowhere else, which is worth stating plainly
-        because it did not always: it used to cover the whole starting section
-        until BayFinder had located the bay, on the reasoning that the first
-        pass necessarily happens before anything knows where it is. That is a
-        quarter of the lap held 160mm off the wall on every lap, and on this
-        geometry it cut a pillar dodge in that section to roughly half the
-        clearance it asked for.
-
-        What makes the narrow version safe is a fact about the field rather
-        than anything the robot measures: the competition never puts a pillar
-        within PILLAR_FREE_MM of a parking space. So wherever the bay turns out
-        to be, no pillar's pass is beside it, and the line is on or near the
-        racing line there - which is already 274mm clear of a bay wall. The
-        guard is there for the case the geometry does not cover, not for the
-        common one.
-
-        `parking.guard_before_found` puts the old behaviour back for a mat
-        where that guarantee does not hold - a practice layout with a pillar
-        parked next to the bay, say. Once the bay HAS been found the window
-        around it is always guarded, because at that point its position is
-        known and there is nothing to trade off.
-
-        Nothing here reads the lidar or estimates where any wall is. The outer
-        wall is exact, known field geometry and `section_of` is a lookup
-        against the predefined map; the only thing ever uncertain is where
-        along that wall the bay sits, and BayFinder answers that.
-        """
-        if not self.setting("parking.enabled") or self._start_section is None:
-            return None
-
-        if self._bay_progress is not None:
-            # Known: guard a window around it. PILLAR_FREE_MM is why this
-            # costs nothing - no pillar's pass is inside that window either.
-            window = float(self.setting("parking.window_mm"))
-            if abs(self.path.gap(progress, self._bay_progress)) > window:
-                return None
-        else:
-            if not self.setting("parking.guard_before_found"):
-                return None
-            x, y, _ = self.path.pose_at(progress, self.direction)
-            if section_of(x, y, self.context.nav.map) != self._start_section:
-                return None
-
-        clearance = (WALL_LENGTH_MM
-                     + float(self.setting("parking.wall_margin_mm"))
-                     + float(self.setting("blocks.robot_half_width_mm")))
-        # Only the wall side - deliberately NOT path.lateral_limit, which
-        # takes the min with the centre-block side and would tighten the wrong
-        # direction as a side effect.
-        return max(0.0, self.path.map.outer - self.path.half - clearance)
-
-    def _lateral_bounds_mm(self, progress):
-        """
-        The (low, high) the line may be shifted between at `progress`, in the
-        travel frame where + is to the right.
-
-        Asymmetric near the bay: which SIGN points at the outer wall depends
-        on which way round the loop is being driven, so a symmetric clamp
-        would restrict the centre-block side by mistake half the time. Same
-        goes for the inside of a bend, for the same reason.
-
-        The corner term here is a BACKSTOP, not the mechanism: _pillar_offset_mm
-        has already capped every dodge to fit the corner it sits in, so in
-        normal running this never binds. What it catches is the line arriving
-        somewhere the sizing did not account for - a pillar's position moving
-        under it, or two dodges blending - and it is worth catching, because
-        the failure it prevents is the offset line turning inside out rather
-        than merely running wide.
-        """
-        toward_wall, toward_block = self._wall_room_mm()
-        # Which SIGN points at the outer wall depends on which way round the
-        # loop is being driven: lateral is positive to the right of travel, and
-        # the wall is on the right going the +1 way round.
-        if self.direction > 0:
-            low, high = -toward_block, toward_wall
-        else:
-            low, high = -toward_wall, toward_block
-
-        inward = self.path.inward_limit_mm(
-            progress, self.direction, self._steerable_radius_mm())
-        if self.path.inward_sign(self.direction) < 0.0:
-            low = max(low, -inward)
-        else:
-            high = min(high, inward)
-
-        bay = self._bay_wall_limit_mm(progress)
-        if bay is None:
-            return low, high
-        if self.direction > 0:
-            return low, min(high, bay)
-        return max(low, -bay), high
-
-    def target_lateral_mm(self, progress, capped=True):
-        """
-        Where the racing line should sit at `progress`, to pass the pillars
-        correctly.
-
-        A lookup into the profile built by _build_line, eased across the span
-        it lands in. Because that profile is a chain of Beziers that are
-        horizontal at every join, there is nothing to blend and nothing that
-        can step: the answer at any point on the lap comes from exactly one
-        curve, and the curve either side of it agrees with it in both value and
-        slope.
-
-        Clamped by _lateral_bounds_mm at the end, which stops the line pushing
-        the robot's body closer than wall_clearance_mm to the wall or the
-        centre block, and stops an inward dodge tightening a corner past what
-        the steering can hold. In normal running neither binds -
-        _pillar_offset_mm has already capped the offset the profile was built
-        from - so this is a backstop against a pillar's mapped position moving
-        under a profile that is already built.
-        """
-        spans = self._line if capped else self._wanted_line
-        if not spans and not self._bias:
-            return 0.0
-
-
-        # `_bias` only ever applies to the line being driven. The dim overlay
-        # line is what the settings ASK for, and what they ask for does not
-        # depend on when a pillar happened to be spotted.
-        offset = self._offset_at(spans, progress)
-        if capped:
-            offset += self._catchup_at(progress)
-        low, high = self._lateral_bounds_mm(progress)
-        return clamp(offset, low, high)
-
-    def _offset_at(self, spans, progress):
-        """
-        The profile's own value at `progress`, before any bias or clamp.
-
-        An empty profile is the racing line, which is also what a lap with no
-        pillars on it should read - and _settle_bias asks for it in exactly
-        that state, on the tick a pillar first appears.
-        """
-        if not spans:
-            return 0.0
-        lead, settle = self._handles()
-        distance = (progress - spans[0].start) % self.path.length
-        for span in spans:
-            reach = span.start - spans[0].start + span.length
-            if distance > reach:
-                continue
-            if span.length <= 0.0:
-                return span.end
-            fraction = (distance - (span.start - spans[0].start)) / span.length
-            if span.begin == span.end:
-                return span.begin
-            return span.begin + (span.end - span.begin) * _bezier_ease(
-                fraction, lead, settle)
-        return spans[-1].end
-
-    def _nearest_pillar(self, progress):
-        """The pillar whose stretch of lap `progress` is in, or None."""
-        best = None
-        for pillar in self._pillars:
-            gap = abs(self.path.gap(progress, pillar.progress))
-            if best is None or gap < abs(self.path.gap(progress, best.progress)):
-                best = pillar
-        return best
+    # ========================================================================
+    # FINISHING
+    # ========================================================================
 
     def is_finished(self):
         """
@@ -1306,115 +648,60 @@ class FinalTask(PathDrivingTask):
         # all and just burns the clock.
         return self.laps_done >= self.laps_goal + float(self.setting("parking.extra_laps"))
 
-    def _dodge_status(self):
-        """
-        What the line is doing right now, as opposed to what the camera has
-        found.
+    # ========================================================================
+    # REPORTING
+    # ========================================================================
 
-        The block counts next door answer "did we SEE it". This answers "is the
-        line acting on it", which is the first thing to check when a dodge does
-        not appear on the mat and the second thing to check when it appears in
-        the wrong place. It says what the line is at, what the nearest pillar
-        asked for, and - when those differ - which limit took the difference.
+    def _plan_status(self):
         """
-        offset = self.target_lateral_mm(self.aim_progress)
-        pillar = self._nearest_pillar(self.aim_progress)
-        if pillar is None:
-            return f"dodge {offset / 10:+5.1f}cm (no pillar in range)"
+        What the plan is doing, in the one line that gets printed while the
+        robot is driving.
 
-        gap = self.path.gap(self.aim_progress, pillar.progress)
-        wanted = (pillar.lateral + SIDE_FOR_COLOR[pillar.color]
-                  * self._required_offset_mm(pillar.color))
-        driven = self._pillar_offset_mm(pillar, capped=True)
-        return (f"dodge {offset / 10:+5.1f}cm (next {pillar.color.value} "
-                f"{gap / 10:+.0f}cm away, wants the line at {wanted / 10:+.0f}cm, "
-                f"passing at {driven / 10:+.0f}cm"
-                f"{self._short_by(pillar, wanted, driven)}"
-                f"{self._catching_up()}{self._held_for(pillar)})")
-
-    def _catching_up(self):
+        The clearance shown is the MEASURED one - the closest the swept
+        footprint comes to a pillar over the whole plan - not the one the
+        config asked for. That distinction is the entire point of the rewrite,
+        so it is what the status line reports.
         """
-        How far the line still is from the profile it is heading for, or ""
-        once it is on it.
-
-        Non-zero means a pillar turned up late enough that the line is still
-        sliding across - see _settle_bias. Worth saying out loud because it
-        looks exactly like a shallow dodge from outside, and the fix is at the
-        other end of the pipeline: the camera found the pillar too late.
-        """
-        outstanding = abs(self._catchup_at(self.aim_progress))
-        if outstanding < 1.0:
-            return ""
-        return f", still {outstanding / 10:.0f}cm from the line"
-
-    def _short_by(self, pillar, wanted, driven):
-        """
-        Why a pillar is being passed closer than clearance_mm asked for, or ""
-        when it is not.
-
-        Two different faults look identical on the mat and need opposite fixes:
-        the corridor running out sideways (lower blocks.clearance_mm, or move
-        the racing line) against the corner arc being too tight to bend the
-        line into (lower path.wall_margin_mm, which widens the arcs). Naming
-        which one it is here saves guessing at it between runs.
-        """
-        if abs(wanted - driven) <= 0.5:
-            return ""
-        corner = self._corner_room_mm()
-        inward = driven * self.path.inward_sign(self.direction)
-        bay = self._bay_wall_limit_mm(pillar.progress)
-        if bay is not None and abs(driven) >= bay - 0.5 and inward < corner - 0.5:
-            blame = "bay-guard"
-        elif inward >= corner - 0.5:
-            blame = "corner"
-        else:
-            blame = "wall"
-        gap = (abs(driven) - float(self.setting("blocks.robot_half_width_mm"))
-               - BLOCK_SIZE_MM / 2.0)
-        return f" - {blame}-limited, {gap / 10:.0f}cm of body gap not {self.setting('blocks.clearance_mm') / 10:.0f}"
-
-    def _held_for(self, pillar):
-        """
-        How long this pillar has been steering the line on memory alone, or ""
-        while the camera can still see it. A dodge that is being held is not a
-        fault - it is the point - but a dodge held for most of its approach
-        says the detection is dropping out, not that the ramp is wrong.
-        """
-        stale = time.monotonic() - pillar.last_seen
-        return f" HELD {stale:.1f}s" if stale > 0.15 else ""
+        if self._plan is None:
+            return "plan=none"
+        gaps = []
+        pillar_gap = getattr(self._plan, "pillar_gap_mm", float("inf"))
+        if math.isfinite(pillar_gap):
+            gaps.append(f"pillar {pillar_gap:.0f}mm")
+        wall_gap = getattr(self._plan, "wall_gap_mm", float("inf"))
+        if math.isfinite(wall_gap):
+            gaps.append(f"wall {wall_gap:.0f}mm")
+        passes = sum(1 for goal in self._plan.goals if goal.obstacle is not None)
+        line = (f"plan={self._plan.length_mm:.0f}mm {passes // 2 or passes} "
+                f"pass  {'  '.join(gaps)}")
+        if self._plan.compromised:
+            line = f"{line}  COMPROMISED({self._plan.reason})"
+        return line
 
     def status(self):
         line = (f"{super().status()}  {self.context.nav.blocks.summary()}"
-                f"  {self._dodge_status()}")
+                f"  {self._plan_status()}")
         if self.context.vision is not None:
             line = f"{line}  {self.context.vision.status_line()}"
         return line
 
     def _draw_overlay(self, canvas, to_px):
         """
-        The plain racing line, the bent one the robot is actually on, and -
-        dimmer, behind it - the one the config asked for.
+        The racing line, the plan on top of it, and the goals the plan is
+        made of.
 
-        The two bent lines are the same wherever the settings are getting what
-        they want. Where they differ, the dim line is what padding_mm,
-        approach_mm and past_mm describe and the bright one is what the pillar
-        actually left room for, which is the difference between a knob that
-        does nothing and a knob that is being overruled. Nothing else on this
-        view distinguishes those two, and they need very different fixes.
+        The goals are what is worth seeing here. The old view drew two bent
+        lines and left you to infer from the gap between them that a dodge
+        had been clamped; this one draws the pose the robot is actually
+        aiming to be in beside each pillar, which is the thing that either
+        clears it or does not.
         """
         super()._draw_overlay(canvas, to_px)
-
-        wanted, actual = [], []
-        for step in range(0, int(self.path.length), 40):
-            progress = self.progress + step
-            for points, capped in ((wanted, False), (actual, True)):
-                x, y = self.path.point_at(
-                    progress, self.direction,
-                    self.target_lateral_mm(progress, capped=capped))
-                points.append(to_px(x, y))
-        if wanted != actual:
-            cv2.polylines(canvas, [np.array(wanted, dtype=np.int32)],
-                          isClosed=True, color=(70, 55, 25), thickness=1)
-        if actual:
-            cv2.polylines(canvas, [np.array(actual, dtype=np.int32)],
-                          isClosed=True, color=(180, 140, 60), thickness=1)
+        if self._plan is not None:
+            color = (60, 90, 235) if self._plan.compromised else (90, 200, 220)
+            self._plan.draw(canvas, to_px, color=color)
+        for pillar in self._pillars:
+            spot = to_px(pillar.x, pillar.y)
+            bgr = ((70, 200, 70) if pillar.color is Color.GREEN
+                   else (60, 60, 210))
+            cv2.circle(canvas, spot, 7, bgr, 2)

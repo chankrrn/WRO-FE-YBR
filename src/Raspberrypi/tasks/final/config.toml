@@ -1,239 +1,265 @@
 # =============================================================================
-# Final round - three laps with red/green pillars.
+# Final round - three laps with red/green pillars, then park.
 #
-# Same keys as the qualification config (anything missing falls back to
-# DEFAULTS in tasks/path_task.py), plus the [blocks] section. Speeds are lower
-# across the board because the line moves sideways here and the robot has less
-# room to recover from a late correction.
+# The driving is planned, not profiled: each pillar becomes a GOAL POSE beside
+# it on the correct side, and GoalPlanner joins those goals with a path the
+# steering can actually hold, sweeps the robot's body along it, and reports
+# what clearance the pass really gets. See classes/goal_planner.py.
+#
+# The single most important consequence for tuning: blocks.clearance_mm is now
+# a REQUEST. If the corridor cannot give it, the plan takes what fits, says
+# COMPROMISED in the status line with the pillar and the millimetres, and
+# drops to speed.compromised. It no longer clamps in silence. So if a pass
+# looks tight on the mat, read the status line - it will already have told you
+# which pillar and by how much.
+#
+# Anything missing here falls back to DEFAULTS in tasks/path_task.py.
+# Distances are millimetres, angles degrees.
 # =============================================================================
 
 [laps]
 goal = 3
 
 [speed]
+# A speed is the RAW PWM duty the Arduino writes (0-255), not a percentage -
+# the value goes to analogWrite unchanged. 70 is about 27% duty.
 base = 70
 corner = 65
 lost = 55
 minimum = 55
+# While the planner reports a pass it could not give full clearance to. Every
+# margin that makes a tight pass survivable - the lidar backstop having time
+# to fire, tracking error staying small, the pose staying fresh - is bought
+# with speed, so this is the one knob that helps in every compromised case.
+compromised = 45
 
 [path]
 resolution_mm = 20.0
 
-# Gap from the outer wall to the straights (None/unset centers the loop in
-# the corridor: 500mm to the wall, 500mm to the centre block). Lower this to
-# pull the line closer to the wall; raise it to pull it closer to the block.
+# Gap from the outer wall to the straights. Unset centres the loop in the
+# corridor (500mm to the wall, 500mm to the centre block), which is the most
+# forgiving line and leaves a pass equal room either way.
 wall_margin_mm = 520.0
+
+# Corner radius. Unset takes the biggest that still clears the centre block,
+# which here is 480mm - this is deliberately WIDER than that.
+#
+# It is the one knob that moves the last failure mode. A pass that has to go
+# round the INSIDE of a bend is the case the corner geometry limits: holding
+# the plan `d` mm inside an arc of radius R makes it an arc of radius R - d,
+# so an inward pass spends the corner's radius one for one and stops being
+# drivable once R - d falls below the turning circle. The budget is therefore
+# corner_radius - turning_circle, and a pillar already sitting inward of the
+# line needs that plus however far inward it sits. A wider corner is more
+# budget, directly.
+#
+# Measured over 24 simulated 3-lap runs (test_driving.py --round final),
+# counting only pillars the robot had a fair chance at - the simulator places
+# them by lap position and can drop one 270mm in front of the start, which
+# nothing can dodge:
+#
+#     480   91% of passes correct and clear,  0-1 runs in 12 touched a wall
+#     620   97% / 87%,                        0-1 runs in 12
+#     680   87%,                              5-8 runs in 12  <- corner now
+#     760   87%,                              5   runs in 12     cuts too close
+#
+# So 620. Past about 650 the corner itself starts running out of room against
+# the wall and the block, and what the pass gains the lap loses.
+corner_radius_mm = 620.0
 
 [pursuit]
 wheelbase_mm = 165.0
 
-# Shorter than qualification: the line moves sideways around each pillar, and a
-# long lookahead cuts the corner off that move and clips the block. Too short
-# and the robot weaves - raise it until it stops, then stop.
-lookahead_base_mm = 100.0
+# The plan already respects the turning circle, so the lookahead no longer has
+# to be short enough to keep pure pursuit from cutting across a steep dodge -
+# there are no steep dodges to cut across. Kept moderate rather than raised
+# straight away: raise it if the robot weaves on the straights, lower it if it
+# runs wide, and re-measure after any change to max_road_wheel_deg.
+lookahead_base_mm = 140.0
 lookahead_per_speed_mm = 2.5
-lookahead_min_mm = 150.0
+lookahead_min_mm = 160.0
 lookahead_max_mm = 400.0
 
 # Inside a bend the lookahead is additionally capped at this fraction of the
 # bend's radius, which is what stops the robot cutting the apex and then
 # running wide correcting. Lower it if it still cuts; raise it if it weaves.
-# Measured on the sim: 0.9 -> 2.1cm corner error, 0.7 -> 1.2cm, off -> 4.2cm.
 corner_lookahead_fraction = 0.60
 
 # Measured from a normal driven lap (SteeringCalibrator, which fits this from
-# ordinary cornering rather than a raw test_steering.py arc - see FutureE
-# discussion: the raw arcs shook the mast enough to corrupt the lidar pose
-# mid-turn). Reported max_road_wheel_deg = 48.5 (robot turns 21% MORE than
-# 40.0 assumed); the calibrator also reads 4-9% low by design, so rounded up
-# from 48.5 rather than used as-is.
+# ordinary cornering rather than a raw test_steering.py arc - the raw arcs
+# shook the mast enough to corrupt the lidar pose mid-turn). Reported
+# max_road_wheel_deg = 48.5; the calibrator also reads 4-9% low by design, so
+# this is rounded up from 48.5 rather than used as-is.
 max_road_wheel_deg = 40.0
 max_steer_command = 46.0
 rear_axle_offset_mm = 0.0
 
-# Measured with test_steering.py --lag: true response time is ~0.35s to 63%,
-# more than double what's safe to compensate for (see the tool's own cap at
-# 0.15s - over-predicting overshoots worse than not predicting at all). The
-# gap between 0.35s real and 0.15s compensated is why speed.corner is cut
-# below, rather than raising this further.
+# Measured with test_steering.py --lag: true response is ~0.35s to 63%, more
+# than double what is safe to compensate for (over-predicting overshoots worse
+# than not predicting at all). The gap between 0.35s real and 0.15s
+# compensated is why speed.corner is cut, rather than raising this further.
 lag_compensation_s = 0.15
+
+[startup]
+localize_timeout_s = 8.0
+# The scale that turns a speed command into mm/s, as
+#     mm/s = speed / 100 * mm_per_s_at_full
+# The 100 is NOT a percentage - a speed command is a 0-255 PWM duty - so this
+# is a fitted constant, not a top-speed reading, and it is only meaningful if
+# it was measured against that same formula:
+#     python test_steering.py --calibrate
+# It is worth measuring: this is the particle filter's whole motion model
+# between lidar scans, and a pose that runs ahead of the truth maps pillars
+# where they are not.
+mm_per_s_at_full = 700.0
+
+[start]
+# The round starts with the robot parked between the two bay walls. Those
+# walls are 100mm tall, stick 200mm out from the outer wall, and are NOT in
+# FieldMap - so from inside the space a large share of the lidar's beams are
+# returns the map cannot explain, and an unexplained beam does not just add
+# noise, it pushes weight onto whatever pose WOULD explain it. The filter
+# either never reaches min_pose_confidence or converges somewhere wrong, and
+# a wrong pose at tick zero is a wrong plan for the whole round.
+#
+# With this on, the round creeps straight out of the space first, restarts the
+# filter's search, and localizes in the open corridor where the map is exact.
+in_parking_bay = true
+# How far to creep. Only has to beat the depth of the bay walls (200mm), and
+# overshooting into the corridor is harmless while stopping short is not, so
+# this errs long. Driven open-loop - there is no pose worth steering on yet.
+bay_exit_mm = 600.0
+bay_exit_speed = 60
 
 [blocks]
 # ---------------------------------------------------------------------------
-# Reset to values reasoned from the field's actual geometry (see FieldMap:
-# outer wall +/-1500mm, centre block +/-500mm -> a 1000mm-wide corridor, i.e.
-# 500mm from the centreline to EITHER the wall or the block), rather than
-# wherever earlier trial-and-error testing had pushed them. FinalTask now
-# checks these against each other at startup (_warn_if_dodge_wont_fit) and
-# prints a WARNING if they do not geometrically fit together, so an
-# unworkable combination shows up in the console instead of as a mystery
-# silent-clamp crash on the mat.
+# The corridor is 1000mm wide: 500mm from the racing line to the outer wall
+# and 500mm to the centre block. A pass has to fit the block's half-diagonal
+# (35mm), the robot's half width, and clearance_mm into that, measured from
+# wherever the pillar actually sits - so the room a pillar off the centreline
+# leaves on its own side is 500mm MINUS how far off it is.
+#
+# The old value here was 430mm, which needed 535mm of offset out of a corridor
+# that could give 390mm. Every pass was clamped, on every pillar, and nothing
+# said so; a pillar 300mm toward the side it had to be passed on came out at
+# 25mm of body clearance while the code reported a healthy dodge. Setup now
+# prints the arithmetic and refuses to be quiet about it.
 # ---------------------------------------------------------------------------
 
 # Gap between the robot's BODY and the pillar's near face as it goes past.
-clearance_mm = 430.0
+# A request, not a promise - see the header.
+clearance_mm = 150.0
 
-# Half the robot's own width (centerline to its widest point - wheels,
-# mudguards, whatever sticks out furthest). This is a MEASUREMENT, not a
-# tuning knob - kept at its last real value rather than reset, but verify it
-# with a ruler if unsure. Pure pursuit steers the centerline, so without this
-# the robot's actual body comes clearance_mm MINUS this value from the
-# pillar, not clearance_mm.
+# Half the robot's own width (centreline to its widest point - wheels,
+# mudguards, whatever sticks out furthest). A MEASUREMENT, not a tuning knob.
 robot_half_width_mm = 70.0
 
-# Extra padding for ONE colour only, on top of clearance_mm. Both are 0 and
-# should normally stay there: a red pillar and a green one are the same 50mm
-# block and the robot is the same width going past either, so the dodge is the
-# same size in both cases - only its DIRECTION differs (SIDE_FOR_COLOR).
-#
-# These exist for one situation, which is a fault rather than a preference: if
-# ObjectSolver systematically mis-ranges one colour - a hue that clips, a
-# threshold that eats the bottom edge of the block and so reads it as further
-# away - then that colour's mapped position is biased and its dodge is
-# measured from the wrong place. Padding the colour is a way to live with that
-# until the detection is fixed; it is not a way to be more careful about one
-# side of the track.
-#
-# The cost of a non-zero value is not obvious, which is why this warning is
-# here: it makes the dodge WIDER, and a wider dodge is the first thing the
-# wall clamp and the parking-bay guard take back. 80mm here was pushing RED's
-# offset to 385mm against a corridor that could only give it 334mm - so RED
-# was being clamped short on every straight while GREEN was not, which reads
-# on the mat as the robot treating the two colours differently for no reason.
-red_extra_clearance_mm = 0.0
-green_extra_clearance_mm = 0.0
+# How far ahead a pillar may be MAPPED, overriding block_map's own 1500mm.
+# Less critical than it was: a goal is a pose, not a schedule, so a pillar
+# confirmed late gets a shorter, firmer approach rather than a step in the
+# steering. What range still buys is warning; what it costs is a red smudge on
+# the wall getting a vote on the plan.
+map_range_mm = 1800.0
 
-# How far ahead a pillar may be MAPPED. This is the ceiling on how early the
-# dodge can start, because a transition cannot begin before the pillar exists.
-# Unset leaves block_map.py's MAX_MAPPING_RANGE_MM: 1500mm from the lens, which
-# is 1290mm from the robot, which is only ~940mm ahead of the pursuit target
-# the profile is measured at. Reaching too far is not free - a pillar at 2m is
-# a handful of pixels, its mapped position is soft, and marginal detections
-# drop in and out (blocks.memory_s covers the dropouts). Back this off if the
-# status line shows HELD for most of an approach.
-map_range_mm = 2200.0
+# How long a pillar keeps its goals after its track is lost. A pass must not
+# be cancelled by a dropped frame - that is a collision - so it is held, and
+# this bounds how long a wrong detection can hold it.
+memory_s = 1.5
 
-# ---------------------------------------------------------------------------
-# The shape of a dodge, in plain mm, measured from the pillar:
-#
-#        approach_mm    padding_mm  padding_mm    past_mm
-#      |<----------->|<--------+--------->|<----------->|
-#      ______________                                    ____
-#                    \                                  /
-#                     \________________________________/
-#                              full offset, straight
-#
-# padding_mm is the part that does the passing: the line runs parallel to the
-# racing line at the full offset, so the robot arrives beside the pillar
-# squared up and already across, and is still across when its tail clears.
-# approach_mm and past_mm are only the transitions in and out, so they can be
-# made as long and gentle as there is room for without softening the pass
-# itself. That is the whole point of splitting them.
-#
-# Both transitions are cubic Beziers: four control points, the outer two at the
-# racing line and at the full offset, the inner two level with them so the line
-# leaves and arrives PARALLEL to the racing line. bezier_lead and bezier_settle
-# say where those inner two sit along the curve.
-#
-# These lengths are never shortened to protect anything, and the dodge is never
-# traded away to make a transition gentler - a steep dodge gets past a pillar
-# and a small one does not. What a short transition costs is LEAN: length L
-# carrying offset A leans at most A / (L x (1 - handle)), so with the offset
-# here at clearance_mm + robot_half_width_mm + 25 = 305mm and handles at 1/3:
-#
-#     transition  1200   14 deg at its steepest
-#     transition   700   23 deg
-#     transition   400   41 deg
-#     transition   250   61 deg   - pure pursuit will cut the corner off this
-#
-# Past about 45 degrees the follower stops tracking the line and starts cutting
-# across it, so keep them above ~400mm for this offset. Setup prints the actual
-# angle for the values in force.
-#
-# A transition is SQUEEZED, not cut, when there is less room than it wants - a
-# pillar seen late, or one close behind another. It gets steeper, and the dodge
-# still happens. That is deliberate: shrinking the dodge instead is what made
-# the robot drive into pillars it could see perfectly well.
-# ---------------------------------------------------------------------------
-approach_mm = 600.0
-padding_mm = 500.0
-past_mm = 500.0
+# Real gap from the robot's BODY to the outer wall or the centre block. The
+# walls' positions are exactly known field geometry, with none of a pillar's
+# detection uncertainty, so this can run tighter than clearance_mm - but not
+# to 0; pose tracking still has noise, and a plan is checked against half this
+# before it is called clear.
+wall_clearance_mm = 80.0
 
-# Where each transition's inner control point sits, as a fraction of its
-# length. 1/3 is the plain S-curve. Lower starts leaning sooner and more
-# evenly - gentler in the middle, sharper where it meets the straight; higher
-# holds the straight longer then leans harder. These are the shape knobs:
-# reach for them before changing the lengths.
-bezier_lead = 0.333
-bezier_settle = 0.333
-
-# The steepest the line is aimed to lean crossing from one pillar's dodge to
-# the next, in degrees off the racing line. The curve between two pillars is
-# given the length it needs to hold this BEFORE either pillar's flat part gets
-# any of the gap, because the crossing has to happen and the flat parts are
-# only a preference. Where two pillars are too close for it at any length, the
-# curve takes what there is and leans harder - steep beats absent.
-max_lean_deg = 90.0
-
-# Over how much driving the line closes the gap when the profile moves under
-# it. The dodge is a function of where the pillars are and NOTHING else - the
-# same curve whether the robot is beside it or across the field - so when a
-# pillar is confirmed late the profile it brings with it says the line should
-# already be part-way across. Rather than bend the curve around the robot's
-# history, the line simply slides onto the new profile over this distance,
-# keeping the curve's shape the whole way. Too short and a late pillar still
-# yanks the steering; too long and the line is slow to take up a dodge it has
-# just learned about.
-catchup_mm = 800.0
-
-# How much of the robot's turning circle to keep in hand where a dodge bends
-# the line INWARD through a corner - the ONLY case the corner arc limits. A
-# dodge on a straight, or one to the outside of a bend, is never touched by
-# this. 1.0 is the bare geometric limit, with nothing left to correct with.
+# How much of the robot's turning circle to keep in hand. The plan is drawn
+# with arcs no tighter than turning_circle x this, because a path at exactly
+# full lock is one the follower can only just hold, with nothing left to
+# correct tracking error with. 1.0 is the bare geometric limit.
 turn_radius_margin = 1.15
 
-# Real gap from the robot's BODY to the wall/centre block, never mind how
-# large clearance_mm's dodge wants to be. The true wall's position is exactly
-# known field geometry (no detection uncertainty, unlike a pillar), so this
-# can run tighter than clearance_mm - but not 0; pose tracking still has
-# noise.
-wall_clearance_mm = 30.0
+[goals]
+# ---------------------------------------------------------------------------
+# The shape of a plan. Each pillar contributes two goals - a PASS beside it
+# and an EXIT past it, both squared up with the track:
+#
+#            approach_mm                    exit_mm
+#          |<--------->|                  |<------->|
+#      ____                 [PASS]===[EXIT]
+#          \____________ ,-'                        `-.____
+#                     route goals stop here          plan returns to the line
+#
+# The exit goal is what keeps the robot out until its TAIL is clear. Without
+# one the plan may start folding back the instant the centre of the robot
+# draws level with the pillar, which is when the rear overhang is still
+# swinging past it.
+# ---------------------------------------------------------------------------
+
+# Below this achieved body clearance a pass is reported COMPROMISED and the
+# speed drops. Not the clearance being aimed for - that is blocks.clearance_mm
+# - but the point below which a pass stops being one.
+min_clearance_mm = 45.0
+
+# How much lap one plan covers. Must comfortably exceed the lookahead or the
+# robot drives off the end of its own plan between replans; setup warns if it
+# is under 3x. Reaching much further is wasted work - it is replanned before
+# the far end is reached.
+horizon_mm = 2200.0
+
+# Goal spacing along an empty stretch. These exist to hold the plan near the
+# racing line: a single Dubins segment spanning a whole side of the field is
+# the shortest path between its two ends and nothing in it prefers the line,
+# so it would bow out toward the wall on the way. Spacing is therefore how
+# closely the plan tracks the line where there are no pillars - measured with
+# none at all, 550mm gave 6.3cm rms off the line, 350mm gives 5.5cm, and
+# 250mm gives 5.6cm, so there is nothing below about 350 and it costs a
+# Dubins segment per goal.
+route_spacing_mm = 350.0
+
+# How far short of a pillar the route goals stop, so nothing pulls the robot
+# back onto the centreline on the run-in to a pass.
+approach_mm = 450.0
+# How far past a pillar the plan holds its offset before returning to the
+# line. Raise it if the robot clips pillars with its back end on the way out.
+exit_mm = 350.0
+# How many pillars one plan reaches through. Beyond three the far ones are
+# replanned before they are reached anyway.
+max_gates = 3
+
+# The robot's extent forward of and behind THE POINT THE POSE DESCRIBES, which
+# with pursuit.rear_axle_offset_mm at 0 is the rear axle - so robot_front_mm is
+# nearly the whole length of the car, not half of it. The front overhang is
+# what swings widest through a corner and what reaches a pillar first, so
+# understating it plans passes that clear on paper and clip on the mat.
+#
+# MEASURE BOTH, with a ruler, from the rear axle:
+robot_front_mm = 200.0
+robot_rear_mm = 40.0
+
+# How often a plan is rebuilt when nothing it was built from has changed.
+# Planning costs well under a millisecond, but a plan rebuilt every tick from
+# a slightly different pose has a target point that jitters. A pillar
+# appearing or the robot drifting off the plan forces one immediately,
+# whatever this says.
+replan_interval_s = 0.1
+replan_cross_track_mm = 120.0
 
 [steer]
-# How fast the steering command may move, in command units per second. This is
-# a RATE LIMIT, not a filter: it does nothing until the controller asks the
-# servo to move faster than this, so ordinary cornering is untouched and only
-# the sharp snaps are turned into sweeps. Those snaps are what shake the mast
-# and blur the camera frame.
-#
-# Measured on the sim (2 laps, this config). "peak" is how fast the servo was
-# actually driven; the tracking cost stays flat until the limit starts eating
-# real corrections:
-#
-#     unlimited   peak 694 u/s   off-line rms 0.83cm
-#     135         peak 135 u/s   off-line rms 0.81cm
-#      90         peak  90 u/s   off-line rms 0.82cm
-#      60         peak  60 u/s   off-line rms 0.82cm     <- 11x calmer, free
-#      45         peak  45 u/s   off-line rms 1.65cm     <- starts to cost
-#      30                        off-line rms 19.9cm, fails to finish
-#wall_
-# So drop it to 60 if the camera is still shaking; below ~50 the robot starts
-# losing the line. Leave unset for 3 x max_steer_command.
+# How fast the steering command may move, in command units per second. A RATE
+# LIMIT, not a filter: it does nothing until the controller asks the servo to
+# move faster than this, so ordinary cornering is untouched and only the sharp
+# snaps - the ones that shake the mast and blur the camera frame - are turned
+# into sweeps. Leave unset for 3 x max_steer_command.
 # max_rate_units_s = 60.0
 
 [safety]
 min_pose_confidence = 0.35
 lost_timeout_s = 4.0
-# Lowered from qualification's defaults (450/220) for this round specifically:
-# a deliberate pillar pass targets ~clearance_mm (120mm) of real body gap, so
-# a 220mm front_stop_mm treated every planned dodge as an emergency and
-# stopped-and-reversed on nearly every pillar - see the FutureE discussion.
-# Comfortably below clearance_mm so a correctly-executed pass never trips it,
-# but still catches a pass that is actually going wrong before contact.
+# The lidar backstop, independent of the plan. A correctly executed pass now
+# targets clearance_mm (150mm) of real body gap, so these sit comfortably
+# below it: a good pass never trips them, but a pass that is actually going
+# wrong is still caught before contact.
 front_slow_mm = 220.0
-front_stop_mm = 160.0
+front_stop_mm = 130.0
 front_sector_deg = 25.0
-
-[startup]
-localize_timeout_s = 8.0
-mm_per_s_at_full = 700.0
