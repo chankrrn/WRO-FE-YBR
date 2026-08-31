@@ -2,19 +2,7 @@
 
 This document describes the complete electrical and sensing architecture of the **YBR-SUNFLOWER WRO 2026 Future Engineers robot**, including the power system, controllers, communication interfaces, sensors, physical sensor placement, wiring, calibration and initialization methods, development iterations, failure modes, reliability decisions, and final electrical configuration.
 
-The purpose of this document is not only to identify the components used in the robot, but also to explain:
-
-- why each electrical and sensing component was selected,
-- how power is generated, regulated, and distributed,
-- how current demand influenced the power architecture,
-- why different sensors are used for different types of information,
-- why each sensor is placed in its final physical position,
-- how the sensors are calibrated or initialized,
-- what electrical and sensing problems were discovered during development,
-- how testing changed the final architecture,
-- what failure modes were considered,
-- how electrical, mechanical, and software decisions affect one another,
-- and how the final system can be reproduced.
+The purpose of this document is not only to identify the components used in the robot, but also to explain why each electrical and sensing component was selected, how power is generated, regulated, and distributed, how current demand influenced the power architecture, why different sensors are used for different types of information, why each sensor is placed in its final physical position, how the sensors are calibrated or initialized, what electrical and sensing problems were discovered during development, how testing changed the final architecture, what failure modes were considered, how electrical, mechanical, and software decisions affect one another, and how the final system can be reproduced.
 
 ---
 
@@ -44,32 +32,9 @@ The purpose of this document is not only to identify the components used in the 
 
 The final electrical system combines high-level computing, low-level actuator control, multiple sensing modalities, and two power branches into one integrated architecture.
 
-The electrical system can be divided into five functional groups:
+The electrical system can be divided into five functional groups: **power generation and distribution, high-level computing, low-level control, sensing, and actuation and feedback**.
 
-1. **Power generation and distribution**
-2. **High-level computing**
-3. **Low-level control**
-4. **Sensing**
-5. **Actuation and feedback**
-
-The final architecture uses:
-
-- Raspberry Pi 5
-- DFR0566 IO Expansion HAT
-- Arduino UNO R4 Minima
-- RPLiDAR C1
-- Raspberry Pi Night Vision Camera
-- Gravity BNO055 IMU
-- CHP-20GP-180 motor encoder
-- L298P Motor Shield
-- GEEKSERVO steering servo
-- 3S LiPo battery
-- LM2596 step-down converter
-- XL4015 step-down converter
-- D1-2 positive distribution connector
-- PCT-21 ground distribution connector
-- SPST main power switch
-- ZX-Switch01 competition start switch
+The final architecture uses the Raspberry Pi 5, DFR0566 IO Expansion HAT, Arduino UNO R4 Minima, RPLiDAR C1, Raspberry Pi Night Vision Camera, Gravity BNO055 IMU, CHP-20GP-180 motor encoder, L298P Motor Shield, GEEKSERVO steering servo, 3S LiPo battery, LM2596 step-down converter, XL4015 step-down converter, D1-2 positive distribution connector, PCT-21 ground distribution connector, SPST main power switch, and ZX-Switch01 competition start switch.
 
 ---
 
@@ -133,18 +98,9 @@ The annotated photographs show the physical relationship between the controllers
 
 The electrical architecture must support the complete autonomous vehicle while operating from one onboard battery.
 
-The major electrical requirements are:
+The system must provide stable power to the Raspberry Pi and sufficient power for the motor and steering system while supporting several sensors with different electrical interfaces. It must maintain a common electrical reference, separate the sensitive computing load from rapidly changing actuator loads as much as practical, and provide reliable Raspberry Pi-to-Arduino communication.
 
-- provide stable power to the Raspberry Pi,
-- provide sufficient power for the motor and steering system,
-- support several sensors with different interfaces,
-- maintain a common electrical reference,
-- isolate sensitive computing loads as much as practical from rapidly changing actuator loads,
-- allow reliable Raspberry Pi ↔ Arduino communication,
-- maintain accessible wiring and connectors,
-- fit inside the compact mechanical structure,
-- initialize safely before the competition start command,
-- and remain serviceable during testing.
+The electrical hardware must also fit inside the compact mechanical structure, remain accessible for testing and maintenance, and initialize safely before the competition start command.
 
 ---
 
@@ -180,13 +136,26 @@ The complete robot uses one **3S LiPo battery** as its primary power source.
 | Nominal voltage | 11.1 V |
 | Fully charged voltage | Approximately 12.6 V |
 | Capacity | 1100 mAh |
-| Exact manufacturer / model | Helicox |
+| Manufacturer / model | Helicox |
 
-The nominal 11.1 V value does not mean that the battery remains at exactly 11.1 V throughout a run.
-
-A 3S LiPo reaches approximately 12.6 V when fully charged and decreases in voltage as energy is used.
+The nominal 11.1 V value does not mean that the battery remains at exactly 11.1 V throughout a run. A 3S LiPo reaches approximately 12.6 V when fully charged and decreases in voltage as energy is used.
 
 Because the battery voltage is variable and is higher than the supply required by several electronic subsystems, regulated voltage conversion is required.
+
+---
+
+### 3.1.1 Measured Battery Operating Range
+
+The battery voltage changes continuously with state of charge, so it is not treated as one fixed operating value. A fully charged 3S pack measures approximately **12.6 V**.
+
+During robot testing, the team observed that drivetrain performance begins to decrease when the battery falls below approximately **11.1 V**, with the drive motor becoming noticeably slower. For this reason, approximately **11.1 V is used as a practical performance threshold for this robot**, not as the absolute minimum electrical voltage of the battery.
+
+```text
+Fully charged battery             ≈ 12.6 V
+Practical performance threshold   ≈ 11.1 V
+```
+
+This threshold is an observed system-level behavior of the final robot. It should not be interpreted as a separately characterized discharge limit of the LiPo cell chemistry.
 
 ---
 
@@ -211,36 +180,28 @@ The final design divides the battery supply into two principal branches:
               v                         v
        Computing Branch          Motor / Control Branch
               |                         |
-        Raspberry Pi 5          Arduino / Motor System
-              |
-       DFR0566 + Pi-side
-          peripherals
+              v                         v
+        Raspberry Pi 5           Motor / Control System
 ```
 
-The negative side of the electrical system is distributed through the **PCT-21 common-ground connector**. This allows all connected subsystems to share a common electrical reference.
+The negative side of the electrical system is distributed through the PCT-21 connector so that the required subsystems share a common electrical reference.
 
 ---
 
-## 3.3 Computing Branch
+## 3.3 Raspberry Pi Power Branch — LM2596
 
-The computing branch supplies the Raspberry Pi and its Pi-side interface electronics.
+The LM2596 supplies the Raspberry Pi-side power branch.
+
+The converter output is adjusted to approximately **5.1 V**. A static measurement on the completed Version 3 robot showed approximately **5.0 V at the Raspberry Pi input**.
 
 ```text
-3S LiPo
-   |
-   v
-LM2596
-   |
-Approximately 5.1 V
-   |
-Raspberry Pi 5
-   |
-DFR0566 IO Expansion HAT
+LM2596 output          = 5.1 V
+Raspberry Pi input     = 5.0 V
+Measured voltage drop  ≈ 0.1 V
+Test condition         = robot powered, no autonomous run
 ```
 
-The LM2596 output is adjusted to approximately **5.1 V**.
-
-The slightly increased voltage relative to an ideal 5.0 V supply is intended to compensate for voltage losses through connectors and wiring before power reaches the Raspberry Pi.
+The measured difference between the converter output and the Pi input is approximately **0.1 V**. This supports the decision to set the converter slightly above 5.0 V at its output so that small losses through wiring and connectors do not reduce the voltage at the Raspberry Pi input below the intended value.
 
 The Raspberry Pi supply is separated from the motor/control branch because the Pi is more sensitive to short supply-voltage disturbances than the mechanical actuators.
 
@@ -248,148 +209,112 @@ The Raspberry Pi supply is separated from the motor/control branch because the P
 
 ### 3.3.1 Raspberry Pi Supply Validation
 
-The Raspberry Pi 5 has a load-dependent current requirement, meaning its actual power consumption varies with factors such as CPU load, connected USB devices, camera activity, peripherals, and software workload. 
+The Raspberry Pi 5 has a load-dependent current requirement. Its actual power consumption changes with CPU load, connected USB devices, camera activity, peripherals, and software workload.
 
-Therefore, the completed robot should be tested under conditions similar to competition use rather than assuming a fixed current requirement.
-
-
-> **[TODO: Measure Raspberry Pi-branch voltage and current while running the final Obstacle Challenge software with LiDAR, camera, IMU and Arduino connected.]**
-
-Recommended measurements:
+The static measurement validates the basic voltage path, but it does not yet validate the Pi rail under the highest competition load.
 
 | Condition | Pi Rail Voltage | Pi Rail Current |
 |---|---:|---:|
-| Idle after startup | **[TODO]** | **[TODO]** |
+| Static / idle power-on | **5.0 V measured at Pi input** | **[TODO]** |
 | LiDAR + camera active | **[TODO]** | **[TODO]** |
 | Full navigation software | **[TODO]** | **[TODO]** |
 | Highest observed load | **[TODO]** | **[TODO]** |
 
-This approach is more useful for validating the actual robot than relying only on the maximum power capability specified for the Raspberry Pi power interface.
+> **[TODO: Measure Raspberry Pi-branch voltage and current while running the final Obstacle Challenge software with LiDAR, camera, IMU and Arduino connected.]**
 
 ---
 
-## 3.4 Motor / Control Branch
+## 3.4 Motor / Control Power Branch — XL4015
 
-The second branch supplies the motor/control-side system through the XL4015.
+The XL4015 supplies the motor/control-side power branch.
+
+The final XL4015 setting has been verified directly on the completed Version 3 robot. A static multimeter measurement showed **11.1 V at the XL4015 output** and approximately **11.0 V at the motor/control-side input**.
 
 ```text
-3S LiPo
-   |
-   v
-XL4015
-   |
-   v
-Motor / Control System
+XL4015 output             = 11.1 V
+Motor / control input     = 11.0 V
+Measured voltage drop     ≈ 0.1 V
+Test condition            = robot powered, no autonomous run
 ```
 
-The exact final XL4015 output setting must be documented consistently because earlier repository documents contain two different values.
+This measurement resolves the earlier documentation conflict between an approximately 5 V value and an approximately 11.1 V value. The final Version 3 configuration uses an **11.1 V XL4015 output**.
 
-The existing `elec_README.md` previously described this branch as approximately **5 V**, while the current `BUILD.md` describes the XL4015 as adjusted to approximately **11.1 V**.
+> **[TODO: Confirm exactly which final devices are powered directly from the XL4015 output: motor-power rail, L298P Motor Shield, Arduino supply, steering-servo rail, or a combination of these.]**
 
-> **[TODO: Measure the actual XL4015 output voltage on the completed Version 3 robot and update every document to the same value.]**
-
-> **[TODO: Confirm exactly which devices are powered from the XL4015 output: motor-power rail, L298P Motor Shield, Arduino supply, steering-servo rail, or a combination of these.]**
-
-Until this measurement is confirmed, this document intentionally does not claim a specific final XL4015 output voltage.
+Because the XL4015 is a step-down converter, its available regulation headroom becomes smaller as the battery voltage approaches the 11.1 V output setting. This is consistent with the team's observation that drivetrain performance decreases when the battery falls below approximately 11.1 V. However, this observation is documented as a system-level behavior rather than as a separately isolated converter-efficiency test.
 
 ---
 
-### 3.4.1 Why the Branches Are Separated
+## 3.5 Common Ground Architecture
 
-Drive motors and steering servos do not draw a constant amount of current. Their current can change during acceleration, deceleration, steering, mechanical loading, and near-stall conditions. If the computing electronics and actuators share the same poorly isolated power path, these changes can cause voltage disturbances. 
+Although the power system uses separate voltage-conversion branches, the controllers and signal interfaces require a shared electrical reference where appropriate.
 
-Therefore, the final architecture separates the Raspberry Pi power conversion from the motor and control-side conversion. The main goal is to reduce electrical interaction between high-current actuator loads and the Raspberry Pi’s computing supply.
+The PCT-21 connector is used as the common negative / ground distribution point.
 
----
+```text
+Battery Negative
+      |
+      v
+    PCT-21
+      |
+      +---- LM2596 Ground
+      |
+      +---- XL4015 Ground
+      |
+      +---- Controller / Signal Grounds
+```
 
-## 3.5 Power Distribution Hardware
-
-The final power-distribution structure uses **D1-2** for positive power distribution and **PCT-21** for negative or common-ground distribution. 
-
-This creates a more organized and reproducible power layout compared with connecting multiple wires through temporary or undocumented connections.
+This common reference is necessary because digital signals such as motor control, encoder feedback, sensor communication, and controller interfaces must be interpreted relative to a known ground potential.
 
 ---
 
 # 4. Power Budget and Electrical Load Analysis
 
-A power budget is necessary because selecting a battery or voltage converter based only on its nominal voltage is not sufficient. The electrical design must also consider continuous current, transient current, stall current, converter capability, voltage drop, and the simultaneous subsystem operation.
+The power system must support both relatively stable computing loads and rapidly changing actuator loads.
+
+For this reason, the power budget is separated into **reference component requirements** and **measurements from the completed robot**. Manufacturer specifications are useful for planning, while measurements from the final robot provide stronger evidence of real operating behavior.
 
 ---
 
-## 4.1 Reference Load Table
+## 4.1 Reference Electrical Loads
 
-The table below distinguishes between **reference specifications** and **values**.
+| Component | Supply | Reference / Expected Load | Notes |
+|---|---:|---:|---|
+| Raspberry Pi 5 | 5.0 V class supply | Load dependent | Static input measured at 5.0 V |
+| RPLiDAR C1 | 5 V USB | ~290 mA reference | Verify against final device documentation |
+| Camera | Pi camera interface | Module dependent | Exact final module current not yet measured |
+| BNO055 | Low-current sensor | Small relative to actuators | Exact module current not yet measured |
+| CHP-20GP-180 Motor | Motor rail | ≤280 mA no-load, ≤550 mA rated, ≤2.7 A stall | Manufacturer / supplier reference |
+| GEEKSERVO | Servo rail | Load dependent | Stall current requires final verification |
 
-| Component | Supply | Reference / Known Current | Peak / Stall | Evidence Type |
-|---|---:|---:|---:|---|
-| Raspberry Pi 5 | ~5.1 V input branch | Load dependent | Load dependent | Must be measured on final robot |
-| RPLiDAR C1 | 5 V | ~290 mA reference | Load dependent | Manufacturer reference |
-| Camera | 5 V | **[TODO: Verify exact current for final camera module]** | **[TODO]** | Exact final module not yet confirmed here |
-| BNO055 module | Pi-side I²C supply | **[TODO: Verify current for SEN0253 complete module]** | — | Exact board current should be taken from module documentation |
-| DFR0566 IO HAT | 5 V | Load dependent | — | Depends on attached peripherals |
-| Arduino UNO R4 Minima | Control-side supply | Load dependent | — | Depends on connected devices |
-| CHP-20GP-180 Motor | Motor-side supply | ≤280 mA no-load / ≤550 mA rated | ≤2.7 A stall | Motor reference specification |
-| GEEKSERVO | Approximately 4.8 V nominal | **[TODO: Verify final servo current specification]** | **[TODO: Current documents contain approximately 700–900 mA stall values]** | Conflicting values in current documentation |
+These values should not be interpreted as measurements from the assembled robot unless explicitly identified as measured values.
 
 ---
 
-## 4.2 Why Peak Current Matters
+## 4.2 Measured Static Power-Path Values
 
-Average current alone is not sufficient for actuator sizing.
+| Measurement Point | Measured Value |
+|---|---:|
+| Battery when fully charged | ~12.6 V |
+| Practical battery performance threshold | ~11.1 V |
+| LM2596 output | 5.1 V |
+| Raspberry Pi input | 5.0 V |
+| Pi-branch static voltage drop | ~0.1 V |
+| XL4015 output | 11.1 V |
+| Motor/control input | 11.0 V |
+| Motor/control static voltage drop | ~0.1 V |
 
-For the drive motor:
-
-```text
-No-load current < Rated current << Stall current
-```
-
-The documented motor values are approximately:
-
-```text
-No-load current <= 0.28 A
-Rated current  <= 0.55 A
-Stall current  <= 2.7 A
-```
-
-This means a drivetrain that appears to consume a small amount of current while the wheels spin freely may require several times more current during heavy loading or stall.
-
-Therefore, **the motor-side power path must be evaluated for transient and near-stall demand, not only for normal driving current**.
+These measurements were taken with the robot powered but without an autonomous run. They validate the static power architecture but do not replace dynamic-load testing.
 
 ---
 
-## 4.3 Power-Budget Method
-
-For a DC load:
-
-```text
-Electrical Power = Voltage x Current
-
-P = V x I
-```
-
-For each branch, the design process should compare:
-
-```text
-Expected simultaneous load
-        <
-Converter / wiring capability
-```
-
-with additional margin for short transients.
-
----
-
-## 4.4 Final Measured Power Budget
-
-The strongest validation is measurement of the completed robot.
-
-> **[TODO: Add measured current values before final submission if time permits.]**
+## 4.3 Remaining Dynamic Measurements
 
 ### Computing Branch
 
 | Test Condition | Voltage | Current | Power |
 |---|---:|---:|---:|
-| Pi idle | **[TODO]** | **[TODO]** | **[TODO]** |
+| Static / idle power-on | **5.0 V at Raspberry Pi input** | **[TODO]** | **[TODO]** |
 | Sensors active | **[TODO]** | **[TODO]** | **[TODO]** |
 | Full competition software | **[TODO]** | **[TODO]** | **[TODO]** |
 
@@ -397,634 +322,376 @@ The strongest validation is measurement of the completed robot.
 
 | Test Condition | Voltage | Current | Power |
 |---|---:|---:|---:|
-| Motor stopped | **[TODO]** | **[TODO]** | **[TODO]** |
+| Static / motor stopped | **11.0 V at motor/control input** | **[TODO]** | **[TODO]** |
 | Normal straight driving | **[TODO]** | **[TODO]** | **[TODO]** |
 | Acceleration | **[TODO]** | **[TODO]** | **[TODO]** |
 | Steering while driving | **[TODO]** | **[TODO]** | **[TODO]** |
 | Highest observed load | **[TODO]** | **[TODO]** | **[TODO]** |
 
-These measurements would allow the power architecture to be validated quantitatively rather than only from component specifications.
+The static measurements confirm the final converter settings and approximately 0.1 V drop on each branch. Current, power, and dynamic voltage behavior still require measurement under representative competition load.
 
 ---
 
-# 4.5 Battery Runtime
+## 4.4 Battery Runtime
 
-Battery capacity is:
+The final robot uses a 1100 mAh battery, but battery capacity alone does not determine the real autonomous runtime because current demand changes continuously with CPU load, sensor activity, steering activity, motor speed, acceleration, and drivetrain resistance.
 
-```text
-1100 mAh = 1.1 Ah
-```
+> **[TODO: Record battery voltage before and after a known-duration Obstacle Challenge test and document the test duration.]**
 
-However, simple runtime calculations using:
-
-```text
-Runtime = Capacity / Current
-```
-
-are only rough estimates because the complete robot current is not constant.
-
-Current can change depending on drivetrain load, steering activity, CPU workload, camera processing, LiDAR operation, and battery voltage.
-
-For this reason, actual competition runtime should be validated experimentally.
-
-> **[TODO: Record the actual usable operating time of the fully charged final robot under representative autonomous driving.]**
+A measured runtime test would provide stronger evidence than estimating runtime from the battery capacity alone.
 
 ---
 
 # 5. Controllers and Communication Architecture
 
-The robot separates high-level autonomous computation from low-level actuator control.
+The final robot divides control between the Raspberry Pi 5 and Arduino UNO R4 Minima.
 
 ```text
-Sensors
-   |
-   v
+High-Level Control
 Raspberry Pi 5
-   |
-   | USB Serial
-   | 115200 baud
-   v
+     |
+     | USB Serial
+     | 115200 baud
+     v
+Low-Level Control
 Arduino UNO R4 Minima
-   |
-   +--> Drive Motor
-   |
-   +--> Steering Servo
-   |
-   +<-- Encoder
-   |
-   +<-- Start Button
+     |
+     +--> Motor Driver
+     +--> Steering Servo
+     +--> Encoder
+     +--> Start Switch
 ```
+
+The Raspberry Pi performs perception, localization, navigation, obstacle processing, and autonomous decision-making. The Arduino performs time-sensitive low-level actuator control and encoder handling.
+
+This division prevents the Raspberry Pi from directly managing every motor-control detail while it is also processing camera and LiDAR data.
 
 ---
 
 ## 5.1 Raspberry Pi 5
 
-**Purpose:** High-level perception, localization and navigation.
+The Raspberry Pi 5 is the high-level computing platform.
 
-The Raspberry Pi processes information from the RPLiDAR C1, camera, BNO055 IMU, and the autonomous software system. Its main responsibilities include sensor processing, localization, computer vision, field-position estimation, path generation, obstacle mapping, navigation, and generating drive and steering requests. 
+It processes LiDAR data, camera frames, IMU information, localization, path planning, Pure Pursuit steering calculations, obstacle decisions, and the overall autonomous behavior.
 
-However, the Raspberry Pi does not directly control every low-level actuator operation. Instead, it sends actuator requests to the Arduino, which handles the lower-level control.
+Its interfaces include CSI for the camera, USB for the LiDAR and Arduino, and I²C through the DFR0566 for the BNO055.
 
 ---
 
 ## 5.2 DFR0566 IO Expansion HAT
 
-<img width="250" height="250" alt="IO Expansion HAT for Raspberry Pi" src="https://github.com/user-attachments/assets/8b4d94f5-aa58-4ed3-8f8b-6d8c36019284" />
+The DFR0566 is used as an interface layer on the Raspberry Pi.
 
-**Purpose:** Raspberry Pi peripheral interface and organized GPIO breakout.
+It provides organized access to GPIO, I²C and other interfaces, reducing direct loose wiring around the Pi header and making the final sensor connection easier to reproduce.
 
-The DFR0566 exposes Raspberry Pi interfaces such as digital I/O, analog input, PWM, I²C, UART, SPI, and IIS, along with DFRobot Gravity-compatible connections. In our robot, the HAT serves as a structured interface layer for the Raspberry Pi rather than providing additional computing capability. 
-
-Its main purpose is to simplify wiring, reduce loose connections to the Pi’s GPIO header, provide convenient connectors, organize peripheral interfaces, and make the system easier to reproduce.
-
----
-
-### 5.2.1 Interface Role
-
-The camera and LiDAR use their own Raspberry Pi interfaces.
-
-The HAT is mainly important for Raspberry Pi-side GPIO / I²C peripherals such as the IMU and other connections that benefit from an organized breakout.
+In the final robot, the BNO055 is connected through the I²C interface provided by this expansion board.
 
 ---
 
 ## 5.3 Arduino UNO R4 Minima
 
-**Purpose:** Low-level actuator and interface controller.
+The Arduino UNO R4 Minima handles low-level hardware control.
 
-The Arduino handles the robot’s low-level control functions, including drive-motor control, steering-servo control, quadrature encoder input, and the competition start switch. It also receives control commands from the Raspberry Pi and executes the required actuator actions.
+Its responsibilities include drive-motor PWM and direction, steering-servo commands, quadrature encoder input, start-switch detection, and communication with the Raspberry Pi.
 
-Separating these responsibilities from the Raspberry Pi provides a clear control boundary:
-
-```text
-Raspberry Pi
-= decide what the robot should do
-
-Arduino
-= execute actuator commands
-```
+This division allows the Arduino to handle hardware timing while the Raspberry Pi focuses on navigation and perception.
 
 ---
 
 ## 5.4 Raspberry Pi ↔ Arduino Communication
 
-The two controllers communicate through **USB Serial**.
+Communication uses USB serial at **115200 baud**.
 
-| Parameter | Value |
-|---|---|
-| Physical interface | USB |
-| Default Raspberry Pi device | `/dev/ttyACM0` |
-| Baud rate | `115200` |
-| Protocol | Newline-terminated ASCII |
-| Basic command | `<servoAngle>,<speed>,<distance>` |
-
-Example:
+The default device path on the Raspberry Pi is:
 
 ```text
-30,55,0
+/dev/ttyACM0
 ```
 
-The detailed software interpretation of these messages is documented in:
+However, Linux device numbering can change depending on connection order. Therefore, this should be treated as the expected default rather than a guaranteed permanent identifier.
 
-[`../software/software_README.md`](../software/software_README.md)
+The command format is:
 
----
+```text
+<servoAngle>,<speed>,<distance>
+```
 
-### 5.4.1 Response Messages
+The Arduino can respond with messages including:
 
-| Response | Meaning |
-|---|---|
-| `READY` | Arduino initialized |
-| `Start` | Competition start button triggered |
-| `OK` | Continuous-drive command accepted |
-| `t` | Requested distance movement completed |
-| `ERR` | Invalid / malformed command |
+```text
+READY
+Start
+OK
+t
+ERR
+```
 
-These response messages allow the Raspberry Pi to determine whether the low-level controller has initialized and whether specific operations have completed.
+The exact command behavior is documented in the software architecture.
 
 ---
 
 # 6. Sensor Architecture and Selection
 
-No single sensor can provide all the information required by the robot. Therefore, the final sensing architecture combines multiple sensors, with each sensor providing different types of information and supporting different functions.
+No single sensor can provide every type of information required by the robot.
+
+The final architecture therefore combines several sensors with different strengths.
+
+| Sensor | Main Information | Why It Is Used |
+|---|---|---|
+| RPLiDAR C1 | Environmental geometry | Field localization and wall geometry |
+| Camera | Visual color / image information | Red and green traffic pillars |
+| BNO055 | Orientation / heading | Relative heading reference |
+| Motor Encoder | Motor rotation | Low-level drivetrain feedback |
+| ZX-Switch01 | Human start input | Competition start procedure |
+
+The sensors are complementary rather than redundant. LiDAR is strong at geometric distance measurement but cannot identify traffic-pillar color. The camera can identify color but is more sensitive to lighting. The IMU provides orientation information but does not directly provide the robot's field position.
+
+---
+
+## 6.1 RPLiDAR C1
+
+The RPLiDAR C1 is the primary environmental-geometry sensor.
+
+It provides a 360° two-dimensional scan around the robot and is connected to the Raspberry Pi through USB serial.
+
+The final software uses the scan to compare the observed environment with the known WRO field geometry for localization.
+
+The LiDAR replaced the earlier ultrasonic-sensor concept because a full scan provides substantially richer spatial information than several isolated distance measurements.
+
+---
+
+## 6.2 Raspberry Pi Night Vision Camera
+
+The camera is used primarily for traffic-pillar detection.
+
+The camera provides the visual information required to distinguish red and green pillars, which cannot be determined from LiDAR geometry alone.
+
+The original lens had a narrow field of view, so the lens was replaced with a wider approximately **60° physical lens**.
+
+> **[TODO: Verify the final effective camera FOV. Electrical documentation records approximately 60°, while the current software calibration contains an 80° FOV value.]**
+
+The final documentation should distinguish between the physical lens specification and the effective/calibrated FOV used by the vision model.
+
+---
+
+## 6.3 Gravity BNO055 IMU
+
+The BNO055 combines accelerometer, gyroscope, and magnetometer sensing with onboard sensor fusion.
+
+In the final robot, it is used primarily as a **relative heading reference** rather than as a fully calibrated absolute magnetic compass.
+
+At startup, the system waits briefly for the sensor to stabilize and then treats the initial fused heading as the local zero reference.
+
+This avoids requiring a lengthy full magnetic calibration procedure before every competition run.
+
+---
+
+## 6.4 Motor Encoder
+
+The CHP-20GP-180 includes a dual-phase quadrature encoder.
+
+The encoder is connected to Arduino interrupt-capable pins D2 and D3.
+
+It provides motor-rotation feedback for low-level movement control and finite-distance motor commands.
+
+The Raspberry Pi navigation system does **not** currently use this encoder as its main field-localization odometry source. Field localization is performed primarily using LiDAR-based environmental geometry together with heading information.
+
+> **[TODO: Verify and document the exact meaning of the current `836 counts/revolution` value in the Arduino implementation, distinguishing raw encoder PPR, quadrature edges, and gearbox-output counts.]**
+
+---
+
+## 6.5 ZX-Switch01 Start Button
+
+The ZX-Switch01 provides the competition start input.
+
+It is connected to Arduino analog input A0 and allows the robot to remain powered and initialized before autonomous movement begins.
+
+This separates:
 
 ```text
-                 FINAL SENSOR ARCHITECTURE
-
-      RPLiDAR C1       Camera       BNO055
-          |               |            |
-          |               |            |
-          +-------+-------+------------+
-                  |
-                  v
-             Raspberry Pi
-                  |
-                  v
-              Navigation
-
-Motor Encoder ------------------> Arduino
-Start Button -------------------> Arduino
+Power ON
 ```
 
----
+from:
 
-## 6.1 Sensor Selection Requirements
+```text
+Start autonomous movement
+```
 
-The autonomous system requires four different categories of information:
-
-| Required Information | Sensor |
-|---|---|
-| Environment geometry / distance | RPLiDAR C1 |
-| Traffic-pillar color / vision | Camera |
-| Orientation / heading reference | BNO055 |
-| Motor rotation / movement feedback | Encoder |
-
-This is why the final system uses multiple sensing modalities.
+which is useful for competition preparation and sensor initialization.
 
 ---
 
-## 6.2 Sensor Trade-off Summary
+## 6.6 Sensor Selection Trade-offs
 
-| Final Sensor | Earlier / Alternative Approach | Advantage of Final Choice | Trade-off |
+| Decision | Alternative | Benefit | Trade-off |
 |---|---|---|---|
-| RPLiDAR C1 | Multiple ultrasonic sensors | 2D environmental information over many angles | Greater software and interface complexity |
-| Camera | Distance sensors alone | Can identify red / green visual information | Sensitive to lighting, exposure and field of view |
-| BNO055 | Orientation from environment alone | Independent short-term orientation reference | Absolute heading can be affected by calibration / magnetic environment |
-| Encoder | Open-loop PWM only | Direct motor-rotation feedback | Requires decoding and wiring |
-| DFR0566 interface | Direct Pi GPIO wiring | Organized repeatable connections | Additional board / physical space |
-
----
-
-## 6.3 Camera — Raspberry Pi Night Vision Camera
-
-<img width="213" height="213" alt="Camera" src="https://github.com/user-attachments/assets/d7751474-46d0-48a2-b5eb-e41289d2c9b4" />
-
-**Purpose:** Visual traffic-pillar sensing.
-
-The camera provides essential information that cannot be obtained from LiDAR distance data alone. While LiDAR can detect the presence and distance of an object, it cannot identify its color, such as whether a WRO traffic pillar is **red or green**. Therefore, the camera is used to provide the color information needed for the robot to correctly respond to the Obstacle Challenge.
-
----
-
-### 6.3.1 Why a Camera Is Necessary
-
-```text
-LiDAR:
-Object exists
-Distance / geometry
-
-Camera:
-Object color
-Visual appearance
-```
-
-Therefore, the two sensors serve different purposes. This allows them to complement each other rather than duplicate the same function.
-
----
-
-### 6.3.2 Camera Field of View Development
-
-The original lens provided a relatively narrow visible area.
-
-A wider-angle lens was installed to increase the amount of field visible to the camera.
-
-However, two current documents contain different field-of-view values:
-
-- the electrical documentation previously described approximately **60° FOV**,
-- while the current software camera-distance calculation contains an **80° horizontal FOV calibration value**.
-
-> **[TODO: Measure or confirm the final effective horizontal camera FOV and use the same value in both `elec_README.md` and `software_README.md`.]**
-
-Until this is confirmed, this document intentionally does not claim one of those values as the final measured FOV.
-
----
-
-## 6.4 RPLiDAR C1
-
-<img width="358" height="355" alt="LiDAR" src="https://github.com/user-attachments/assets/04993f0c-df40-4ea0-91fa-db8690b847c1" />
-
-**Purpose:** 2D environmental-distance sensing.
-
-The RPLiDAR C1 provides distance measurements around the vehicle, allowing the software to understand the robot’s surroundings and detect nearby objects.
-
-Its information is used by the software for:
-
-- wall geometry,
-- environmental awareness,
-- clearance checking,
-- localization,
-- and navigation.
-
-### Interface
-
-```text
-USB Serial
-Default device: /dev/ttyUSB0
-Baud rate: 460800
-```
-
----
-
-### 6.4.1 Why LiDAR Replaced Ultrasonic Sensors
-
-The initial sensing concept relied on ultrasonic sensors, which provided distance measurements in individual directions. However, the final navigation strategy required more detailed spatial information around the robot.
-
-The LiDAR provides a 2D scan of the surrounding field and therefore better supports:
-
-- wall geometry,
-- orientation matching,
-- position estimation,
-- and localization on the known WRO field.
-
-As a result, the sensor architecture was changed from discrete ultrasonic measurements to LiDAR-based environmental sensing.
-
----
-
-## 6.5 BNO055 IMU — Gravity 10 DOF IMU AHRS
-
-<img width="282" height="239" alt="IMU" src="https://github.com/user-attachments/assets/903cb715-8ac6-4622-b98d-e1724477d0ca" />
-
-The robot uses the **DFRobot Gravity 10 DOF IMU AHRS BNO055 + BMP280 (SEN0253)**.
-
-**Purpose:** Relative heading and orientation reference.
-
-TThe BNO055 combines data from its built-in accelerometer, gyroscope, and magnetometer to calculate the robot’s orientation. It then provides fused orientation data to the Raspberry Pi, allowing the system to monitor the robot’s heading and movement more reliably.
-
-
-### Interface
-
-```text
-I²C
-Raspberry Pi hardware I²C
-via DFR0566 interface
-```
-
----
-
-### 6.5.1 Why the IMU Is Used
-
-LiDAR localization provides information about the robot’s position relative to the field geometry, while the IMU provides an independent reference for its orientation. These two sources complement each other to improve the robot’s overall navigation. Instead of relying on geographic North as the primary reference, the software mainly determines the robot’s orientation relative to its starting direction and combines this with LiDAR-based localization to navigate the known WRO field.
-
----
-
-## 6.6 Motor Encoder — CHP-20GP-180
-
-<img width="299" height="280" alt="Motor Encoder" src="https://github.com/user-attachments/assets/8a20d44b-b5ab-425f-985f-b26f82f73660" />
-
-**Purpose:** Drive-motor rotation feedback.
-
-The motor is equipped with a dual-channel Hall-effect encoder that generates two signals for tracking the motor’s rotation. The Arduino reads both encoder channels using quadrature decoding, allowing the system to determine the direction and amount of motor rotation for more precise movement control.
-
-Existing documentation uses:
-
-```text
-Motor gearbox ratio = 19:1
-Encoder PPR         = 11
-Quadrature          = x4
-```
-
-giving:
-
-```text
-19 x 11 x 4 = 836 counts
-```
-
-> **[TODO: Verify from the exact motor/encoder datasheet whether the stated 11 PPR value is specified per pre-gear motor revolution and confirm that 836 should be described as counts per geared-output revolution.]**
-
-This distinction should be documented accurately because the encoder is physically associated with the motor before or within the gearbox assembly.
-
----
-
-### 6.6.1 Why Encoder Feedback Is Useful
-Without an encoder, the control system only knows the PWM signal sent to the motor, which does not guarantee a specific physical rotation. 
-
-Actual motor movement can vary depending on factors such as:
-
-- battery voltage,
-- friction,
-- mechanical load,
-- and acceleration.
-
-Encoder feedback provides the controller with direct information about the motor’s actual rotation, allowing for more accurate and consistent movement. This is especially important for controlled-distance movement, precise parking, and achieving repeatable drivetrain performance.
-
----
-
-## 6.7 ZX-Switch01 Competition Start Switch
-
-<img width="234" height="231" alt="Touch Sensor" src="https://github.com/user-attachments/assets/dbe4f1f2-d705-40a1-bc5b-98a68d8a5cdf" />
-
-**Purpose:** Physical competition-start input.
-
-The start switch is connected to the Arduino and allows the robot to remain powered and fully initialized while waiting for the official start command. Once the start signal is given, the Arduino can trigger the robot’s programmed operation.
-
-Current pin assignment:
-
-```text
-Arduino A0
-```
-
-The main SPST switch and the competition start switch therefore have different roles:
-
-```text
-Main SPST Switch
-= electrical power
-
-ZX-Switch01
-= begin autonomous run
-```
-
----
-
-## 6.8 Removed Sensor — Light Sensor
-
-The first prototype included a light sensor mounted beneath the front steering structure to detect the blue and orange field markings and help determine when the robot should turn. However, after the navigation architecture was changed to LiDAR-based localization, the information provided by the light sensor was no longer necessary. The sensor was therefore removed from the final sensing architecture. This shows that the final sensor configuration was not simply created by adding more sensors, but by evaluating the role of each sensor and removing those whose information became redundant.
+| LiDAR | Multiple ultrasonic sensors | Rich 360° geometry | More processing and cost |
+| Camera | Color/light sensor only | Detects traffic-pillar color and image position | Lighting sensitive |
+| BNO055 | No orientation sensor | Provides heading reference | Magnetic environment can affect fused heading |
+| Encoder motor | Open-loop motor | Rotation feedback | Additional wiring and software |
+| Sensor fusion | One sensor for everything | Complementary information | Higher integration complexity |
+
+The final architecture accepts higher integration complexity because each sensor provides information that the others cannot provide reliably by themselves.
 
 ---
 
 # 7. Sensor Placement and Field-Based Reasoning
 
-Sensor placement directly affects measurement quality.
-
-A correct electrical connection alone is not sufficient to ensure reliable sensor operation. Sensors must also be mounted at the appropriate height, angle, orientation, and position so that they can accurately collect the information required by the robot’s control and navigation systems.
+Sensor placement was treated as an engineering variable rather than only a packaging problem.
 
 ---
 
-## 7.1 Placement Summary
+## 7.1 Camera Placement
 
-| Sensor | Final Placement | Main Placement Reason |
-|---|---|---|
-| Camera | Upper section | Clearer view of traffic pillars / field |
-| RPLiDAR C1 | Elevated front / upper structure | Clear scan and approximately horizontal 2D sensing plane |
-| BNO055 | Under LiDAR | Efficient use of space and reduced wiring congestion |
-| Encoder | Integrated with drive motor | Direct drivetrain feedback |
-| Start Switch | Accessible external position | Competition start operation |
-| DFR0566 | Directly on Raspberry Pi | Short organized peripheral interface |
+The camera is mounted at the upper front section of the robot.
+
+This elevated position gives it a clearer view of traffic pillars and reduces obstruction from the steering mechanism and other electronics.
+
+The camera mount is mechanically adjustable so that its angle can be changed during testing without requiring the complete structure to be redesigned.
 
 ---
 
-## 7.2 Camera Placement
+## 7.2 LiDAR Placement
 
-The camera is mounted above most of the robot’s structure to minimize obstruction from the chassis, steering components, wiring, and other electronics. This elevated position provides the visual system with a clearer view of the field and traffic pillars. 
+The LiDAR is mounted near the upper front section and approximately parallel to the field surface.
 
-The camera mount is also mechanically adjustable, allowing its viewing angle to be changed without redesigning the entire chassis. This flexibility is important because camera performance can be affected by both the field geometry and the lighting conditions during competition.
+An earlier angled mounting arrangement caused the nominally two-dimensional scan plane to intersect the environment at inconsistent heights. This distorted the geometry seen by the localization system.
 
-
-> **[TODO: Add measured final camera height above the field.]**
-
-> **[TODO: Add measured final camera downward / upward angle if available.]**
-
----
-
-## 7.3 LiDAR Placement
-
-The WRO field is primarily planar, while the LiDAR produces a 2D scan within a specific sensing plane. To accurately represent the walls and surrounding objects, the LiDAR must be mounted so that its scanning plane remains approximately parallel to the field surface. This ensures that the distance measurements are consistent and useful for localization and navigation.
-
-
----
-
-### 7.3.1 Development Problem
-
-In an earlier robot configuration, the LiDAR was mounted at an excessive angle relative to the ground, causing its 2D scanning plane to intersect the surrounding environment at inconsistent heights. As a result, the environmental data did not accurately represent the expected top-down geometry of the WRO field, reducing the reliability of LiDAR-based localization and navigation.
-
-
----
-
-### 7.3.2 Final Change
-
-The LiDAR was repositioned closer to parallel with the field.
+The sensor was therefore remounted approximately level.
 
 ```text
-Before:
-Tilted LiDAR plane
-        /
-       /
-------/---------- Field
-
-After:
----------------- LiDAR scan plane
----------------- Field
+Angled LiDAR
+     ↓
+Distorted 2D field geometry
+     ↓
+Level mounting
+     ↓
+More consistent planar scan
 ```
 
-This improved the usefulness of LiDAR measurements for 2D localization.
-
-> **[TODO: If available, add the final measured LiDAR mounting angle or a level-reference photograph.]**
+This is an example where a mechanical change directly improved sensor data quality.
 
 ---
 
-## 7.4 IMU Placement
+## 7.3 IMU Placement
 
-The BNO055 was originally mounted beside the Raspberry Pi I/O Expansion HAT. Although this configuration worked electrically, it created a crowded electronics area with limited space for wiring and component organization. 
+The BNO055 was moved from its earlier position near the Raspberry Pi / I/O Expansion HAT to a position beneath the LiDAR.
 
-In the redesigned robot, the IMU was moved underneath the LiDAR to make better use of the available space, reduce wiring congestion around the Raspberry Pi, and achieve a cleaner integration with the final mechanical structure. 
+This reduced congestion around the Raspberry Pi and provided a dedicated location for the IMU.
 
-This position also places the IMU farther from some of the dense electronics and power wiring around the Raspberry Pi. Since the BNO055 includes a magnetometer, nearby magnetic fields may affect heading measurements; 
+The BNO055 contains a magnetometer, so nearby current-carrying wires, motors, and electronics can potentially influence the magnetic component of the fused heading. The final software therefore uses the IMU primarily as a relative heading reference rather than relying entirely on absolute magnetic north.
 
-> however, we do not claim that the final IMU position completely eliminates magnetic interference because this effect has not been quantitatively measured.
+---
+
+## 7.4 Encoder Placement
+
+The encoder is integrated directly into the drive motor.
+
+This eliminates the need for a separate wheel encoder and allows the Arduino to measure drivetrain rotation close to the actuator.
+
+The trade-off is that the encoder measures motor rotation rather than direct vehicle displacement, so wheel slip and drivetrain compliance are not observed directly.
 
 ---
 
 # 8. Calibration, Initialization and Signal Quality
 
-It is important to distinguish between **calibration** and **initialization**. 
-
-**Calibration** involves adjusting a measurement system so that its readings more accurately reflect real-world values, while **initialization** establishes a reference for the sensors when the robot starts operating. These processes serve different purposes, and the sensors used in our robot do not all rely on the same method.
+Different sensors require different initialization or calibration approaches.
 
 ---
 
-## 8.1 Calibration / Initialization Summary
+## 8.1 Camera Calibration
 
-| Device | Main Method |
-|---|---|
-| Camera | FOV / visual-threshold configuration |
-| LiDAR | Physical mounting alignment |
-| BNO055 | Startup settling + relative heading initialization |
-| Encoder | Counts / rotation relationship |
-| Steering relationship | Software / mechanical calibration documented in software/mechanical sections |
+The vision system depends on color thresholds and an assumed camera field of view.
 
----
+The camera pipeline uses HSV-based color detection for red and green traffic pillars.
 
-## 8.2 Camera Configuration
+Calibration therefore involves checking the effective FOV, confirming that the selected HSV ranges detect the real competition pillars, testing under representative lighting, and adjusting the camera angle if necessary.
 
-The main camera hardware change was replacing the original narrow lens with a wider-angle configuration. On the software side, red and green traffic-pillar detection uses color thresholds tuned from actual camera images rather than assuming ideal RGB values.
-
-Lighting remains an important source of uncertainty. The current software therefore includes tools that allow HSV values to be sampled from real images and used to adjust the detection ranges.
-
-Detailed image-processing calibration is documented in: [`../software/software_README.md`](../software/software_README.md)
+> **[TODO: Resolve the 60° physical-lens vs 80° software-FOV value and record the final calibrated value.]**
 
 ---
 
-## 8.3 LiDAR Alignment
+## 8.2 LiDAR Setup
 
-The primary hardware-side LiDAR calibration is physical orientation.
+The LiDAR does not require the same type of color or magnetic calibration as the camera and IMU, but its physical orientation is critical.
+
+The main setup requirements are that the sensor remains approximately level, the scan is not mechanically obstructed, the USB serial connection is stable, and the expected scan geometry matches the known field.
+
+The physical level-mount correction was one of the most important LiDAR reliability improvements.
+
+---
+
+## 8.3 BNO055 Initialization
+
+The software allows approximately one second for the BNO055 to settle during startup.
+
+After this period, the current fused heading is stored as the initial reference.
 
 ```text
-Problem:
-LiDAR scan plane tilted relative to field
-
-Change:
-Reposition sensor closer to horizontal
-
-Result:
-2D scan corresponds more closely to field geometry
+Sensor startup
+      |
+      v
+~1 s settling period
+      |
+      v
+Read initial fused heading
+      |
+      v
+Set local heading = 0°
 ```
 
-The LiDAR does not require the same type of startup reference as the IMU. Instead, its distance measurements are interpreted by the navigation software in relation to the known geometry of the WRO field, allowing the robot to determine its position and navigate based on the surrounding field structure.
+This provides a repeatable local heading coordinate for each autonomous run.
 
 ---
 
-## 8.4 BNO055 Initialization and Relative Heading
+## 8.4 Encoder Initialization
 
-The robot does **not** perform a complete magnetometer-calibration routine before every competition run. This is intentional because the navigation system does not require geographic North; it needs a useful orientation reference relative to the robot's starting direction.
+The Arduino initializes the encoder inputs and then counts transitions from the A/B quadrature signals.
+
+Direction is determined from the phase relationship between the two signals.
+
+Before autonomous operation, the team must verify that forward motor motion produces the expected encoder sign and reverse motion produces the opposite sign.
 
 ---
 
-### 8.4.1 Startup Settling
+## 8.5 Start-Switch Initialization
 
-After communication with the BNO055 is established, the software waits approximately:
+The start switch allows all controllers and sensors to initialize before the robot begins moving.
+
+The startup sequence is:
 
 ```text
-BOOT_SETTLE_S = 1.0 s
+Main Power ON
+      |
+      v
+Raspberry Pi boots
+      |
+      v
+Arduino initializes
+      |
+      v
+Sensors initialize
+      |
+      v
+Robot waits
+      |
+      v
+ZX-Switch01 pressed
+      |
+      v
+Autonomous run starts
 ```
-
-This gives the BNO055 fusion output a short period to settle before it is used.
 
 ---
 
-### 8.4.2 Initial Heading Capture
+## 8.6 Signal Quality and Interference Considerations
 
-After the competition start condition is triggered, the current heading is stored as the initial reference.
+Signal quality can be affected by electrical and mechanical conditions.
 
-```text
-Raw BNO055 heading
-        |
-        v
-Capture at start
-        |
-        v
-Initial heading reference
-        |
-        v
-Relative navigation
-```
+The main concerns are supply-voltage drop during actuator load, motor-generated electrical noise, servo-current changes, loose USB connections, LiDAR cable movement, magnetic disturbance near the IMU, camera lighting variation, and encoder signal integrity.
 
-For example:
-
-```text
-Raw startup heading = 37 degrees
-
-Robot local reference = starting direction
-
-90-degree clockwise target
-= initial heading + 90 degrees
-```
-
-The exact raw numerical heading is less important than the difference from the starting orientation.
-
----
-
-### 8.4.3 Field-Coordinate Offset
-
-The localization software can also apply a compass offset when relating raw IMU orientation to the field coordinate system.
-
-Conceptually:
-
-```text
-Field Heading
-=
-Compass Sign x Raw IMU Heading
-+
-Compass Offset
-```
-
-`compass_sign` accounts for the physical sensor orientation and direction convention.
-
-This is a coordinate convention rather than a full magnetometer calibration.
-
----
-
-### 8.4.4 IMU Limitation
-
-Because the system does not wait for a complete magnetometer calibration before every run, absolute heading should not be treated as perfectly reliable over long periods or in every magnetic environment.
-
-Therefore, the software does not rely on the IMU as the only source of localization.
-
-Instead, LiDAR-based field geometry provides an additional reference for determining the robot’s orientation and position, improving the overall reliability of navigation.
-
----
-
-## 8.5 Encoder Calibration / Interpretation
-
-The conversion between encoder signals and physical rotation depends on the encoder pulses per revolution, quadrature decoding factor, and gearbox ratio.
-
-Existing documentation calculates:
-
-```text
-11 PPR x 4 quadrature x 19 gearbox
-
-= 836 counts
-```
-
-> **[TODO: Verify the exact reference revolution for this value and rename the unit correctly throughout the code documentation.]**
-
-Once verified, this relationship can be used to convert encoder counts into drivetrain rotation.
-
----
-
-## 8.6 Noise, Interference and Environmental Effects
-
-The final sensor and power architecture considers several different sources of measurement or electrical instability.
-
-| Source | Possible Effect | Design / Software Response |
-|---|---|---|
-| Motor-current transient | Pi supply disturbance | Separate power branches |
-| Wiring voltage drop | Reduced Pi input voltage | Pi branch adjusted to ~5.1 V |
-| Camera lighting / shadow | Color-classification error | HSV tuning and adjustable camera configuration |
-| Auto-exposure variation | Changing color appearance | Identified as software limitation / improvement area |
-| LiDAR mounting tilt | Incorrect 2D geometry | Mechanical remounting |
-| Magnetic interference near IMU | Heading error | IMU placement + LiDAR cross-reference |
-| Sensor unavailable | Missing navigation information | Software device checks / degraded behavior where supported |
-| Encoder electrical noise / incorrect counts | Motion-estimation error | Quadrature decoding and documented wiring |
-
-Not all of these effects have been measured quantitatively. Therefore, when quantitative evidence is unavailable, they are documented as **risk considerations** rather than being presented as proven reductions in failure or error rates.
-
+The design therefore uses separate power conversion branches, common ground where required, fixed sensor mounts, organized wiring, and software checks for unavailable or invalid sensor data.
 
 ---
 
@@ -1039,39 +706,49 @@ Not all of these effects have been measured quantitatively. Therefore, when quan
 | Motor PWM | D11 |
 | Motor Direction | D13 |
 | Steering Servo | D9 |
-| Competition Start Switch | A0 |
-| Pi Communication | USB |
-
-The encoder uses both channels to detect the motor’s rotation and direction. The drive motor uses PWM to control its power and a digital signal to control its direction.
+| Start Switch | A0 |
 
 ---
 
-## 9.2 Raspberry Pi Device Interfaces
+## 9.2 Raspberry Pi Interfaces
 
-| Device | Interface | Default Device / Bus |
+| Device | Interface | Expected Linux / Hardware Path |
 |---|---|---|
-| Arduino UNO R4 Minima | USB Serial | `/dev/ttyACM0` |
+| Arduino UNO R4 | USB Serial | `/dev/ttyACM0` |
 | RPLiDAR C1 | USB Serial | `/dev/ttyUSB0` |
-| BNO055 | I²C | Raspberry Pi I²C / DFR0566 |
-| DFR0566 | Raspberry Pi GPIO header | Pi header |
+| BNO055 | I²C through DFR0566 | I²C bus |
 | Camera | CSI | Raspberry Pi camera interface |
 
+The `/dev/ttyACM0` and `/dev/ttyUSB0` names are expected defaults rather than guaranteed permanent identifiers.
 
 ---
 
-## 9.3 Motor Encoder Wiring
+## 9.3 Encoder Wiring
 
-Current documented encoder wiring:
+| Motor Wire | Function | Connection |
+|---|---|---|
+| Red | Motor positive | Motor driver |
+| White | Motor negative | Motor driver |
+| Blue | Hall sensor supply | 5 V |
+| Black | Hall sensor ground | GND |
+| Green | Encoder A | Arduino D2 |
+| Yellow | Encoder B | Arduino D3 |
 
-| Wire | Function |
-|---|---|
-| Red | Motor Power + |
-| Black | Hall Sensor GND |
-| Yellow | Encoder Signal B |
-| Green | Encoder Signal A |
-| Blue | Hall Sensor 5 V |
-| White | Motor Power - |
+---
 
+## 9.4 Raspberry Pi ↔ Arduino Protocol
+
+The Raspberry Pi sends commands in the form:
+
+```text
+<servoAngle>,<speed>,<distance>
+```
+
+The protocol uses human-readable ASCII because it is simple to debug in a serial terminal and straightforward to parse on the Arduino.
+
+The detailed command interpretation belongs to the software documentation:
+
+[`../software/software_README.md`](../software/software_README.md)
 
 ---
 
@@ -1079,367 +756,265 @@ Current documented encoder wiring:
 
 ## 10.1 Schematic Diagram
 
-![Schematic Diagram](../schemes/Schematic%20Diagram.png)
+The schematic diagram shows the logical electrical connections between the major components.
 
-The schematic documents the electrical relationships between:
-
-- battery,
-- main switch,
-- power distribution,
-- LM2596,
-- XL4015,
-- Raspberry Pi,
-- DFR0566,
-- Arduino,
-- motor driver,
-- motor,
-- servo,
-- encoder,
-- sensors,
-- start button,
-- common ground.
-
-The final positive and negative distribution structure is:
-
-```text
-Positive distribution -> D1-2
-
-Negative / Ground -> PCT-21
-```
+<img src="../schemes/Schematic%20Diagram.png" width="1000">
 
 ---
 
 ## 10.2 Physical Wiring Diagram
 
-![Wiring Diagram](../schemes/Wiring%20Diagram.png)
+The wiring diagram shows the physical connection arrangement used on the robot.
 
-The wiring diagram shows how the connections are routed physically inside the robot.
+<img src="../schemes/Wiring%20Diagram.png" width="1000">
 
-The schematic and wiring diagram have different purposes:
-
-```text
-Schematic
-= electrical relationship
-
-Wiring Diagram
-= physical connection / routing
-```
-
-Both should be used when reproducing the system.
+The schematic and wiring diagram serve different purposes. The schematic explains electrical relationships, while the wiring diagram helps another builder reproduce the physical connections.
 
 ---
 
-## 10.3 High-Level Electrical Architecture
+## 10.3 Power Wiring Summary
 
 ```text
-                         3S LiPo Battery
-                         11.1 V nominal
-                                |
-                          Main Switch
-                                |
-                    +-----------+-----------+
-                    |                       |
-                    v                       v
-                 LM2596                  XL4015
-                    |                       |
-                 ~5.1 V              [TODO: VERIFY]
-                    |                       |
-                    v                       v
-             Raspberry Pi 5          Motor / Control
-                    |
-                    v
-             DFR0566 IO HAT
-                    |
-                    +----------> BNO055 / Pi I/O
+Battery +
+   |
+SPST Main Switch
+   |
+D1-2 Positive Distribution
+   |
+   +---- LM2596 ---- 5.1 V OUT ---- 5.0 V at Raspberry Pi input
+   |
+   +---- XL4015 ---- 11.1 V OUT --- 11.0 V at Motor / Control input
 
-Raspberry Pi 5
-     |
-     +---------- CSI ----------> Camera
-     |
-     +---------- USB ----------> RPLiDAR C1
-     |
-     +---------- USB ----------> Arduino UNO R4
-                                      |
-                                      +--> Motor Driver
-                                      |
-                                      +--> Steering Servo
-                                      |
-                                      +<-- Encoder
-                                      |
-                                      +<-- Start Switch
+Battery -
+   |
+PCT-21 Ground Distribution
+   |
+   +---- LM2596 -
+   +---- XL4015 -
+   +---- Relevant controller / signal grounds
 ```
 
 ---
 
-## 10.4 Common Ground
+## 10.4 Signal Wiring Summary
 
-The Raspberry Pi, Arduino, sensors, and control electronics need a common electrical reference for their signals. Therefore, the negative connections are connected through a common-ground system. This is especially important when signals are shared between different power branches.
+```text
+Raspberry Pi
+   |
+   +---- CSI -------- Camera
+   |
+   +---- USB -------- RPLiDAR C1
+   |
+   +---- USB -------- Arduino UNO R4
+   |
+   +---- DFR0566
+           |
+           +---- I2C ---- BNO055
+
+
+Arduino UNO R4
+   |
+   +---- D2 -------- Encoder A
+   +---- D3 -------- Encoder B
+   +---- D11 ------- Motor PWM
+   +---- D13 ------- Motor Direction
+   +---- D9 -------- Steering Servo
+   +---- A0 -------- Start Switch
+```
 
 ---
 
 # 11. Electrical and Sensor Development — V1 to V3
 
-The sensing architecture changed significantly during development. The final system was developed gradually, with sensors being added, tested, and removed based on the robot’s actual requirements rather than selecting all of the sensors at the beginning.
+The final architecture was developed through several sensing and electrical iterations.
 
 ---
 
-## 11.1 Version 1 — Initial Sensing Concept
+## 11.1 Version 1 — Initial Sensor Concept
 
-<img width="500" height="550" alt="V1" src="https://github.com/user-attachments/assets/2cd51408-8423-43bb-8a1c-9e98e6d49be4" />
+The first robot concept used the camera, ultrasonic sensing, a front-facing light sensor, and the BNO055.
 
-Version 1 used the initial sensing concept:
+The light sensor was mounted beneath the front steering mechanism and pointed toward the field surface to detect colored lines.
 
-```text
-Camera
-+
-Ultrasonic Sensors
-+
-Light Sensor
-+
-IMU
-```
+At this stage, the Raspberry Pi autonomous architecture was not yet complete.
 
-The light sensor was positioned beneath the front steering structure.
-
-The initial idea was:
-
-- camera for visual sensing,
-- ultrasonic sensors for front distance,
-- light sensor for track-marking information,
-- and IMU for orientation.
-
-At this stage, the complete Raspberry Pi autonomous navigation system had not yet been implemented. 
-
-> Therefore, no complete autonomous-performance results are claimed for Version 1.
+The main importance of V1 was that it established the initial sensing concept and revealed the limitations of relying on isolated distance measurements.
 
 ---
 
-## 11.2 Architecture Change
+## 11.2 Version 2 — LiDAR Architecture
 
-During development, the sensing strategy changed significantly. The final software required more detailed environmental information to support accurate localization and navigation.
+The team then changed the sensing architecture significantly.
 
-This led to the change:
+The ultrasonic sensors and light sensor were removed, while the RPLiDAR C1 was added. The BNO055 was relocated beneath the LiDAR.
 
-```text
-Ultrasonic + Light Sensor
-           |
-           v
-       RPLiDAR C1
-```
+This changed the robot from a system based on several local measurements into one capable of observing a much richer two-dimensional representation of the surrounding field.
 
-The ultrasonic sensors and light sensor were removed as the sensing strategy changed. This was more than a component replacement; it changed the type of information available to the robot. The final system mainly used LiDAR and camera data for navigation and localization.
+The change also enabled the localization-first software architecture used later.
 
 ---
 
-## 11.3 Version 2 — LiDAR-Based Prototype
+## 11.3 Version 3 — Final Electrical Layout
 
-Version 2 introduced:
+Version 3 involved a complete physical rebuild of the robot.
 
-- RPLiDAR C1,
-- removal of ultrasonic sensors,
-- removal of light sensor,
-- relocation of BNO055 beneath LiDAR.
+The sensing concept from V2 was retained, but the power electronics, controllers, sensor mounts, and wiring were reorganized around the new mechanical structure.
 
-The final sensing combination became closer to:
-
-```text
-LiDAR
-+
-Camera
-+
-IMU
-+
-Encoder
-```
-
-The LiDAR provided environmental geometry that allowed the software to move toward field localization rather than only reacting to local distance measurements.
+The final architecture uses the Raspberry Pi and DFR0566 on the upper computing layer, Arduino and motor-control hardware on the lower control layer, dedicated LiDAR/IMU mounting, separate LM2596 and XL4015 power-conversion paths, and centralized positive/negative distribution.
 
 ---
 
-## 11.4 Version 3 — Final Electrical Architecture
+## 11.4 Electrical Development Summary
 
-Version 3 retained the main V2 sensing concept but rebuilt the physical platform and electrical layout.
-
-Major final changes included:
-
-- final LiDAR mounting orientation,
-- final IMU placement,
-- final DFR0566 integration,
-- final power-distribution structure,
-- separated computing and motor/control branches,
-- final wiring architecture,
-- final component mounting,
-- and final start interface.
-
----
-
-## 11.5 Electrical / Sensor Evolution Summary
-
-| Version | Sensor Architecture | Power / Electrical Change | Reason |
-|---|---|---|---|
-| V1 | Camera + ultrasonic + light + IMU | Initial architecture | Evaluate first sensing concept |
-| V2 | Camera + LiDAR + IMU + encoder | LiDAR integrated | Richer environmental information |
-| V3 | Same fundamental sensing set | Final branch separation, wiring and component placement | Improve integration and reliability |
+| Version | Main Electrical / Sensor Architecture | Main Change |
+|---|---|---|
+| V1 | Camera + Ultrasonic + Light Sensor + BNO055 | Initial sensing concept |
+| V2 | Camera + LiDAR + BNO055 + Encoder | LiDAR replaces ultrasonic / light sensor |
+| V3 | Same core sensors with redesigned power and physical layout | Final integrated architecture |
 
 ---
 
 # 12. Testing and Reliability Iteration
 
-The electrical and sensing system was developed through repeated testing and evaluation. Most major changes were made to solve problems found during testing rather than for aesthetic purposes.
+Testing changed several parts of the final electrical and sensing system.
 
 ---
 
-## 12.1 Camera Iteration
+## 12.1 LiDAR Alignment Test
+
+An angled LiDAR mount caused the scan plane to intersect the environment at inconsistent heights.
+
+The problem appeared in software as distorted environmental geometry, but the root cause was mechanical sensor orientation.
+
+The solution was to remount the LiDAR approximately parallel to the field.
+
+This is an important example of system-level debugging because the apparent software/localization problem was solved through a mechanical sensor-placement change.
+
+---
+
+## 12.2 Camera Field-of-View Test
+
+The original camera lens provided a narrower view than required.
+
+This limited how much of the field and traffic pillars could be observed.
+
+The lens was therefore replaced with a wider approximately 60° lens.
+
+The physical lens value still needs to be reconciled with the 80° value currently used in software calibration.
+
+---
+
+## 12.3 IMU Position Change
+
+The BNO055 was initially positioned near the Raspberry Pi and I/O Expansion HAT.
+
+It was later moved beneath the LiDAR to reduce congestion and provide a more dedicated sensor location.
+
+The final software also avoids depending entirely on absolute magnetic heading by using the startup heading as a relative reference.
+
+---
+
+## 12.4 Static Power Validation
+
+The final Version 3 power system was checked using a multimeter while the robot was powered but not performing an autonomous run.
+
+The LM2596 measured **5.1 V at its output**, while the Raspberry Pi received approximately **5.0 V**. The XL4015 measured **11.1 V at its output**, while the downstream motor/control input measured approximately **11.0 V**.
 
 ```text
-Problem:
-Visible area too limited with original lens
-
-Change:
-Install wider-angle lens
-
-Result:
-Larger field area visible to software
+LM2596:  5.1 V OUT  →  5.0 V Pi input
+XL4015: 11.1 V OUT  → 11.0 V Motor / Control input
 ```
 
-The exact final effective horizontal FOV remains to be reconciled with the software calibration.
+Both paths therefore showed an observed static voltage difference of approximately **0.1 V** between the converter output and downstream input.
+
+The battery was also observed to provide approximately **12.6 V when fully charged**. During robot testing, drivetrain performance became noticeably lower below approximately **11.1 V**, so the team treats this as a practical performance threshold.
 
 ---
 
-## 12.2 LiDAR Iteration
+## 12.5 Remaining Dynamic Power Test
 
-```text
-Problem:
-LiDAR mounted at excessive angle
+Static voltage measurements confirm the converter settings, but they do not show the largest voltage drop that may occur during acceleration and steering.
 
-Effect:
-2D scan geometry did not represent field correctly
+> **[TODO: Measure Pi rail voltage and motor/control rail voltage during a representative Obstacle Challenge run, especially during simultaneous acceleration and steering.]**
 
-Change:
-Reposition closer to parallel with field
-
-Result:
-Improved 2D environmental representation
-```
+> **[TODO: Measure current on both branches under representative load if this can be done safely with suitable measurement equipment.]**
 
 ---
 
-## 12.3 IMU Placement Iteration
+## 12.6 Test Evidence Table
 
-```text
-Previous:
-IMU beside Raspberry Pi / IO HAT
-
-Problem:
-Crowded electronics area
-
-Change:
-Move IMU under LiDAR
-
-Result:
-Cleaner component layout and wiring
-```
-
----
-
-## 12.4 Sensor-Architecture Iteration
-
-```text
-Initial:
-Camera + Ultrasonic + Light Sensor + IMU
-
-Problem:
-Information did not match final localization strategy
-
-Change:
-Remove ultrasonic + light sensor
-Add LiDAR
-
-Final:
-Camera + LiDAR + IMU + Encoder
-```
-
-This was one of the major system-level changes in the robot, as the electrical and sensor architecture directly influenced and enabled a different software-navigation architecture.
-
-
----
-
-## 12.5 Power Architecture Iteration
-
-The final architecture uses separate conversion paths for the Raspberry Pi and the motor control system. This separation helps reduce the risk of changes in motor current affecting the power supply to the Raspberry Pi.
-
-> **[TODO: Add measured Pi voltage during simultaneous acceleration + steering if possible. This would provide direct reliability evidence for the separated power architecture.]**
-
----
-
-# 12.6 Testing Evidence Table
-
-| Problem / Test | Observation | Change | Evidence / Result |
+| Test | Problem / Observation | Change | Result |
 |---|---|---|---|
-| Camera field of view | Original view too narrow | Wider-angle lens | Larger visible field |
-| Camera FOV calibration | Electrical and software values differ | Final measurement required | **[TODO]** |
-| LiDAR angle | Scan geometry distorted | Re-level sensor | Improved 2D representation |
-| IMU physical location | Electronics area crowded | Relocated under LiDAR | Cleaner layout |
-| Ultrasonic architecture | Limited spatial information | Changed to LiDAR | Enabled localization-oriented sensing |
-| Light sensor | No longer required | Removed | Simpler final sensor set |
-| Pi / actuator power interaction | Potential voltage disturbance | Separate converter branches | **[TODO: measured validation]** |
-| Pi supply voltage | Connector/wiring loss | LM2596 adjusted to ~5.1 V | **[TODO: measured loaded voltage]** |
-| XL4015 setting | Documentation conflict | Verify physical robot | **[TODO]** |
+| LiDAR mounting | Angled scan distorted geometry | Remounted level | More consistent planar scan |
+| Camera view | Original FOV too narrow | Wider lens installed | Larger visible field |
+| IMU integration | Congested earlier location | Moved under LiDAR | Cleaner final sensor layout |
+| Pi static power path | Wiring causes small voltage loss | LM2596 set to 5.1 V | 5.0 V measured at Pi input |
+| Motor/control static power path | Final XL4015 setting previously undocumented | Measured final robot | 11.1 V output, 11.0 V downstream |
+| Battery state | Motor slows as battery discharges | Use practical voltage threshold | ~11.1 V used as performance threshold |
+| V1 sensing | Limited isolated distance information | Replaced ultrasonic/light sensing with LiDAR | Richer field geometry |
 
 ---
 
 # 13. Failure Modes, Noise and Risk Mitigation
 
-## 13.1 Electrical Failure Modes
+The electrical system was designed with several possible failure modes in mind.
 
-| Failure Mode | Possible Cause | Effect | Mitigation |
-|---|---|---|---|
-| Raspberry Pi undervoltage | Converter drop / wiring loss / high load | Reset or unstable computing | Dedicated branch, ~5.1 V adjustment, load validation |
-| Motor-side voltage drop | High current during acceleration / stall | Reduced drive performance | Size branch for transient load and test under load |
-| Converter incorrect setting | Adjustment error | Component damage or instability | Measure output before connecting electronics |
-| Loose power connector | Vibration / assembly | Intermittent reset | Dedicated connectors and strain management |
-| Missing common ground | Wiring error | Invalid signal references | PCT-21 common-ground distribution |
-| Motor stall | Mechanical obstruction | High current | Avoid prolonged stall; drivetrain / software handling |
-| Servo stall | Steering obstruction | High current / heat | Mechanical limits and current-aware design |
-| USB disconnect | Vibration / loose cable | Sensor / controller unavailable | Secure connectors and startup device checks |
-
----
-
-## 13.2 Sensor Failure Modes
-
-| Sensor / Failure | Effect | Mitigation / Response |
+| Failure Mode | Effect | Mitigation / Design Response |
 |---|---|---|
-| Camera color affected by lighting | Incorrect pillar classification | HSV tuning, adjustable mount, exposure improvement |
-| Camera FOV calibration incorrect | Incorrect bearing / distance estimate | Verify final FOV against software |
-| LiDAR tilted | Distorted 2D map | Level mounting |
-| LiDAR unavailable | Reduced localization capability | Device detection / software handling |
-| IMU drift / magnetic error | Heading reference error | LiDAR cross-reference |
-| IMU unavailable | Reduced heading information | Software can operate with reduced compass contribution where supported |
-| Encoder missed / incorrect counts | Distance error | Quadrature decoding and wiring validation |
-| Start button incorrect input | Robot does not start correctly | Pre-run verification |
+| Pi supply voltage drops | Reboot / instability | Dedicated LM2596 branch |
+| Pi-branch wiring voltage drop | Reduced Pi input voltage | 5.1 V converter output measured as 5.0 V at Pi input |
+| Motor/control wiring voltage drop | Reduced actuator-side voltage | 11.1 V XL4015 output measured as 11.0 V at branch input |
+| Battery voltage decreases | Motor becomes slower | ~11.1 V practical performance threshold |
+| Motor current spike | Voltage disturbance | Separate motor/control conversion branch |
+| Servo current change | Supply disturbance | Keep actuator load away from Pi branch where practical |
+| Loose USB connection | Sensor/controller loss | Secure cable routing and pre-run detection check |
+| LiDAR tilted | Incorrect scan geometry | Rigid level mount |
+| LiDAR unavailable | Localization unavailable | Software startup/error handling |
+| Camera exposure changes | Unstable color detection | HSV tuning; future exposure locking |
+| IMU magnetic disturbance | Heading bias | Relative heading reference + LiDAR geometry |
+| Encoder signal error | Incorrect distance feedback | Verify direction/count behavior before run |
+| Incorrect converter setting | Component damage / instability | Measure output before connecting electronics |
+| Wiring short | High current / damage | Inspect and verify polarity before power-on |
 
 ---
 
-# 13.3 Failure Detection
+## 13.1 Why Separate Power Branches?
 
-| Condition | Detection Method |
-|---|---|
-| Arduino unavailable | `/dev/ttyACM0` / serial initialization |
-| LiDAR unavailable | `/dev/ttyUSB0` / LiDAR initialization |
-| BNO055 unavailable | I²C initialization / heading read |
-| Camera unavailable | Camera initialization failure |
-| Encoder incorrect | Rotation test / count direction test |
-| Start button incorrect | Arduino start-response test |
-| Power rail incorrect | Multimeter before final connection |
-| Pi instability | Undervoltage / reset behavior during load test |
+The Raspberry Pi and the drivetrain have very different electrical behavior.
+
+The Pi requires a relatively stable low-voltage supply, while the motor and servo can change current rapidly during acceleration, braking, and steering.
+
+Using separate conversion branches reduces the direct interaction between these load types.
+
+This does not mean that electrical disturbances are completely eliminated, but it gives the sensitive computing system a more controlled supply path.
+
+---
+
+## 13.2 Why Measure at the Load?
+
+The converter output alone does not show the voltage actually received by the device.
+
+For example, the completed robot measured:
+
+```text
+LM2596 output      = 5.1 V
+Pi input           = 5.0 V
+
+XL4015 output      = 11.1 V
+Motor/control input = 11.0 V
+```
+
+Measuring both points reveals the approximately **0.1 V static drop** through each downstream wiring path.
+
+This is more informative than documenting only the converter adjustment.
 
 ---
 
 # 14. System-Level Engineering Decisions and Trade-offs
 
-The electrical architecture affects both the mechanical design and the capabilities of the software. Therefore, the final design includes several deliberate engineering trade-offs to balance these different requirements.
+The electrical system contains several deliberate trade-offs.
 
-| Decision | Alternative | Benefit | Cost / Trade-off |
+| Decision | Alternative | Benefit | Trade-off |
 |---|---|---|---|
 | Separate power branches | One common regulated branch | Reduced interaction between actuator and Pi loads | More converters and wiring |
 | LiDAR | Ultrasonic sensors | Rich 2D environmental data | More software complexity |
@@ -1456,13 +1031,7 @@ The electrical architecture affects both the mechanical design and the capabilit
 
 Electrical components require physical mounting space.
 
-Examples:
-
-- the Raspberry Pi and HAT require a dedicated structural layer,
-- converters require trays / plates,
-- the LiDAR must remain level,
-- the IMU position changed because of electronics congestion,
-- cable routing affects structural placement.
+The Raspberry Pi and HAT require a dedicated structural layer, the converters require trays and plates, the LiDAR must remain level, the IMU position changed because of electronics congestion, and cable routing affects structural placement.
 
 Therefore, electrical packaging influenced the final mechanical design.
 
@@ -1472,7 +1041,7 @@ Therefore, electrical packaging influenced the final mechanical design.
 
 The sensor architecture determines what information the software can use.
 
-The change:
+The change from:
 
 ```text
 Ultrasonic + Light Sensor
@@ -1496,21 +1065,19 @@ The electrical sensor architecture therefore directly enabled the final localiza
 
 Mechanical alignment also affects sensing.
 
-Examples:
-
 ```text
 LiDAR angle
--> scan geometry
+→ scan geometry
 
 Camera position
--> visible field
+→ visible field
 
 IMU position
--> wiring congestion / magnetic environment
+→ wiring congestion / magnetic environment
 
 Motor alignment
--> mechanical load
--> electrical current
+→ mechanical load
+→ electrical current
 ```
 
 This is why sensor placement and electrical design cannot be evaluated independently from the chassis.
@@ -1519,11 +1086,9 @@ This is why sensor placement and electrical design cannot be evaluated independe
 
 ## 14.4 Most Important Electrical Decision
 
-One of the most important electrical decisions was:
+One of the most important electrical decisions was to use a separated power-distribution architecture rather than treating all loads as one shared low-voltage system.
 
-> To use a separated power-distribution architecture rather than treating all loads as one shared low-voltage system.
-
-This was because the Raspberry Pi requires a stable power supply, while the motor and servo can create rapidly changing electrical loads. Therefore, the final architecture uses separate conversion paths for the computing and actuator systems while maintaining a shared ground reference.
+The Raspberry Pi requires a stable power supply, while the motor and servo can create rapidly changing electrical loads. Therefore, the final architecture uses separate conversion paths for the computing and actuator systems while maintaining a shared ground reference.
 
 ---
 
@@ -1531,53 +1096,51 @@ This was because the Raspberry Pi requires a stable power supply, while the moto
 
 ## Computing
 
-- Raspberry Pi 5
-- DFR0566 IO Expansion HAT
+The high-level computing system consists of the **Raspberry Pi 5** and **DFR0566 IO Expansion HAT**.
 
 ## Low-Level Control
 
-- Arduino UNO R4 Minima
+Low-level actuator and encoder control is handled by the **Arduino UNO R4 Minima**.
 
 ## Environmental Sensors
 
-- RPLiDAR C1
-- Raspberry Pi Night Vision Camera
+The robot uses the **RPLiDAR C1** for environmental geometry and the **Raspberry Pi Night Vision Camera** for visual traffic-pillar information.
 
 ## Orientation
 
-- Gravity BNO055 IMU
+The **Gravity BNO055 IMU** provides the relative heading reference.
 
 ## Motion Feedback
 
-- CHP-20GP-180 dual-phase encoder
+The **CHP-20GP-180 dual-phase encoder** provides motor-rotation feedback.
 
 ## Actuators
 
-- CHP-20GP-180 drive motor
-- GEEKSERVO steering servo
+The robot uses the **CHP-20GP-180 drive motor** and **GEEKSERVO steering servo**.
 
 ## Motor Control
 
-- L298P Motor Shield
+Drive-motor control is provided by the **L298P Motor Shield**.
 
 ## Main Power
 
-- Helicox 3S 11.1 V LiPo, 1100 mAh
+The main energy source is a **Helicox 3S 11.1 V 1100 mAh LiPo battery**. The battery measures approximately **12.6 V when fully charged**, while approximately **11.1 V is treated as the practical drivetrain-performance threshold**.
 
 ## Power Conversion
 
-- LM2596 — approximately 5.1 V Raspberry Pi branch
-- XL4015 — **[TODO: Confirm measured final output and connected loads]**
+The Raspberry Pi branch uses an **LM2596 adjusted to 5.1 V**, with **5.0 V measured at the Raspberry Pi input** under static power-on.
+
+The motor/control branch uses an **XL4015 adjusted to 11.1 V**, with **11.0 V measured at the downstream motor/control input** under static power-on.
+
+The exact list of devices connected directly to the XL4015 output should still be confirmed from the final wiring.
 
 ## Power Distribution
 
-- D1-2 positive distribution
-- PCT-21 common negative / ground
+Positive power distribution uses the **D1-2**, while the **PCT-21** provides common negative / ground distribution.
 
 ## Competition Interface
 
-- SPST main power switch
-- ZX-Switch01 start button
+The robot uses an **SPST main power switch** and **ZX-Switch01 start button**.
 
 ---
 
@@ -1585,29 +1148,20 @@ This was because the Raspberry Pi requires a stable power supply, while the moto
 
 | Item | Required Verification |
 |---|---|
-| Battery brand | Helix vs Helicox |
-| XL4015 output | Measure with multimeter |
 | XL4015 loads | Confirm exactly what it powers |
 | Camera FOV | 60° documentation vs 80° software calibration |
 | Servo current | Conflicting reference values |
 | Encoder 836-count unit | Verify PPR / gearbox interpretation |
 | Pi loaded rail voltage | Measure during final software |
 | Pi branch current | Measure under representative load |
+| Motor/control loaded voltage | Measure during acceleration / steering |
+| Motor/control branch current | Measure under representative load |
 
 ---
 
 # 16. Electrical Reproducibility
 
-The electrical system should be reproduced using:
-
-1. this electrical architecture document,
-2. the schematic diagram,
-3. the physical wiring diagram,
-4. controller pin assignments,
-5. the final measured converter settings,
-6. manufacturer documentation,
-7. the source code,
-8. and the complete build guide.
+The electrical system should be reproduced using this electrical architecture document together with the schematic diagram, physical wiring diagram, controller pin assignments, final measured converter settings, manufacturer documentation, source code, and complete build guide.
 
 ---
 
@@ -1622,9 +1176,9 @@ Main Switch
    |
 D1-2 Positive Distribution
    |
-   +--> LM2596 --> ~5.1 V --> Raspberry Pi
+   +--> LM2596 --> 5.1 V OUT --> 5.0 V measured at Raspberry Pi input
    |
-   +--> XL4015 --> [VERIFY FINAL VOLTAGE] --> Motor / Control
+   +--> XL4015 --> 11.1 V OUT --> 11.0 V measured at Motor / Control input
 
 
 GROUND
@@ -1668,35 +1222,9 @@ Raspberry Pi 5
 
 ## 16.3 Pre-Power Verification
 
-Before connecting sensitive electronics:
+Before connecting sensitive electronics, first complete the power wiring and keep the Raspberry Pi and Arduino disconnected. Connect the battery and measure the LM2596 output, confirming approximately **5.1 V**. Then verify approximately **5.0 V at the Raspberry Pi input path**.
 
-```text
-1. Complete power wiring
-        |
-        v
-2. Leave Raspberry Pi / Arduino disconnected
-        |
-        v
-3. Connect battery
-        |
-        v
-4. Measure LM2596 output
-        |
-        v
-5. Confirm approximately 5.1 V
-        |
-        v
-6. Measure XL4015 output
-        |
-        v
-7. Confirm documented final setting
-        |
-        v
-8. Power off
-        |
-        v
-9. Connect electronics
-```
+Next, measure the XL4015 output and confirm approximately **11.1 V**, followed by approximately **11.0 V at the motor/control input path**. After the voltage settings and polarity are confirmed, power the system off before connecting the electronics.
 
 The detailed physical build sequence is documented in:
 
@@ -1710,8 +1238,10 @@ Before the first autonomous run:
 
 - [ ] Battery voltage is within expected operating range
 - [ ] Main switch disconnects the robot correctly
-- [ ] LM2596 output is verified
-- [ ] XL4015 output is verified
+- [ ] LM2596 output is approximately 5.1 V
+- [ ] Raspberry Pi input is approximately 5.0 V
+- [ ] XL4015 output is approximately 11.1 V
+- [ ] Motor/control input is approximately 11.0 V
 - [ ] Ground distribution is continuous
 - [ ] Raspberry Pi boots without supply warnings
 - [ ] Arduino is detected
@@ -1734,21 +1264,19 @@ Before the first autonomous run:
 | Raspberry Pi 5 | https://www.raspberrypi.com/products/raspberry-pi-5/ |
 | Arduino UNO R4 Minima | https://docs.arduino.cc/hardware/uno-r4-minima |
 | RPLiDAR C1 | https://www.slamtec.com/en/C1 |
-| Gravity BNO055 + BMP280 | https://www.dfrobot.com/product-1793.html /  |
+| Gravity BNO055 + BMP280 | https://www.dfrobot.com/product-1793.html |
 | DFR0566 IO Expansion HAT | https://wiki.dfrobot.com/dfr0566/docs/22892 |
 | Camera | Final camera manufacturer / supplier documentation |
 | CHP-20GP-180 | Motor manufacturer / supplier specification |
 | LM2596 | https://www.ti.com/product/LM2596 |
 | XL4015 | https://www.xlsemi.com/datasheet/XL4015-5A-36V-DC-DC-Converter.pdf |
-| L298P Motor Shield | https://www.mouser.com/en/ProductDetail/STMicroelectronics/L298P?qs=lDh9v96ogBZNJERYYNX11w%3D%3D / https://www.instructables.com/Tutorial-L289P-Motor-Driver-and-IR-Sensor/ |
+| L298P Motor Shield | https://www.mouser.com/en/ProductDetail/STMicroelectronics/L298P |
 
 ---
 
-## Final Electrical Summary
+# Final Electrical Summary
 
 The final electrical and sensing architecture of YBR-SUNFLOWER developed through several major changes rather than remaining fixed from the first prototype.
-
-The development path can be summarized as:
 
 ```text
 Initial Sensor Concept
@@ -1771,19 +1299,11 @@ Separated Power + Final Sensor Placement
        Version 3 Competition Robot
 ```
 
-The most important final decisions are:
+The final design uses one main 3S LiPo battery, separate conversion paths for the computing and motor/control systems, and a common electrical ground. LiDAR provides environmental geometry, the camera provides visual color information, the BNO055 provides a relative heading reference, and the motor encoder provides drivetrain feedback. The DFR0566 organizes Pi-side peripheral wiring, while the LiDAR and other sensors are positioned according to their measurement requirements.
 
-- use one main 3S LiPo battery,
-- regulate the computing and motor/control paths separately,
-- keep a common electrical ground,
-- use LiDAR for environmental geometry,
-- use the camera for visual color information,
-- use the BNO055 as a relative heading reference,
-- use the motor encoder for drivetrain feedback,
-- organize Pi-side peripheral wiring through the DFR0566,
-- physically level the LiDAR for planar sensing,
-- position sensors according to their measurement requirements,
-- and document failure modes instead of assuming every component always works correctly.
+Static multimeter measurements on the completed Version 3 robot confirmed **5.1 V at the LM2596 output and 5.0 V at the Raspberry Pi input**, together with **11.1 V at the XL4015 output and 11.0 V at the motor/control input**.
+
+The battery measures approximately **12.6 V when fully charged**. Based on actual robot testing, drivetrain performance begins to decrease below approximately **11.1 V**, so this value is treated as a practical performance threshold rather than an absolute battery minimum.
 
 The electrical system was therefore designed not only to **power the robot**, but to provide the sensing information and electrical reliability required by the complete autonomous system.
 
