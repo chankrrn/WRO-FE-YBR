@@ -1,6 +1,13 @@
 try:
     from picamera2 import Picamera2
-except Exception:
+except ImportError as exc:
+    # The stub only exists so hsv_adjuster can be run off-Pi. On the Pi this
+    # branch means the interpreter cannot see the system picamera2 - almost
+    # always a venv built without --system-site-packages - and every frame
+    # would silently come back empty. Say so instead of failing later with an
+    # unrelated AttributeError deep inside configure_camera().
+    print(f"WARNING: picamera2 unavailable ({exc}); falling back to the "
+          f"fake_picamera2 stub - NO real frames will be captured.")
     from utils.fake_picamera2 import Picamera2
 import time
 from utils.image_transform_utils import ImageTransformUtils

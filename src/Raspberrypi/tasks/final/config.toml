@@ -25,13 +25,13 @@ goal = 3
 # the value goes to analogWrite unchanged. 70 is about 27% duty.
 base = 70
 corner = 65
-lost = 55
-minimum = 55
+lost = 57
+minimum = 57
 # While the planner reports a pass it could not give full clearance to. Every
 # margin that makes a tight pass survivable - the lidar backstop having time
 # to fire, tracking error staying small, the pose staying fresh - is bought
 # with speed, so this is the one knob that helps in every compromised case.
-compromised = 45
+compromised = 57
 
 [path]
 resolution_mm = 20.0
@@ -39,7 +39,7 @@ resolution_mm = 20.0
 # Gap from the outer wall to the straights. Unset centres the loop in the
 # corridor (500mm to the wall, 500mm to the centre block), which is the most
 # forgiving line and leaves a pass equal room either way.
-wall_margin_mm = 520.0
+wall_margin_mm = 480.0
 
 # Corner radius. Unset takes the biggest that still clears the centre block,
 # which here is 480mm - this is deliberately WIDER than that.
@@ -75,9 +75,9 @@ wheelbase_mm = 165.0
 # there are no steep dodges to cut across. Kept moderate rather than raised
 # straight away: raise it if the robot weaves on the straights, lower it if it
 # runs wide, and re-measure after any change to max_road_wheel_deg.
-lookahead_base_mm = 140.0
+lookahead_base_mm = 130.0
 lookahead_per_speed_mm = 2.5
-lookahead_min_mm = 160.0
+lookahead_min_mm = 120.0
 lookahead_max_mm = 400.0
 
 # Inside a bend the lookahead is additionally capped at this fraction of the
@@ -90,7 +90,7 @@ corner_lookahead_fraction = 0.60
 # shook the mast enough to corrupt the lidar pose mid-turn). Reported
 # max_road_wheel_deg = 48.5; the calibrator also reads 4-9% low by design, so
 # this is rounded up from 48.5 rather than used as-is.
-max_road_wheel_deg = 40.0
+max_road_wheel_deg = 44.0
 max_steer_command = 46.0
 rear_axle_offset_mm = 0.0
 
@@ -148,11 +148,11 @@ bay_exit_speed = 60
 
 # Gap between the robot's BODY and the pillar's near face as it goes past.
 # A request, not a promise - see the header.
-clearance_mm = 150.0
+clearance_mm = 400.0
 
 # Half the robot's own width (centreline to its widest point - wheels,
 # mudguards, whatever sticks out furthest). A MEASUREMENT, not a tuning knob.
-robot_half_width_mm = 70.0
+robot_half_width_mm = 80.0
 
 # How far ahead a pillar may be MAPPED, overriding block_map's own 1500mm.
 # Less critical than it was: a goal is a pose, not a schedule, so a pillar
@@ -171,7 +171,7 @@ memory_s = 1.5
 # detection uncertainty, so this can run tighter than clearance_mm - but not
 # to 0; pose tracking still has noise, and a plan is checked against half this
 # before it is called clear.
-wall_clearance_mm = 80.0
+wall_clearance_mm = 130.0
 
 # How much of the robot's turning circle to keep in hand. The plan is drawn
 # with arcs no tighter than turning_circle x this, because a path at exactly
@@ -205,7 +205,7 @@ min_clearance_mm = 45.0
 # robot drives off the end of its own plan between replans; setup warns if it
 # is under 3x. Reaching much further is wasted work - it is replanned before
 # the far end is reached.
-horizon_mm = 2200.0
+horizon_mm = 3000.0
 
 # Goal spacing along an empty stretch. These exist to hold the plan near the
 # racing line: a single Dubins segment spanning a whole side of the field is
@@ -215,14 +215,14 @@ horizon_mm = 2200.0
 # none at all, 550mm gave 6.3cm rms off the line, 350mm gives 5.5cm, and
 # 250mm gives 5.6cm, so there is nothing below about 350 and it costs a
 # Dubins segment per goal.
-route_spacing_mm = 350.0
+route_spacing_mm = 400.0
 
 # How far short of a pillar the route goals stop, so nothing pulls the robot
 # back onto the centreline on the run-in to a pass.
-approach_mm = 450.0
+approach_mm = 200.0
 # How far past a pillar the plan holds its offset before returning to the
 # line. Raise it if the robot clips pillars with its back end on the way out.
-exit_mm = 200.0
+exit_mm = 330.0
 # How many pillars one plan reaches through. Beyond three the far ones are
 # replanned before they are reached anyway.
 max_gates = 3
