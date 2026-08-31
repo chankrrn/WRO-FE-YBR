@@ -66,6 +66,12 @@
 
 ## 1.1 Team Members
 
+<div align="center">
+  
+<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/team-photos/t_pic.jpg" width="700">
+
+</div>
+
 We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
 
 | Member | Primary Responsibility | Supporting Responsibilities |
@@ -80,14 +86,7 @@ We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
 
 ---
 
-## 1.2 Team Photo
-<div align="center">
-  
-<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/team-photos/t_pic.jpg" width="700">
-
-</div>
-
-## 1.3 How We Work as a Team
+## 1.2 How We Work as a Team
 
 Our development process requires mechanical, electrical and software work to be integrated continuously.
 
@@ -218,14 +217,18 @@ The same philosophy also influenced software development. Localization, path tra
 
 The following photographs document the final competition robot from all required directions.
 
-| Front View | Top View | Left View |
+| Front View | Right View | Rear View |
 |---|---|---|
-| <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/front.jpg" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/top.jpg" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/left.jpg" width="250"> |
+| <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Front.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Right.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Rear.png" width="250"> |
 
 
-| Rear View | Bottom View | Right View |
+| Left View | Top View | Bottom View |
 |---|---|---|
-| <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/back.jpg" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/bottom.jpg" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/right.jpg" width="250"> |
+| <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Left.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Top.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Bottom.png" width="250"> |
+
+| Right-Front View | Right-Rear View | Left-Front View | Left-Rear View |
+|---|---|---|---|
+| <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Right%20to%20Front.png" width="187.5"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Right%20to%20Rear.png" width="187.5"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Left%20to%20Front.png" width="187.5"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Left%20to%20Rear.png" width="187.5">
 
 
 
