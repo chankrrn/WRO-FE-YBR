@@ -211,6 +211,41 @@ def probe_speed(context, speeds):
           f"{np.median([m / s * 100 for s, m in rows]):.0f}")
 
 
+def tape_measure(context, speed_command, seconds):
+    """
+    Drives straight for a fixed time and stops, so the distance can be read
+    off a TAPE MEASURE rather than off the pose track.
+
+    The one measurement in this file that does not trust the localizer. Every
+    other number here - and probe_speed above - derives distance by summing
+    |delta pose| along the pose track, so pose jitter adds up as phantom
+    travel and reads as a robot that is going faster than it is. That is
+    fine when the filter is healthy and worthless when it is not, and
+    `mm_per_s_at_full` is exactly the number you need when it is NOT: it feeds
+    the filter's motion model, so a wrong value is what makes the pose jitter
+    in the first place. Measuring it from the pose is circular.
+
+    Mark the floor at the robot's back edge, run it, mark again, measure.
+    """
+    print(f"\nDriving straight at speed {speed_command} for {seconds:.1f}s.")
+    print("  Mark the floor at the robot's rear edge NOW, and again where it stops.")
+    print("  Starting in 3s...", flush=True)
+    time.sleep(3.0)
+
+    context.motor.drive(0, speed_command)
+    start = time.monotonic()
+    time.sleep(seconds)
+    context.motor.drive(0, 0)
+    driven_s = time.monotonic() - start
+
+    print(f"\n  drove for {driven_s:.2f}s at command {speed_command}")
+    print( "  measure the distance between the marks, then:")
+    print(f"      startup.mm_per_s_at_full = distance_mm / {driven_s:.2f} / "
+          f"{speed_command} * 100")
+    for distance in (500, 1000, 1500, 2000):
+        print(f"        {distance:5}mm -> {distance / driven_s / speed_command * 100:6.0f}")
+
+
 def calibrate(context, wheelbase_mm, max_steer_command, commands,
               speed_command=CALIBRATION_SPEED):
     """
@@ -373,6 +408,8 @@ def main(args):
 
         commands = [int(v) for v in args.commands.split(",")]
         try:
+            if args.tape:
+                tape_measure(context, args.drive_speed, args.tape)
             if args.speeds or args.all:
                 probe_speed(context, [int(v) for v in (args.speeds or "25,35,50,70").split(",")])
             if args.calibrate or args.all:
@@ -394,6 +431,13 @@ if __name__ == "__main__":
     parser.add_argument("--all", action="store_true", help="all of the above")
     parser.add_argument("--probe-link", action="store_true",
                         help="check the Arduino answers at all (no motion)")
+    parser.add_argument("--tape", nargs="?", type=float, const=3.0, default=None,
+                        metavar="SECONDS",
+                        help="drive straight for N seconds (default 3) and stop, so "
+                             "mm_per_s_at_full can be measured with a tape measure "
+                             "instead of the pose track. Use this when the pose is "
+                             "not trustworthy - which is exactly when this number "
+                             "is wrong.")
     parser.add_argument("--speeds", nargs="?", const="25,35,50,70", default=None,
                         metavar="LIST",
                         help="drive straight at each speed and measure the real mm/s")
@@ -414,7 +458,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if not (args.calibrate or args.lag or args.all or args.sweep
-            or args.probe_link or args.speeds):
+            or args.probe_link or args.speeds or args.tape):
         parser.print_help()
         sys.exit(0)
     sys.exit(main(args))

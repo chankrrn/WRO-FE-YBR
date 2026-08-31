@@ -32,7 +32,7 @@ from classes.parking import (BODY_FRONT_MM, BODY_HALF_WIDTH_MM, BODY_REAR_MM,
 WHEELBASE_MM = 165.0
 MAX_COMMAND = 40.0
 STEP_S = 0.02
-MM_PER_S_AT_FULL = 700.0
+MM_PER_S_AT_FULL = 390.0     # measured with a tape, 16:28 gearing
 LINE_DEPTH_MM = 600.0
 
 

@@ -87,6 +87,22 @@ lookahead_max_mm = 800.0
 # Measured on the sim: 0.9 -> 2.1cm corner error, 0.7 -> 1.2cm, off -> 4.2cm.
 corner_lookahead_fraction = 0.75
 
+# THE SERVO IS NOT A VALUE, IT IS AN ACTUATOR. Time constant of the steering,
+# from `test_steering.py --lag`: ~0.35s to 63%. Everything that dead-reckons
+# off the steering used to read the COMMAND, i.e. assume the wheels teleport -
+# so during a correction, which is exactly when it matters, the odometry was
+# handed yaw the robot had not done. The filter then believes a heading the
+# robot is not on, pure pursuit corrects an error that is not there, the wheels
+# swing back, and the robot wanders down the line without ever settling on it.
+# That is a fault in the POSE, not in the geometry, which is why no lookahead
+# value ever fixed it. 0 restores the old assumption.
+#
+# Measured in the sim at this round's 150mm lookahead against a 0.35s servo:
+# the robot's own idea of its wheel angle goes from 3.7deg rms wrong to 1.5,
+# and its heading from 0.35deg to 0.21. Check it on the mat with
+# `python test_step_response.py --sweep pursuit.servo_lag_s 0,0.35`.
+servo_lag_s = 0.35
+
 max_road_wheel_deg = 30.0
 max_steer_command = 35.0
 
@@ -137,4 +153,6 @@ localize_timeout_s = 8.0
 # Drive speed 100 in mm/s. Only feeds the filter's motion model, so a rough
 # figure is fine - the lidar does the real work. Measure it by timing a
 # straight run if the robot fights its own odometry.
-mm_per_s_at_full = 700.0
+# 700 through the original gearing; 390 MEASURED with a tape after the 16:28
+# reduction was fitted - 700mm in 3.0s at command 60.
+mm_per_s_at_full = 390.0

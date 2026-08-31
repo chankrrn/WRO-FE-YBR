@@ -11,8 +11,8 @@
 goal = 3
 
 [speed]
-base = 70
-corner = 65
+base = 60
+corner = 60
 lost = 55
 minimum = 55
 
@@ -22,7 +22,7 @@ resolution_mm = 20.0
 # Gap from the outer wall to the straights (None/unset centers the loop in
 # the corridor: 500mm to the wall, 500mm to the centre block). Lower this to
 # pull the line closer to the wall; raise it to pull it closer to the block.
-wall_margin_mm = 520.0
+wall_margin_mm = 400.0
 
 [pursuit]
 wheelbase_mm = 165.0
@@ -30,24 +30,52 @@ wheelbase_mm = 165.0
 # Shorter than qualification: the line moves sideways around each pillar, and a
 # long lookahead cuts the corner off that move and clips the block. Too short
 # and the robot weaves - raise it until it stops, then stop.
-lookahead_base_mm = 100.0
+lookahead_base_mm = 170.0
 lookahead_per_speed_mm = 2.5
-lookahead_min_mm = 150.0
-lookahead_max_mm = 400.0
+lookahead_min_mm = 200.0
+lookahead_max_mm = 460.0
 
 # Inside a bend the lookahead is additionally capped at this fraction of the
 # bend's radius, which is what stops the robot cutting the apex and then
 # running wide correcting. Lower it if it still cuts; raise it if it weaves.
 # Measured on the sim: 0.9 -> 2.1cm corner error, 0.7 -> 1.2cm, off -> 4.2cm.
-corner_lookahead_fraction = 0.60
+corner_lookahead_fraction = 0.67
 
-# Measured from a normal driven lap (SteeringCalibrator, which fits this from
-# ordinary cornering rather than a raw test_steering.py arc - see FutureE
-# discussion: the raw arcs shook the mast enough to corrupt the lidar pose
-# mid-turn). Reported max_road_wheel_deg = 48.5 (robot turns 21% MORE than
-# 40.0 assumed); the calibrator also reads 4-9% low by design, so rounded up
-# from 48.5 rather than used as-is.
-max_road_wheel_deg = 40.0
+# And a pillar close ahead pulls it in further, for the same reason a corner
+# does: the dodge around a block is a corner, and a lookahead that reaches past
+# it aims at the far side of the swerve, so the robot drives the chord and
+# clips the block it was bending around. Eased from the normal lookahead at
+# block_lookahead_window_mm down to block_lookahead_near_mm alongside the block, then let
+# back out over the settle. Set the window to 0 to turn it off.
+block_lookahead_window_mm = 500.0
+block_lookahead_near_mm = 170.0
+
+# HARD CEILING, on top of that ease: the lookahead is never allowed to reach
+# past the nearest pillar ahead. block_lookahead_near_mm is a fixed distance,
+# so over the last 120mm of an approach it was longer than the road left and
+# the aim point landed BEYOND the block, where the line has already settled
+# back - and the chord from here to there goes through the pillar. That is the
+# case where the robot could see the block perfectly well and drove into it.
+# At the pillar's own progress the line is at full offset, so aiming exactly
+# there aims beside it; this margin backs off further still. Raise it if the
+# mapped position of a pillar reads late (aim short of it instead of at it);
+# it is floored at lookahead_min_mm either way, so it cannot collapse the
+# lookahead alongside a block.
+block_lookahead_margin_mm = 0.0
+
+# MEASURED, 2026: driving arcs at command 20/35/50 gave road-wheel angles of
+# 20.5 / 31.8 / 39.4deg, worked out from the YAW RATE and the tape-measured
+# speed (test_steering.py's own distance figure is unusable - it builds a bare
+# TaskContext, so nothing calls report_motion and the filter runs on lidar
+# alone, which makes its "speed" the sum of the pose jitter: it reported
+# 3138mm/s against a real 292).
+#
+# Those three imply a full lock of 47.2 / 41.8 / 36.2deg - falling as the
+# command rises, which is a servo running out of travel rather than a linear
+# system. Command 50 already reached only 39.4deg, and full lock is 46, so it
+# cannot be more than that. 39 is the honest figure; 44 was read off a debug
+# line and was never measured.
+max_road_wheel_deg = 50.0
 max_steer_command = 46.0
 rear_axle_offset_mm = 0.0
 
@@ -56,7 +84,23 @@ rear_axle_offset_mm = 0.0
 # 0.15s - over-predicting overshoots worse than not predicting at all). The
 # gap between 0.35s real and 0.15s compensated is why speed.corner is cut
 # below, rather than raising this further.
-lag_compensation_s = 0.15
+lag_compensation_s = 0.1
+
+# THE SERVO IS NOT A VALUE, IT IS AN ACTUATOR. Time constant of the steering,
+# from `test_steering.py --lag`: ~0.35s to 63%. Everything that dead-reckons
+# off the steering used to read the COMMAND, i.e. assume the wheels teleport -
+# so during a correction, which is exactly when it matters, the odometry was
+# handed yaw the robot had not done. The filter then believes a heading the
+# robot is not on, pure pursuit corrects an error that is not there, the wheels
+# swing back, and the robot wanders down the line without ever settling on it.
+# That is a fault in the POSE, not in the geometry, which is why no lookahead
+# value ever fixed it. 0 restores the old assumption.
+#
+# Measured in the sim at this round's 150mm lookahead against a 0.35s servo:
+# the robot's own idea of its wheel angle goes from 3.7deg rms wrong to 1.5,
+# and its heading from 0.35deg to 0.21. Check it on the mat with
+# `python test_step_response.py --sweep pursuit.servo_lag_s 0,0.35`.
+servo_lag_s = 0.35
 
 [blocks]
 # ---------------------------------------------------------------------------
@@ -71,7 +115,24 @@ lag_compensation_s = 0.15
 # ---------------------------------------------------------------------------
 
 # Gap between the robot's BODY and the pillar's near face as it goes past.
-clearance_mm = 430.0
+#
+# THIS HAS TO FIT IN THE CORRIDOR. The dodge asks the line for clearance_mm +
+# robot_half_width_mm + 25 from the pillar, out of a corridor 1000mm wide -
+# 500mm from the centreline to the wall or the centre block, less
+# wall_clearance_mm, so 450mm of room. At 400 the ask was 495mm against that
+# 450, so EVERY dodge was clamped and delivered short: a robot that has planned
+# a pass it cannot drive, and steers into the pillar instead. Worse off the
+# racing line, because the offset is measured from the PILLAR
+# (pillar.lateral + ask), so one sitting 200mm to the side asks 200mm more
+# again and is clamped harder still.
+#
+# _warn_if_dodge_wont_fit prints this at startup - three WARNING lines about a
+# 495mm dodge against 280mm of room were the round saying exactly this. 240
+# asks 335mm and fits. Sim, 6 placements, worst clearance by clearance_mm:
+# 400 -> +0.1cm, 300 -> +2.5, 200 -> +8.9, 150 -> +11.2, with pillar faults
+# halving. Raise it only as far as the startup warning stays quiet, and check
+# it against a pillar that is NOT on the line, which is the binding case.
+clearance_mm = 170.0
 
 # Half the robot's own width (centerline to its widest point - wheels,
 # mudguards, whatever sticks out furthest). This is a MEASUREMENT, not a
@@ -155,9 +216,9 @@ map_range_mm = 2200.0
 # still happens. That is deliberate: shrinking the dodge instead is what made
 # the robot drive into pillars it could see perfectly well.
 # ---------------------------------------------------------------------------
-approach_mm = 600.0
-padding_mm = 500.0
-past_mm = 500.0
+approach_mm = 900.0
+padding_mm = 300.0
+past_mm = 200.0
 
 # Where each transition's inner control point sits, as a fraction of its
 # length. 1/3 is the plain S-curve. Lower starts leaning sooner and more
@@ -197,7 +258,7 @@ turn_radius_margin = 1.15
 # known field geometry (no detection uncertainty, unlike a pillar), so this
 # can run tighter than clearance_mm - but not 0; pose tracking still has
 # noise.
-wall_clearance_mm = 30.0
+wall_clearance_mm = 100.0
 
 [steer]
 # How fast the steering command may move, in command units per second. This is
@@ -221,6 +282,8 @@ wall_clearance_mm = 30.0
 # losing the line. Leave unset for 3 x max_steer_command.
 # max_rate_units_s = 60.0
 
+
+
 [safety]
 min_pose_confidence = 0.35
 lost_timeout_s = 4.0
@@ -231,9 +294,273 @@ lost_timeout_s = 4.0
 # Comfortably below clearance_mm so a correctly-executed pass never trips it,
 # but still catches a pass that is actually going wrong before contact.
 front_slow_mm = 220.0
-front_stop_mm = 160.0
+front_stop_mm = 170.0
 front_sector_deg = 25.0
 
 [startup]
 localize_timeout_s = 8.0
-mm_per_s_at_full = 700.0
+
+# WHICH WAY THE ROBOT IS PLACED, in field degrees: 0 = +Y, 90 = +X, 180 = -Y,
+# 270 = -X. THIS IS NOT OPTIONAL WHEN THERE IS A COMPASS.
+#
+# The field is 90-degree rotationally symmetric, so the lidar cannot tell the
+# four quadrants apart - only the IMU can, and the IMU's zero is wherever it
+# happened to boot. Leaving this unset does not mean "no compass": it means a
+# compass the filter believes and nobody has anchored, which is the worst of
+# the three states. The pose then comes out rotated by a multiple of 90deg -
+# consistently, every run - and everything read off it rotates with it: the
+# lap direction, the start section, where the bay is, and the projection onto
+# the racing line that counts the lap. A quarter-lap error in that counter is
+# the round ending in the wrong sector, and parking starting nowhere near the
+# bay.
+#
+# To find the right value: set one of the four, run, and read the startup line
+# "Parking bay expected in the <section> section". If that is not the section
+# the bay is really in, rotate this by 90 and go again.
+start_heading_deg = 180.0
+
+# 700 through the original gearing; 390 MEASURED with a tape after the 16:28
+# reduction was fitted - 700mm in 3.0s at command 60. Re-measure the same way
+# if the drivetrain changes: `python test_steering.py --tape 3 --drive-speed 60`.
+# NOT with --calibrate: that derives distance from the pose track, and this
+# number is what feeds the filter's motion model - measuring it through the
+# pose is circular, and a wrong value here is what makes the pose jitter.
+mm_per_s_at_full = 390.0
+
+# =============================================================================
+# [parking] - a script the lidar starts, not a trajectory the map plans.
+#
+# Drive alongside the outer wall on a side lidar range, held at a distance AND
+# held parallel, right up to the bay; when that range steps
+# in, that is the bay wall (it stands 200mm proud of the outer wall, and
+# nothing else on the field does); roll on a measured distance, then two
+# reverse legs at two fixed steering angles. Nothing here reads the pose.
+#
+#   setup -> u-turn -> follow -> [wall steps closer, camera says pink] ->
+#   creep -> turn in 90deg -> nose in -> back off -> rotate flat -> stopped
+#
+# IN PERPENDICULAR, THEN ROTATE FLAT - not a parallel park. At 39deg of lock a
+# 210mm body cannot be threaded lengthwise into a 340mm slot on an arc; swept
+# over a realistic spread of entry conditions the best of 630,000 combinations
+# still left a corner 31mm outside. Nose-first uses the slot's 340mm against
+# the body's 150mm WIDTH, and the rotation flat happens inside the bay.
+#
+# NOTHING IS TIMED. Two steps end on the compass, three on the lidar, one on
+# the camera and the lidar together.
+#
+# THE FIVE NUMBERS BELOW ARE THE PARK and all start unset. Measure them on the
+# mat; the sequence refuses to drive until they are all in, and says which are
+# missing. Tune them in order - each one only makes sense once the one before
+# it is right.
+# =============================================================================
+[parking]
+enabled = true
+
+# 1. how far off the outer wall to run while looking for the bay, and how
+#    hard to hold it there. Far enough out that the bay wall is a clear step
+#    in the range, close enough that the park starts from beside the bay.
+follow_mm = 800.0
+# WIDE, for two separate reasons. The bay walls stand 200mm proud of the outer
+# wall and the body is 150mm across, so anything under 275mm drives the flank
+# straight through them - 230 was 45mm into them. And a 90deg turn at full lock
+# drops the rear axle 204mm toward the wall: from 300mm out the nose would
+# finish 74mm THROUGH it, where 450mm leaves it 76mm short for nose-in to close.
+wall_distance_mm = 300.0
+wall_gain = 0.1
+wall_max_steer = 30.0
+
+# 2. which lidar sector watches the wall. The sign is applied for you - it
+#    looks at whichever side the wall is on. Narrow it if the mast or the
+#    camera clips the beam.
+side_bearing_deg = 90.0
+side_sector_deg = 30.0
+
+# 2b. holding the HEADING as well as the distance, all the way to the bay. A
+#     line is fitted through the whole visible arc of wall either side of the
+#     perpendicular, and its slope is the yaw relative to the wall.
+#     angle_gain is steering command per degree of yaw - set it to 0 and the
+#     follow only sees a distance, which is what let the robot freeze the
+#     heading it arrived on and walk forward. Raise it if it drifts off the
+#     wall, lower it if it weaves. angle_arc_deg is the arc's half-width:
+#     wider averages more returns and is quieter, but reaches further ahead
+#     where the bay wall turns up early. A reading past angle_max_deg is a
+#     corner or a step, not the wall, and is discarded.
+angle_gain = 0.6
+angle_arc_deg = 25.0
+angle_min_points = 12
+angle_max_deg = 30.0
+
+# Pure pursuit is off from the moment parking starts, so the sequence watches
+# ahead itself: closer than front_stop_mm means a corner, and the run-out turns
+# early rather than driving into it (the run-in gives up and retries instead).
+# 450, not 600: the follow now runs 450mm off the wall, and a beam 5deg off
+# the nose meets that wall 587mm ahead once the robot is 45deg crooked - close
+# enough to 600 to read as a corner that is not there. At 450 it would take
+# 60deg of yaw, which angle_max_deg does not let the follow reach.
+front_stop_mm = 450.0
+front_sector_deg = 10.0
+front_hold_s = 0.4
+# 3. the range that means "bay wall". Leave unset for wall_distance_mm - 120.
+#    At 450mm out a bay wall standing 200mm proud reads about 250, so the
+#    threshold has to sit between the two - not down at 140, which was set for
+#    a 230mm follow and would never trip from out here.
+trigger_below_mm = 330.0
+
+# 4. THE PARK - head in, square to the wall.
+#
+#    CREEP. The trigger fires off the WIDE sector, which reports its closest
+#    return and so catches a bay wall well before the robot is level with it.
+#    The NARROW beam (mouth_sector_deg) is what says "level", and that is the
+#    reference the whole turn is measured from.
+mouth_sector_deg = 6.0
+# blade_below_mm = 330.0     # unset = the same threshold as the trigger
+creep_max_mm = 700.0
+
+#    THE LIDAR IS NOT AT THE AXLE - it is 130mm forward of it. That moves both
+#    ends of this: the beam goes level with a bay wall while the axle is still
+#    130mm short of it, and it reads the outer wall from 130mm closer than the
+#    nose is. Measure this one properly, it moves everything below.
+lidar_ahead_mm = 130.0
+
+#    MEASURE THE BAY, then back up to its middle. Instead of turning a fixed
+#    distance after the first bay wall, drive past BOTH walls - so the bay's
+#    real width, and so its real middle, is measured rather than assumed - and
+#    then reverse to the point the turn has to start from. Costs a bay-length
+#    of travel and the reverse that undoes it. Falls back to turn_after_mm if
+#    the second wall is never seen.
+#
+#    A bay wall is 10mm thick and the beam's footprint is wider than that, so
+#    right at the crossing the beam flickers clear-then-blocked within 20mm -
+#    which reads as a 20mm-wide bay. So the mouth only counts once the beam
+#    has been clear for mouth_clear_mm, and the far wall only counts beyond
+#    bay_min_mm from the near one.
+measure_bay = true
+mouth_clear_mm = 60.0
+bay_min_mm = 170.0
+
+#    SQUARE UP BEFORE BACKING IN. Everything from the reverse onward is open
+#    loop - a measured reverse, a turn on the compass, a straight run in - so
+#    the pose the robot is in when it starts backing up is the pose the whole
+#    manoeuvre is measured from. Alongside the bay is the worst place to take
+#    it: the side lidar has been looking at a bay wall rather than at the
+#    wall, so the follow has been flying blind for a bay's length. Past the
+#    far wall the beam is clean again, so it is given a little road to settle
+#    on, and what it spends there is added to the reverse so it costs position
+#    nothing. settle_max_mm caps it; the tolerances say "close enough".
+#    While it is driving PAST the bay the side lidar reads a bay wall, not the
+#    wall - an ordinary follow there would see 250mm, decide it was too close
+#    and steer AWAY from the thing it is parking in. So it keeps its place in
+#    the road off the CENTRE BLOCK instead: the road's width is measured on
+#    the way in, so the distance to the block that matches the right distance
+#    from the wall is known. inner_slack_mm is how far off that it may read
+#    before being disbelieved - near a corner the block is not there, and a
+#    beam that sees across the field would pull the robot into the wall.
+inner_sector_deg = 30.0
+inner_slack_mm = 250.0
+
+settle_max_mm = 600.0
+settle_tolerance_mm = 40.0
+settle_angle_deg = 3.0
+# How far the settle gate widens over settle_max_mm: 2.0 means the
+# tolerances above end up three times as loose by the time the road runs
+# out, so a nearly-square robot stops straight away instead of walking
+# the whole allowance. 0 restores the old all-or-nothing behaviour.
+settle_relax = 0.5
+
+#    turn_after_mm is the fallback, used only when measure_bay is off or the
+#    second wall is never found. It rolls on further before turning in. UNSET
+#    lands the body in the middle of the bay on its own: half the bay, plus
+#    how far the lidar leads the axle, minus the radius the turn carries the
+#    axle through - 170 + 130 - 204, about 96mm. At zero it lands 96mm off
+#    centre, far enough over to graze the far wall.
+# turn_after_mm = 0.0
+
+#    TURN IN, counted on the COMPASS. Leave the steer unset for full lock,
+#    which is the tightest arc and what the 204mm drop above assumes.
+turn_in_deg = 90.0
+# turn_in_steer = 46.0
+
+#    THE TURN NEEDS ROOM. It carries the axle a whole radius (204mm) toward
+#    the wall before the nose comes round, so it has to start at least
+#    radius + nose away from it. Unset = 204 + 170 + 30 = about 404mm. From
+#    360mm the body clips a bay wall by 40mm; from 320mm the nose ends up 54mm
+#    INSIDE the outer wall. Closer than this the attempt is abandoned rather
+#    than driven into the bay - which is why wall_distance_mm is 450.
+# turn_in_min_mm = 404.0
+
+#    HOLDING THE HEADING ON THE STRAIGHT LEGS. Steering zero is not the same
+#    as going straight: the creep and the drive into the bay both run on from
+#    a servo that has just been at full lock, and two degrees held for half a
+#    metre is the difference between arriving square in the bay and across it.
+#    The side lidar cannot help by then - it is looking at a bay wall, not the
+#    wall - so the reference is the wall's own heading, which the follow
+#    learns on the compass while it still can. Steering command per degree;
+#    0 turns the correction off.
+heading_gain = 1.5
+
+#    How far the NOSE stops off the outer wall - not what the beam reads; the
+#    code subtracts the mount offset for you. This is the one place an error
+#    in everything upstream is absorbed rather than added to, so tune it last
+#    and tune it here. The body is 210mm and the bay 200mm deep, so at a 20mm
+#    nose gap about 30mm of tail still sits proud of the bay mouth.
+nose_stop_mm = 20.0
+
+#    THE CAMERA. The lidar sees a step 200mm proud of the wall and cannot tell
+#    a bay wall from a pillar standing next to one; the camera sees that it is
+#    pink but, through an object of unknown size, not how far away. So the
+#    lidar picks the moment and the camera only has to agree the thing is pink
+#    and roughly on the expected side. Set false to run on the lidar alone.
+camera_confirms = true
+camera_bearing_deg = 60.0
+
+# 5. speeds, and the pause that lets the servo reach each new angle before the
+#    wheels move. Slow: every millimetre of overshoot lands on the tightest
+#    clearance of the whole manoeuvre, and the legs are measured by odometry.
+speed = 50
+reverse_speed = 60
+servo_settle_s = 0.4
+timeout_s = 20.0
+
+# Parking starts THIS far before the last lap would have finished, so the
+# follow gets a run at the wall before the bay turns up in it - it needs about
+# 1.4m to settle onto the wall from a bad handover. Then: how many failed
+# attempts to retry before giving up and driving out the clock.
+start_early_mm = 1200.0
+retries = 0
+
+[unpark]
+# Leaving a bay the robot was PLACED in, before the first lap. Off unless the
+# run is actually starting in one - switched on for a start on the track it
+# just swerves. See UnparkController in classes/parking.py.
+#
+# Which way out is not set here: the robot stands still for look_s, compares
+# the lidar's left and right sectors, and leaves toward whichever has room in
+# it. default_side (+1 right, -1 left) only decides ties.
+enabled = true
+# The sequence is: look, turn the servo, reverse, turn the servo the other
+# way, drive out.
+#
+# THE THREE NUMBERS THAT MATTER, all measured on the mat. reverse_mm is how
+# far it backs up first, to buy the room the turn needs (0 = no reverse);
+# steer_command is a MAGNITUDE (the sign comes from the open side);
+# forward_mm is how far to drive on that lock before the racing line takes
+# over.
+reverse_mm = 160.0
+steer_command = 46.0
+forward_mm = 320.0
+# Counter-steer for the reverse leg, a MAGNITUDE pointing AWAY from the exit
+# side. Reversing negates yaw rate, so backing up on the opposite lock turns
+# the robot the same way the forward leg will - it leaves the bay mouth with
+# the nose already aimed out, instead of having to develop all that yaw from
+# inside the slot. The tail swings the other way while it does, so 0 (straight
+# back) is the right answer for a bay with no room behind the rear corners.
+reverse_steer_command = 20
+speed = 60
+reverse_speed = 60
+look_s = 0.6
+servo_settle_s = 0.4
+side_bearing_deg = 90.0
+side_sector_deg = 45.0
+side_margin_mm = 100.0
+default_side = 1
+timeout_s = 15.0

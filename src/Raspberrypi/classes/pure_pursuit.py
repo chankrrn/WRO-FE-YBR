@@ -38,6 +38,7 @@ LOOKAHEAD_PER_SPEED_MM = 3.0     # added per unit of the 0-100 speed command
 MAX_ROAD_WHEEL_DEG = 70.0        # actual steer angle at full lock
 MAX_STEER_COMMAND = 70.0         # what MotorManager.steer() calls full lock
 REAR_AXLE_OFFSET_MM = 0.0        # + forward of the pose origin, usually <= 0
+SERVO_LAG_S = 0.0                # first-order time constant of the wheels; 0 = instant
 
 # In a bend, the lookahead is additionally capped at this fraction of the
 # bend's own radius. Aiming further round a corner than its radius puts the
@@ -62,7 +63,8 @@ class PurePursuit:
                  max_road_wheel_deg=MAX_ROAD_WHEEL_DEG,
                  max_steer_command=MAX_STEER_COMMAND,
                  rear_axle_offset_mm=REAR_AXLE_OFFSET_MM,
-                 corner_lookahead_fraction=CORNER_LOOKAHEAD_FRACTION):
+                 corner_lookahead_fraction=CORNER_LOOKAHEAD_FRACTION,
+                 servo_lag_s=SERVO_LAG_S):
         self.wheelbase_mm = float(wheelbase_mm)
         self.lookahead_min_mm = float(lookahead_min_mm)
         self.lookahead_max_mm = float(lookahead_max_mm)
@@ -72,12 +74,16 @@ class PurePursuit:
         self.max_steer_command = float(max_steer_command)
         self.rear_axle_offset_mm = float(rear_axle_offset_mm)
         self.corner_lookahead_fraction = float(corner_lookahead_fraction)
+        self.servo_lag_s = float(servo_lag_s)
 
         # Kept for the status line and the debug overlay.
         self.last_target = None
         self.last_alpha_deg = 0.0
         self.last_road_wheel_deg = 0.0
         self.last_command = 0.0
+        # Where the wheels actually ARE, as opposed to where they were last
+        # told to go. See advance_servo.
+        self.actual_road_wheel_deg = 0.0
 
     # ========================================================================
     # GEOMETRY
@@ -108,6 +114,65 @@ class PurePursuit:
         if curvature > 0.0:
             distance = min(distance, self.corner_lookahead_fraction / curvature)
         return max(ABSOLUTE_MIN_LOOKAHEAD_MM, distance)
+
+    # ========================================================================
+    # THE SERVO
+    # ========================================================================
+
+    def advance_servo(self, dt):
+        """
+        Moves the modelled wheel angle `dt` further toward the last command,
+        and returns the AVERAGE angle over that dt.
+
+        Steering is not a value, it is an actuator: ask for 20 degrees and the
+        wheels arrive there about `servo_lag_s` later. Everything that
+        dead-reckons off the steering was reading the COMMAND, i.e. assuming
+        the wheels teleport - so during every correction, which is exactly when
+        it matters, the odometry was told about yaw the robot had not done. The
+        filter then believes a heading the robot is not on, pure pursuit
+        corrects an error that is not there, the wheels swing back, and the
+        robot weaves down the line without ever settling on it. No lookahead
+        fixes that, because the fault is in the pose, not in the geometry.
+
+        A first-order lag is the honest model of it: the response measured with
+        `test_steering.py --lag` was ~0.35s to 63%, which IS the exponential's
+        time constant. Left at 0 this returns the command, which is the old
+        behaviour exactly.
+
+        I/O:
+            dt: seconds since the last call
+            return: mean road-wheel angle over those seconds, in degrees
+        """
+        target = self.last_road_wheel_deg
+        if self.servo_lag_s <= 0.0 or dt <= 0.0:
+            self.actual_road_wheel_deg = target
+            return target
+
+        start = self.actual_road_wheel_deg
+        decay = math.exp(-dt / self.servo_lag_s)
+        self.actual_road_wheel_deg = target + (start - target) * decay
+        # Integral of target + (start-target)e^(-t/tau) over [0, dt], / dt.
+        return target + (start - target) * self.servo_lag_s / dt * (1.0 - decay)
+
+    def mean_road_wheel_deg(self, seconds):
+        """
+        The average wheel angle the servo will hold over the NEXT `seconds`,
+        assuming the last command stands.
+
+        Same curve as advance_servo, run forward instead of back. This is what
+        the lag compensation should predict the robot's yaw with: over a lead
+        of 0.35s the wheels spend most of it still on their way to the new
+        angle, so predicting with the commanded angle over-turns the projected
+        pose - which is why lag_compensation_s had to be held at 0.15s, well
+        under the real lag, to keep from over-correcting. With the approach
+        modelled the full measured lag can be compensated honestly.
+        """
+        target = self.last_road_wheel_deg
+        if self.servo_lag_s <= 0.0 or seconds <= 0.0:
+            return target
+        start = self.actual_road_wheel_deg
+        decay = math.exp(-seconds / self.servo_lag_s)
+        return target + (start - target) * self.servo_lag_s / seconds * (1.0 - decay)
 
     def rear_axle(self, pose):
         """The pose's reference point shifted back onto the rear axle."""
@@ -160,10 +225,11 @@ class PurePursuit:
         Records a steering command that did NOT come from steering().
 
         The parking manoeuvre drives the wheels itself, but the odometry still
-        has to know what they are doing: PathDrivingTask._turned() reads
-        last_road_wheel_deg to dead-reckon yaw between lidar scans. Without
-        this the filter is told the robot went straight through every arc of
-        the park, and the pose walks away exactly where it is needed most.
+        has to know what they are doing: PathDrivingTask._turned() dead-reckons
+        yaw between lidar scans off the wheel angle, which advance_servo tracks
+        from whatever was last commanded. Without this the filter is told the
+        robot went straight through every arc of the park, and the pose walks
+        away exactly where it is needed most.
 
         Exactly the inverse of the conversion at the end of steering(), so
         both paths dead-reckon off the same calibration.
@@ -192,5 +258,6 @@ class PurePursuit:
         return self.wheelbase_mm / math.tan(math.radians(self.max_road_wheel_deg))
 
     def status_line(self):
-        return (f"steer={self.last_command:+5.1f} (wheel {self.last_road_wheel_deg:+5.1f}deg) "
+        return (f"steer={self.last_command:+5.1f} (wheel {self.actual_road_wheel_deg:+5.1f}"
+                f"->{self.last_road_wheel_deg:+5.1f}deg) "
                 f"alpha={self.last_alpha_deg:+6.1f}deg")
