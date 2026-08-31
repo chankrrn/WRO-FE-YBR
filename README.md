@@ -11,11 +11,10 @@
 
 <br>
 
-> **[TODO: Add final hero image of the completed YBR-SUNFLOWER robot]**
->
-> Recommended: one clean landscape photograph showing the complete final robot. (ADD ROBOT GIF)
+<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/8fcf201d1934eadb0b708aad52bb1ed08f38afb4/robot-photos/Landscape.JPG" width="500" height="500">
 
-<br>
+<br><br>
+
 
 **Autonomous Self-Driving Vehicle · Mechanical Engineering · Electrical & Sensor Architecture · Localization · Computer Vision · Autonomous Navigation**
 
@@ -238,9 +237,9 @@ This section should will allow you to understand the physical system without fir
 
 ### Overall Component Layout
 
-<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/bd50684dcc13163beae399e9623f2a18dc44b98a/other/Layout1.png">
+<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/8fcf201d1934eadb0b708aad52bb1ed08f38afb4/robot-photos/Layout1.png">
 
-<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/bd50684dcc13163beae399e9623f2a18dc44b98a/other/Layout2.png">
+<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/8fcf201d1934eadb0b708aad52bb1ed08f38afb4/robot-photos/Layout2.png">
 
 ### Mechanical Layout
 
