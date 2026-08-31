@@ -1,4 +1,4 @@
-# YBR-SUNFLOWER 🌻
+# *YBR-SUNFLOWER 🌻*
 
 <div align="center">
 
@@ -52,12 +52,11 @@
 8. [Software Architecture and Autonomous Strategy](#8-software-architecture-and-autonomous-strategy)
 9. [Systems Thinking and Major Engineering Decisions](#9-systems-thinking-and-major-engineering-decisions)
 10. [Testing, Validation and Failure Analysis](#10-testing-validation-and-failure-analysis)
-11. [Competition Demonstrations](#11-competition-demonstrations)
-12. [Build and Reproducibility](#12-build-and-reproducibility)
-13. [Repository Structure](#13-repository-structure)
-14. [Version History and Development Milestones](#14-version-history-and-development-milestones)
-15. [WRO Engineering Documentation Map](#15-wro-engineering-documentation-map)
-16. [References and Related Documentation](#16-references-and-related-documentation)
+11. [Build and Reproducibility](#11-build-and-reproducibility)
+12. [Repository Structure](#12-repository-structure)
+13. [Version History and Development Milestones](#13-version-history-and-development-milestones)
+14. [WRO Engineering Documentation Map](#14-wro-engineering-documentation-map)
+15. [References and Related Documentation](#15-references-and-related-documentation)
 
 ---
 
@@ -81,20 +80,14 @@ We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
 
 **Mentor:** Mr. Punnapon Tanasnitikul
 
-> **[TODO: Confirm the exact wording of every team member's role before final submission. Roles should reflect actual work completed by each member.]**
-
 ---
 
 ## 1.2 How We Work as a Team
 
-Our development process requires mechanical, electrical and software work to be integrated continuously.
+Our development process integrates mechanical, electrical, and software work throughout the development. A mechanical change can affect steering behavior, while a sensor-placement change can affect localization. Similarly, a power-system change can affect computing reliability, and a software change can reveal mechanical limitations that were not clear during static testing. 
 
-A mechanical modification can change steering behavior.  
-A sensor-placement change can affect localization.  
-A power-system change can affect computing reliability.  
-A software change can reveal mechanical limitations that were not obvious during static testing.
+Therefore, subsystem decisions are developed and tested as part of the complete robot rather than independently until the final stage.
 
-For this reason, subsystem decisions are discussed and tested as part of the complete robot rather than being developed independently until the end.
 
 > **[TODO: Add 2–4 sentences describing how the team actually divides work, reviews changes and performs testing together.]**
 
@@ -132,7 +125,7 @@ The competition contains two major driving challenges.
 
 The vehicle must autonomously complete three laps while responding to the randomized track configuration and driving direction.
 
-Ours Robot Performance: ADD Link
+**Open Challenge Performance Video:**  `[TODO: OPEN CHALLENGE VIDEO]`
 
 
 ### Obstacle Challenge
@@ -150,7 +143,10 @@ The starting position, driving direction and field configuration may change betw
 
 For this reason, our final software does not depend on one fixed prerecorded path from one fixed starting point.
 
-Ours Robot Performance: ADD Link
+**Obstacle Challenge Performance Video:**  `[TODO: OPEN CHALLENGE VIDEO]`
+
+> **All the videos including additional testing videos can be found in:** [`video/RunTest_video.md`](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/video/RunTest_video.md)
+
 
 ---
 
@@ -931,63 +927,10 @@ Additional evidence:
 
 [`engineering-process/testing/`](engineering-process/testing/)
 
----
-
-# 11. Competition Demonstrations
-
-WRO Future Engineers documentation requires autonomous-driving video evidence for the competition challenges.
-
-## 11.1 Open Challenge
-
-> **[TODO: Add public / unlisted YouTube link]**
->
-> Required content:
->
-> - autonomous movement,
-> - at least 30 seconds of autonomous driving,
-> - robot clearly visible,
-> - preferably a complete run.
-
-**Video:** `[TODO: OPEN CHALLENGE VIDEO]`
 
 ---
 
-## 11.2 Obstacle Challenge
-
-> **[TODO: Add public / unlisted YouTube link]**
->
-> Recommended content:
->
-> - autonomous movement,
-> - red / green traffic-pillar interaction,
-> - multiple turns,
-> - parking sequence if available,
-> - at least 30 seconds of autonomous driving.
-
-**Video:** `[TODO: OBSTACLE CHALLENGE VIDEO]`
-
----
-
-## 11.3 Additional Testing Videos
-
-[`video/RunTest_video.md`](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/video/RunTest_video.md)
-
-Optional additional evidence:
-
-- drivetrain test,
-- steering calibration,
-- LiDAR localization,
-- camera detection,
-- full competition run,
-- parking test.
-
-See:
-
-[`video/`](video/)
-
----
-
-# 12. Build and Reproducibility
+# 11. Build and Reproducibility
 
 The complete reproduction procedure is documented in:
 
@@ -1012,7 +955,7 @@ It contains:
 
 ---
 
-## 12.1 Reproduction Resources
+## 11.1 Reproduction Resources
 
 | Resource | Location |
 |---|---|
@@ -1029,7 +972,7 @@ It contains:
 
 ---
 
-## 12.2 First-Run Verification
+## 11.2 First-Run Verification
 
 Before autonomous testing, the build guide verifies:
 
@@ -1049,7 +992,7 @@ This staged verification reduces the chance that several untested subsystems fai
 
 ---
 
-# 13. Repository Structure
+# 12. Repository Structure
 
 ```text
 WRO-FE-YBR-SUNFLOWER/
@@ -1137,11 +1080,11 @@ WRO-FE-YBR-SUNFLOWER/
 
 ---
 
-# 14. Version History and Development Milestones
+# 13. Version History and Development Milestones
 
 The Git history is part of the engineering documentation because it shows that the robot was developed iteratively rather than uploaded only as a final code dump.
 
-## 14.1 Physical Versions
+## 13.1 Physical Versions
 
 | Version | Major Change | Status |
 |---|---|---|
@@ -1151,7 +1094,7 @@ The Git history is part of the engineering documentation because it shows that t
 
 ---
 
-## 14.2 Repository Milestones
+## 13.2 Repository Milestones
 
 | Milestone | Date | Commit / Release | Description |
 |---|---|---|---|
@@ -1170,7 +1113,7 @@ Detailed release information:
 
 ---
 
-# 15. WRO Engineering Documentation Map
+# 14. WRO Engineering Documentation Map
 
 This repository separates detailed engineering information by subsystem so that each part of the robot can be evaluated and reproduced clearly.
 
@@ -1184,7 +1127,7 @@ This repository separates detailed engineering information by subsystem so that 
 
 ---
 
-## 15.1 Evidence Philosophy
+## 14.1 Evidence Philosophy
 
 We distinguish between:
 
@@ -1200,7 +1143,7 @@ This prevents unmeasured estimates from being presented as experimental results.
 
 ---
 
-# 16. References and Related Documentation
+# 15. References and Related Documentation
 
 ## Internal Documentation
 
