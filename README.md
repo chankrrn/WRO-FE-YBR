@@ -79,7 +79,7 @@ We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
 | **Chanakarn Yimsakul** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
 | **Thanphisit Sakulvitulthai** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
 
-**Mentor:** Punnapon Tanasnitikul
+**Mentor:** Mr. Punnapon Tanasnitikul
 
 > **[TODO: Confirm the exact wording of every team member's role before final submission. Roles should reflect actual work completed by each member.]**
 
@@ -310,19 +310,19 @@ We track and document major physical architecture changes using version numbers 
 
 ### Version 1
 
-> **[TODO: Add V1 prototype photograph]**
+<img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/5e710e7e09354c6d071cfc761c1bd883adb1747e/robot-photos/ver-1/v1-Front.webp">
 
 **Main purpose:** establish the initial drivetrain, steering and sensing concept.
 
 ### Version 2
 
-> **[TODO: Add V2 multi-view photographs or 2×3 image grid]**
+<img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/5e710e7e09354c6d071cfc761c1bd883adb1747e/robot-photos/ver-2/v2-Front.webp">
 
 **Main purpose:** integrate LiDAR-based sensing and begin complete autonomous navigation development.
 
 ### Version 3
 
-> **[TODO: Add V3 final robot photograph beside V1 and V2 for direct comparison]**
+<img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/620ed8f2468a557cd779440bb241dcd40da863fb/robot-photos/Front.png">
 
 **Main purpose:** final mechanical rebuild and integrated competition architecture.
 
@@ -359,15 +359,9 @@ Recommended evidence:
 
 ### Software Development
 
-> **[TODO: Add photograph of team member(s) writing or debugging code]**
+<img width="400" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/db587b3524622d05e9146c5895c82e2466aeb306/team-photos/software_process.png">
 
-Recommended evidence:
-
-- VS Code / terminal,
-- Raspberry Pi SSH session,
-- simulator,
-- camera debug interface,
-- LiDAR visualization.
+<img width="400" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/bd6e92daaf74e9fd8a30c49821987b749f3e22e1/team-photos/software_moreprocess.png">
 
 ### Robot Testing
 
