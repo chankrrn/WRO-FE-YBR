@@ -223,7 +223,7 @@ The following photographs document the final competition robot from all required
 
 | Left View | Top View | Bottom View |
 |---|---|---|
-| <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Left.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Top.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Bottom.png" width="250"> |
+| <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Left.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Top.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/b80bfdc62db4c16ad0f3b1d6b3734f01582681df/robot-photos/Bottom.png" width="250"> |
 
 | Right-Front View | Right-Rear View | Left-Front View | Left-Rear View |
 |---|---|---|---|
