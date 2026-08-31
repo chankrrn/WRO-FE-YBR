@@ -1,4 +1,4 @@
-# YBR-SUNFLOWER
+# YBR-SUNFLOWER 🌻
 
 <div align="center">
 
@@ -13,7 +13,7 @@
 
 > **[TODO: Add final hero image of the completed YBR-SUNFLOWER robot]**
 >
-> Recommended: one clean landscape photograph showing the complete final robot.
+> Recommended: one clean landscape photograph showing the complete final robot. (ADD ROBOT GIF)
 
 <br>
 
@@ -66,18 +66,6 @@
 
 ## 1.1 Team Members
 
-> **[TODO: Add final team photograph]**
->
-> > `team-photos/team-final.jpg`
-
-Recommended photograph:
-
-- all three team members,
-- final robot visible,
-- clean background,
-- landscape orientation,
-- sufficient resolution for GitHub and judging.
-
 We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
 
 | Member | Primary Responsibility | Supporting Responsibilities |
@@ -86,13 +74,20 @@ We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
 | **Chanakarn Yimsakul** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
 | **Thanphisit Sakulvitulthai** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
 
-**Mentor:** Mr. Punnapon Tanasnitikul
+**Mentor:** Punnapon Tanasnitikul
 
 > **[TODO: Confirm the exact wording of every team member's role before final submission. Roles should reflect actual work completed by each member.]**
 
 ---
 
-## 1.2 How We Work as a Team
+## 1.2 Team Photo
+<div align="center">
+  
+<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/team-photos/t_pic.jpg" width="700">
+
+</div>
+
+## 1.3 How We Work as a Team
 
 Our development process requires mechanical, electrical and software work to be integrated continuously.
 
@@ -139,6 +134,9 @@ The competition contains two major driving challenges.
 
 The vehicle must autonomously complete three laps while responding to the randomized track configuration and driving direction.
 
+Ours Robot Performance: ADD Link
+
+
 ### Obstacle Challenge
 
 The vehicle must:
@@ -153,6 +151,8 @@ The vehicle must:
 The starting position, driving direction and field configuration may change between rounds.
 
 For this reason, our final software does not depend on one fixed prerecorded path from one fixed starting point.
+
+Ours Robot Performance: ADD Link
 
 ---
 
@@ -230,41 +230,43 @@ The result is a vehicle designed to produce predictable behavior repeatedly rath
 
 The following photographs document the final competition robot from all required directions.
 
-### Front / Rear / Left
-
-| Front View | Rear View | Left View |
+| Front View | Top View | Left View |
 |---|---|---|
-| **[TODO: Add final front photograph]** | **[TODO: Add final rear photograph]** | **[TODO: Add final left photograph]** |
+| <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/front.jpg" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/top.jpg" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/left.jpg" width="250"> |
 
-### Right / Top / Bottom
 
-| Right View | Top View | Bottom View |
+| Rear View | Bottom View | Right View |
 |---|---|---|
-| **[TODO: Add final right photograph]** | **[TODO: Add final top photograph]** | **[TODO: Add final bottom photograph]** |
+| <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/back.jpg" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/bottom.jpg" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e08df9fc2a348180eed91ff2eb00ee1147715bec/robot-photos/right.jpg" width="250"> |
 
-Recommended file structure:
 
-```text
-robot-photos/
-├── front.jpg
-├── rear.jpg
-├── left.jpg
-├── right.jpg
-├── top.jpg
-└── bottom.jpg
-```
-
----
 
 ## 3.3 Annotated Final Robot Layout
 
-This section should allow a judge to understand the physical system without first reading every subsystem document.
+This section should will allow you to understand the physical system without first reading every subsystem document.
 
 ### Overall Component Layout
 
-<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/bd50684dcc13163beae399e9623f2a18dc44b98a/other/Layout1.png">
-
-<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/bd50684dcc13163beae399e9623f2a18dc44b98a/other/Layout2.png">
+> **[TODO: Add NEW annotated final robot layout image]**
+>
+> The image should label at least:
+>
+> - Raspberry Pi 5
+> - DFR0566 IO Expansion HAT
+> - Arduino UNO R4 Minima
+> - RPLiDAR C1
+> - BNO055 IMU
+> - Camera
+> - Drive motor
+> - Encoder
+> - Steering servo
+> - L298P Motor Shield
+> - LM2596
+> - XL4015
+> - Battery
+> - Main switch
+> - Start button
+> - Power-distribution connectors
 
 ### Mechanical Layout
 
@@ -315,7 +317,7 @@ MODIFY
 TEST AGAIN
 ```
 
-We use version numbers to document major physical architecture changes rather than presenting only the final result.
+We track and document major physical architecture changes using version numbers across each development stage of development.
 
 ---
 
@@ -355,7 +357,7 @@ We use version numbers to document major physical architecture changes rather th
 
 ## 4.3 Team Engineering Process
 
-The repository should show not only what the final robot looks like, but also how it was created.
+//The repository should show not only what the final robot looks like, but also how it was created.
 
 ### Mechanical Assembly
 
@@ -395,6 +397,8 @@ Recommended evidence:
 - LiDAR visualization.
 
 ### Robot Testing
+
+[`video/RunTest_video.md`](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/video/RunTest_video.md)
 
 > **[TODO: Add photograph of the team performing track testing]**
 
@@ -549,7 +553,7 @@ V3: 16T → 28T
 
 The progressive reduction increased available wheel torque and improved low-speed controllability at the cost of maximum speed.
 
-Detailed calculations, CAD and drivetrain reasoning are documented in the mechanical README.
+Detailed calculations, 3D models and drivetrain reasoning are documented in the mechanical README.
 
 ---
 
@@ -573,7 +577,7 @@ The design allows the inside and outside front wheels to follow different turnin
 
 Most structural and custom mechanical components are 3D printed.
 
-The team uses both:
+We use both:
 
 - **ABS**
 - **ABS-GF**
@@ -586,7 +590,7 @@ depending on the required balance between:
 - contact behavior,
 - and ease of manufacturing.
 
-Detailed material selection and CAD files are documented in the mechanical README.
+Detailed material selection and 3D models files are documented in the mechanical README.
 
 ---
 
@@ -608,9 +612,7 @@ The electrical architecture separates the system into dedicated power branches r
 
 The Raspberry Pi uses an LM2596-based regulated supply.
 
-The Pi supply is adjusted to approximately:
-
-**5.1 V**
+The Pi supply is adjusted to approximately: **5.1 V**
 
 to provide sufficient voltage at the Raspberry Pi after wiring and connector losses.
 
@@ -1024,6 +1026,8 @@ WRO Future Engineers documentation requires autonomous-driving video evidence fo
 
 ## 11.3 Additional Testing Videos
 
+[`video/RunTest_video.md`](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/video/RunTest_video.md)
+
 Optional additional evidence:
 
 - drivetrain test,
@@ -1045,7 +1049,7 @@ The complete reproduction procedure is documented in:
 
 # [`BUILD.md`](BUILD.md)
 
-`BUILD.md` is intended to allow another team to reproduce the robot using the design files and source code in this repository.
+`BUILD.md` is intended to allow others to reproduce the robot using the design files and source code in this repository.
 
 It contains:
 
@@ -1102,8 +1106,6 @@ This staged verification reduces the chance that several untested subsystems fai
 ---
 
 # 13. Repository Structure
-
-The repository is organized by engineering function rather than storing all documentation in one large directory.
 
 ```text
 WRO-FE-YBR-SUNFLOWER/
@@ -1292,7 +1294,7 @@ The project evolved from an initial prototype using a simpler drivetrain and sen
 
 The repository documents not only the final robot, but also the decisions, problems, trade-offs, testing and iterations that produced it.
 
-Our goal is that another team should be able to understand **what we built, why we built it this way, how it works, how it was tested, and how to reproduce it** from the documentation contained here.
+Our goal is that others should be able to understand **what we built, why we built it this way, how it works, how it was tested, and how to reproduce it** from the documentation contained here.
 
 ---
 
