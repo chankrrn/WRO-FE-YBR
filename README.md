@@ -66,27 +66,9 @@
 
 ## 1.1 Team Members
 
-We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
-
-| Member | Primary Responsibility | Supporting Responsibilities |
-|---|---|---|
-| **Peradon Nimsongprasert** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
-| **Chanakarn Yimsakul** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
-| **Thanphisit Sakulvitulthai** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
-
-**Mentor:** Punnapon Tanasnitikul
-
-> **[TODO: Confirm the exact wording of every team member's role before final submission. Roles should reflect actual work completed by each member.]**
-
----
-
-## 1.2 Team Photo
-
 > **[TODO: Add final team photograph]**
 >
-> Recommended file:
->
-> `team-photos/team-final.jpg`
+> > `team-photos/team-final.jpg`
 
 Recommended photograph:
 
@@ -96,9 +78,21 @@ Recommended photograph:
 - landscape orientation,
 - sufficient resolution for GitHub and judging.
 
+We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
+
+| Member | Primary Responsibility | Supporting Responsibilities |
+|---|---|---|
+| **Peradon Nimsongprasert** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
+| **Chanakarn Yimsakul** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
+| **Thanphisit Sakulvitulthai** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
+
+**Mentor:** Mr. Punnapon Tanasnitikul
+
+> **[TODO: Confirm the exact wording of every team member's role before final submission. Roles should reflect actual work completed by each member.]**
+
 ---
 
-## 1.3 How We Work as a Team
+## 1.2 How We Work as a Team
 
 Our development process requires mechanical, electrical and software work to be integrated continuously.
 
