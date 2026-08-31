@@ -95,6 +95,7 @@ DEFAULTS = {
     "goals.route_spacing_mm": 550.0,     # goal spacing on empty stretches
     "goals.approach_mm": 450.0,          # route goals stop this short of a pass
     "goals.exit_mm": 350.0,              # plan holds its offset this far past
+    "goals.align_mm": 200.0,             # straight run-in before a pass, 0 = none
     "goals.max_gates": 3,                # pillars one plan reaches through
     "goals.replan_interval_s": 0.1,      # cadence when nothing has changed
     "goals.replan_cross_track_mm": 120.0,  # drift that forces a new plan

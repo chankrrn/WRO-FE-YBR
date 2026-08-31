@@ -140,7 +140,8 @@ class FinalTask(PathDrivingTask):
             route_spacing_mm=float(self.setting("goals.route_spacing_mm")),
             max_gates=int(self.setting("goals.max_gates")),
             approach_mm=float(self.setting("goals.approach_mm")),
-            exit_mm=float(self.setting("goals.exit_mm")))
+            exit_mm=float(self.setting("goals.exit_mm")),
+            align_mm=float(self.setting("goals.align_mm")))
         print(self.planner)
 
         pose = self.context.nav.get_pose()

@@ -223,6 +223,35 @@ approach_mm = 450.0
 # How far past a pillar the plan holds its offset before returning to the
 # line. Raise it if the robot clips pillars with its back end on the way out.
 exit_mm = 200.0
+
+# How far BEFORE the pass to name a pose carrying the PASS's heading, so the
+# run-in is a straight line and the robot arrives already pointing the way it
+# will leave.
+#
+# The problem it fixes only exists on a corner. The pass and the exit each take
+# the track's heading at their own progress, and mid-bend those differ by about
+# 32 degrees - so the plan is still turning as it draws level with the pillar,
+# and the body leans into the thing it is dodging.
+#
+# Measured over 24 simulated runs, 96 pillar encounters, one lap, four pillars:
+#
+#     align   passes correct   touched   mean gap   worst wall   crashes
+#       0        88/96           13       73.9mm       15mm         0
+#     150        88/96           13       85.9mm       25mm         0
+#     200        88/96           13       87.6mm       25mm         0    <- this
+#     250        88/96           13       87.6mm       24mm         0
+#     300        88/96           14       85.8mm      -58mm         3
+#
+# So it buys MARGIN rather than passes: the same pillars are passed on the same
+# sides, with 14mm more room, and no more wall contact. Past 250 it falls off a
+# cliff - the align pose ends up far enough back that reaching it costs more
+# than arriving square is worth.
+#
+# Holding the EXIT on the pass's heading too, making a straight band right
+# past the pillar, was tried and is not here: it took worst wall clearance to
+# -24mm and crashed a run.
+align_mm = 200.0
+
 # How many pillars one plan reaches through. Beyond three the far ones are
 # replanned before they are reached anyway.
 max_gates = 3

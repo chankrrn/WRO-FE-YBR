@@ -48,6 +48,7 @@ HALF_WIDTH_MM = 70.0
 FRONT_MM = 200.0
 REAR_MM = 40.0
 WALL_CLEARANCE_MM = 80.0
+ALIGN_MM = 200.0             # straight run-in before a pass
 LOOKAHEAD_MM = 400.0         # the largest pursuit.lookahead_max_mm asks for
 
 
@@ -67,7 +68,7 @@ def build():
         field_map, path, min_radius_mm=MIN_RADIUS_MM,
         robot_half_width_mm=HALF_WIDTH_MM, robot_front_mm=FRONT_MM,
         robot_rear_mm=REAR_MM, clearance_mm=CLEARANCE_MM,
-        wall_clearance_mm=WALL_CLEARANCE_MM)
+        wall_clearance_mm=WALL_CLEARANCE_MM, align_mm=ALIGN_MM)
     return field_map, path, planner
 
 

@@ -62,8 +62,12 @@ Obstacle = namedtuple("Obstacle", "x y side")
 
 # One goal pose in the chain, and why it exists. `obstacle` is None for the
 # plain route goals that carry the plan round the rest of the lap.
+# `kind` is what the goal is FOR - "route", "align", "pass" or "exit". Carried
+# rather than worked out from the order by whoever is reading it: a pillar
+# contributes two goals or three depending on align_mm, and a pass can be moved
+# back along the lap (PASS_SHIFTS_MM) until it sits where its align would.
 Goal = namedtuple("Goal", "x y heading obstacle clearance_mm progress offset "
-                          "fallbacks")
+                          "fallbacks kind")
 
 # A goal before it becomes a pose: where along the lap it sits, how far to the
 # right of the racing line, and how hard it is to argue with. `rank` is what
@@ -327,7 +331,8 @@ class GoalPlanner:
                  robot_rear_mm=90.0, clearance_mm=150.0,
                  min_clearance_mm=45.0, wall_clearance_mm=40.0,
                  horizon_mm=2200.0, route_spacing_mm=550.0, max_gates=3,
-                 approach_mm=450.0, exit_mm=350.0, step_mm=SWEEP_STEP_MM):
+                 approach_mm=450.0, exit_mm=350.0, align_mm=0.0,
+                 step_mm=SWEEP_STEP_MM):
         """
         I/O:
             min_radius_mm: tightest arc a plan may contain. Pass the robot's
@@ -351,6 +356,13 @@ class GoalPlanner:
                          the run-in to a pass.
             exit_mm: how far past a pillar the plan holds its offset, so the
                      tail is clear before the line folds back.
+            align_mm: how far BEFORE the pass pose to put an ALIGN pose,
+                     carrying the PASS's heading rather than the track's, so
+                     the run-in is straight and the robot is already pointing
+                     the right way when it arrives. 0 leaves it out. Past
+                     about 250 it starts costing more in wall clearance than
+                     it buys beside the pillar - see ALIGN_MM notes in
+                     tasks/final/config.toml.
         """
         self.map = field_map
         self.path = racing_line
@@ -366,6 +378,7 @@ class GoalPlanner:
         self.max_gates = int(max_gates)
         self.approach_mm = float(approach_mm)
         self.exit_mm = float(exit_mm)
+        self.align_mm = float(align_mm)
         self.step_mm = float(step_mm)
 
     # ========================================================================
@@ -514,15 +527,71 @@ class GoalPlanner:
         nodes.extend(self._route_nodes(
             walked, max(horizon, walked + self.route_spacing_mm)))
 
-        goals = []
+        goals, seen = [], set()
         for node in self._thin(nodes)[1:]:      # [0] is the robot itself
-            goals.append(self._goal_at(node.progress, node.offset, direction,
-                                       node.obstacle, node.clearance,
-                                       node.fallbacks))
+            goal = self._goal_at(node.progress, node.offset, direction,
+                                 node.obstacle, node.clearance, node.fallbacks,
+                                 kind="pass" if node.obstacle is not None else "route")
+            if node.obstacle is None:
+                goals.append(goal)
+                continue
+            key = (node.obstacle.x, node.obstacle.y)
+            if key in seen:
+                goals.append(goal._replace(kind="exit"))
+                continue
+            seen.add(key)
+            # An ALIGN pose in front of the pass, carrying the PASS's heading.
+            #
+            # Mid-corner the pass and the exit take the track tangent at their
+            # own progress, and those differ - measured, by 32 degrees - so the
+            # plan is still turning as it goes by the pillar and the body leans
+            # into it. A pose that shares the pass's heading makes the run-in
+            # straight, so the robot arrives already pointing the way it will
+            # leave.
+            #
+            # Translated back along that heading rather than placed at an
+            # earlier progress on the line: a pose on the line carrying a
+            # heading 30 degrees off it points ACROSS the corridor, and
+            # measured that was worse than doing nothing (wall overlaps 32 ->
+            # 77). Clamped back into the corridor afterwards because the
+            # tangent to an arc leaves the arc, and on a bend an unclamped
+            # translation drifts toward the outer wall.
+            if self.align_mm > 0.0:
+                align = self._translate(goal, -self.align_mm,
+                                        direction)._replace(kind="align")
+                low_b, high_b = self._lateral_bounds(direction)
+                if not low_b <= align.offset <= high_b:
+                    held = min(max(align.offset, low_b), high_b)
+                    x, y = self.path.point_at(align.progress, direction, held)
+                    align = align._replace(x=x, y=y, offset=held)
+                # And the same spacing rule _thin applies to everything else.
+                # The align pose is inserted AFTER thinning, so nothing else
+                # checks there is room for the lateral step into it - and
+                # without this there was not: looping plans went from 9 in
+                # 3000 to 58, which is Dubins answering "you cannot get there
+                # from here" with a circle. A route goal in the way is
+                # expendable and gets dropped first, exactly as _thin would;
+                # if that is still not enough, the align pose is what goes.
+                while goals:
+                    previous = goals[-1]
+                    span = self.path.gap(previous.progress, align.progress)
+                    needed = (self._reachable_span_mm(
+                        align.offset - previous.offset) * SPAN_MARGIN)
+                    if span >= needed:
+                        break
+                    if previous.obstacle is None:
+                        goals.pop()         # an expendable route goal
+                        continue
+                    align = None
+                    break
+                if align is not None:
+                    goals.append(align)
+            goals.append(goal)
         return goals, compromised, "; ".join(reasons)
 
     def _goal_at(self, progress, offset, direction, obstacle=None,
-                 clearance=float("inf"), fallbacks=(), heading_deg=0.0):
+                 clearance=float("inf"), fallbacks=(), heading_deg=0.0,
+                 kind="route"):
         """
         A goal pose on the racing line at `progress`, held `offset` to the
         right of it and squared up with the track - or turned `heading_deg`
@@ -531,7 +600,31 @@ class GoalPlanner:
         x, y = self.path.point_at(progress, direction, offset)
         _, _, heading = self.path.pose_at(progress, direction)
         return Goal(x, y, (heading + heading_deg) % 360.0, obstacle, clearance,
-                    progress, offset, tuple(fallbacks))
+                    progress, offset, tuple(fallbacks), kind)
+
+    def _translate(self, goal, distance_mm, direction):
+        """
+        The same pose, moved along its OWN heading rather than along the track.
+
+        This is what makes a band straight. A pose placed at another progress
+        on the racing line carries that progress's heading, and on a bend that
+        is a different heading - so two such poses are joined by a curve, and
+        the robot is still turning as it goes past the pillar. Two poses that
+        share a heading and differ only by a translation along it are joined
+        by a straight line, which is the whole point: the body sweeps a
+        rectangle beside the pillar instead of an arc that leans into it.
+
+        The progress and offset are re-derived by projection because _reach
+        and the reason strings both want to know where along the lap this
+        ended up, and after a translation off the line that is no longer the
+        progress it was built from.
+        """
+        radians = math.radians(goal.heading)
+        x = goal.x + math.sin(radians) * distance_mm
+        y = goal.y + math.cos(radians) * distance_mm
+        at, offset = self.path.project(x, y, direction)
+        return Goal(x, y, goal.heading, goal.obstacle, goal.clearance_mm,
+                    at, offset, goal.fallbacks, goal.kind)
 
     def _fallback_offsets(self, offset, pillar_lateral, side):
         """
@@ -796,7 +889,12 @@ class GoalPlanner:
                 # there is no longer room to get beside it - the exit goal
                 # that follows is further away and usually still reachable, so
                 # the pass often still happens, just late and tight.
-                if goal.obstacle is not None:
+                # An ALIGN goal is a convenience and is allowed to be lost:
+                # without it the plan runs straight into the pass, which is
+                # what it did before align_mm existed. Reporting the round
+                # COMPROMISED over one would be crying wolf, and a status line
+                # that cries wolf is one nobody reads on the mat.
+                if goal.obstacle is not None and goal.kind != "align":
                     skipped.append(goal)
                 continue
             # Drop the first sample: it is the previous segment's last point.
@@ -858,12 +956,40 @@ class GoalPlanner:
         first = None                    # the cheap answer, kept as a floor
         swept = screened = 0
 
+        # The goal exactly as _build_goals made it, first. For an ordinary
+        # goal this is what _attempts would have produced anyway; for one that
+        # was TRANSLATED off the racing line it is the only way to try it at
+        # all, since every _attempts candidate is rebuilt from a progress and
+        # an offset and would quietly undo the translation.
+        # Gated on an align pose being configured at all, so that with
+        # align_mm off this is not on the path and the round behaves exactly
+        # as it did. The same overlap prune applies as everywhere else: a pose
+        # already inside the pillar is not a candidate however it was built.
+        translated = self.align_mm > 0.0
+        if translated and goal.obstacle is not None and math.hypot(
+                goal.x - goal.obstacle.x, goal.y - goal.obstacle.y) > (
+                BLOCK_RADIUS_MM + self.half_width_mm):
+            _, turned = dubins_cost(cursor, (goal.x, goal.y, goal.heading),
+                                    self.min_radius_mm)
+            if turned <= LOOP_TURN_DEG:
+                segment = plan_dubins(cursor, (goal.x, goal.y, goal.heading),
+                                      self.min_radius_mm, step_mm=search_step)
+                if segment is not None and len(segment.points) >= 2:
+                    first = goal
+                    score = min(self.clearances(segment.points,
+                                                segment.headings, obstacles))
+                    if score > 0.0:
+                        return self._draw(cursor, goal)
+                    best = (score, goal)
+                    swept += 1
+
         for offset, clearance, turn, shift in self._attempts(goal):
             if shift < 0.0 and -shift > room:
                 continue
             candidate = self._goal_at(goal.progress + shift, offset, direction,
                                       goal.obstacle, clearance,
-                                      goal.fallbacks, heading_deg=turn)
+                                      goal.fallbacks, heading_deg=turn,
+                                      kind=goal.kind)
 
             # Two coordinates decide whether the body AT the goal is already
             # inside the pillar, and a candidate that fails that can never

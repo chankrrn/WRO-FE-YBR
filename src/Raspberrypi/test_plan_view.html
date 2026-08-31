@@ -241,6 +241,12 @@
     </details>
 
     <h2>Show</h2>
+    <div class="sub" style="margin-top:6px">
+      <span class="swatch" style="background:#ff7a45"></span>align
+      <span class="swatch" style="background:#3cdcf0;margin-left:8px"></span>pass
+      <span class="swatch" style="background:#8ce0a8;margin-left:8px"></span>exit
+      <span class="swatch" style="background:#5a6373;margin-left:8px"></span>route
+    </div>
     <div class="row">
       <label class="toggle"><input type="checkbox" id="show-body"> swept body</label>
       <label class="toggle"><input type="checkbox" id="show-goals"> goals</label>
@@ -452,7 +458,10 @@ function draw() {
     if (S.show.goals) {
       for (const goal of RESULT.goals) {
         if (goal.kind === "route") { disc(goal.x, goal.y, 22, "#5a6373"); continue; }
-        const tint = goal.kind === "pass" ? "#3cdcf0" : "#8ce0a8";
+        // align = where the robot lines up, pass = beside the pillar,
+        // exit = still out until the tail is clear.
+        const tint = goal.kind === "align" ? "#ff7a45"
+                   : goal.kind === "pass" ? "#3cdcf0" : "#8ce0a8";
         disc(goal.x, goal.y, 52, null, tint, 1.8);
         arrow(goal.x, goal.y, goal.heading, 110, tint, 1.8);
       }
