@@ -175,26 +175,14 @@ Ours Robot Performance: ADD Link
 
 ## 2.4 Engineering Design Philosophy
 
-A major design decision throughout this project was:
+A major engineering decision throughout this project was:
 
 > **Precision, stability and repeatability are more important to our robot than maximum speed.**
 
-This principle influenced:
+This principle influenced the complete system. Mechanically, it affected motor selection, drivetrain reduction, Ackermann-style steering, bearing support and chassis rigidity. Electrically, it influenced sensor placement and the decision to separate the Raspberry Pi power path from actuator-related loads.
 
-- motor selection,
-- drivetrain reduction,
-- steering geometry,
-- chassis rigidity,
-- bearing implementation,
-- sensor selection,
-- sensor placement,
-- power distribution,
-- localization,
-- path tracking,
-- steering control,
-- and software tuning.
+The same philosophy also influenced software development. Localization, path tracking, steering control and parameter tuning were designed around predictable behavior rather than aggressive speed. The final result is a vehicle intended to perform the same maneuver consistently instead of being optimized only for its fastest possible run.
 
-The result is a vehicle designed to produce predictable behavior repeatedly rather than relying on aggressive maximum-speed operation.
 
 ---
 
@@ -491,9 +479,7 @@ The two controllers communicate over USB Serial at **115200 baud**.
 | Motor encoder | Drive-motor rotation | Low-level distance feedback |
 | Start switch | Competition start command | Run initialization |
 
-No single sensor is treated as sufficient for every task.
-
-The software intentionally assigns each sensor only to the type of information for which it is useful.
+No single sensor is expected to solve every perception problem. The camera, LiDAR, IMU and encoder provide different types of information, and the software assigns each of them a specific role according to what that sensor can measure reliably.
 
 ---
 
@@ -521,6 +507,7 @@ The final drivetrain combines:
 - bearing-supported axle,
 - and LEGO-compatible wheels.
 
+The final drivetrain uses a CHP-20GP-180 motor with a 19:1 internal gearbox to power a rear differential through a custom 16-tooth motor drive gear meshed with a 28-tooth LEGO differential gear. Ball bearings support the rear axle and reduce direct shaft contact with the printed structure, driving the LEGO-compatible wheels efficiently.
 The external drivetrain was developed through several iterations:
 
 ```text
@@ -534,9 +521,9 @@ V3: 16T → 28T
      Final reduction
 ```
 
-The progressive reduction increased available wheel torque and improved low-speed controllability at the cost of maximum speed.
+Each step increased the external reduction. This reduced maximum drivetrain speed but increased available torque and improved low-speed controllability, which better matched our autonomous driving and parking requirements.
 
-Detailed calculations, 3D models and drivetrain reasoning are documented in the mechanical README.
+Detailed torque calculations, motor selection, drivetrain iterations and CAD files are documented in the mechanical README.
 
 ---
 
@@ -552,26 +539,15 @@ The final steering assembly includes:
 - servo bracket,
 - upper and lower structural mounts.
 
-The design allows the inside and outside front wheels to follow different turning radii rather than forcing both wheels through the same steering angle.
+The purpose of the geometry is to allow the inner and outer front wheels to follow different turning radii during a corner. This better matches automotive-style motion and reduces unnecessary tire scrub compared with forcing both wheels to use the same steering angle.
 
 ---
 
 ## 6.3 Mechanical Manufacturing
 
-Most structural and custom mechanical components are 3D printed.
+Most of the custom structural components are manufactured by FDM 3D printing. The team uses both **ABS** and **ABS-GF**, selecting the material according to the mechanical function of each part.
 
-We use both:
-
-- **ABS**
-- **ABS-GF**
-
-depending on the required balance between:
-
-- toughness,
-- stiffness,
-- dimensional stability,
-- contact behavior,
-- and ease of manufacturing.
+ABS provides greater impact toughness and is suitable for many general structural components, while ABS-GF provides greater stiffness and dimensional stability for parts where deformation is more critical. Detailed material data, part selection and manufacturing information are documented in the mechanical README.
 
 Detailed material selection and 3D models files are documented in the mechanical README.
 
@@ -593,17 +569,11 @@ The electrical architecture separates the system into dedicated power branches r
 
 ### Computing Branch
 
-The Raspberry Pi uses an LM2596-based regulated supply.
-
-The Pi supply is adjusted to approximately: **5.1 V**
-
-to provide sufficient voltage at the Raspberry Pi after wiring and connector losses.
+The Raspberry Pi is supplied through an LM2596 step-down converter adjusted to approximately **5.1 V**. This branch is dedicated to the high-level computing system and its connected Pi-side electronics.
 
 ### Motor / Control Branch
 
-The motor and control electronics use a separate power branch through the XL4015 and motor-control system.
-
-Separating the computing branch from actuator-related loads reduces the chance that rapid motor or servo current changes disturb the Raspberry Pi.
+The actuator and control side uses a separate XL4015-based power path together with the motor-control electronics. The separation is intended to reduce the effect that rapidly changing motor and servo current can have on the Raspberry Pi supply.
 
 > **[TODO: In the final electrical rewrite, confirm and document the exact XL4015 output voltage measured on the completed robot.]**
 
@@ -637,7 +607,9 @@ BNO055 IMU
 Motor Encoder
 ```
 
-LiDAR replaced the ultrasonic / light-sensor approach because its 2D environmental information matched our localization and navigation strategy more effectively.
+The ultrasonic and light-sensor approach was removed because the final localization strategy required richer two-dimensional environmental information. LiDAR provided field geometry over many directions and therefore matched the navigation architecture more effectively.
+
+The camera remains important because LiDAR cannot determine the red or green color of a traffic pillar, while the BNO055 provides orientation information and the motor encoder provides drivetrain feedback.
 
 ---
 
