@@ -142,7 +142,8 @@ FINAL_GROUPS = [
     ("Robot body", ["blocks.robot_half_width_mm", "goals.robot_front_mm",
                     "goals.robot_rear_mm"]),
     ("Plan shape", ["goals.horizon_mm", "goals.route_spacing_mm",
-                    "goals.approach_mm", "goals.exit_mm", "goals.max_gates",
+                    "goals.approach_mm", "goals.exit_mm", "goals.align_mm",
+                    "goals.max_gates",
                     "goals.replan_interval_s", "goals.replan_cross_track_mm"]),
 ]
 
@@ -184,7 +185,7 @@ FALLBACK_DEFAULTS = {
     "blocks.map_range_mm": None,
     "goals.min_clearance_mm": 45.0, "goals.horizon_mm": 2200.0,
     "goals.route_spacing_mm": 550.0, "goals.approach_mm": 450.0,
-    "goals.exit_mm": 350.0, "goals.max_gates": 3,
+    "goals.exit_mm": 350.0, "goals.align_mm": 200.0, "goals.max_gates": 3,
     "goals.robot_front_mm": 200.0, "goals.robot_rear_mm": 40.0,
     "goals.replan_interval_s": 0.1, "goals.replan_cross_track_mm": 120.0,
     "parking.enabled": True,
@@ -383,7 +384,8 @@ def build(settings):
         route_spacing_mm=number("goals.route_spacing_mm"),
         max_gates=int(number("goals.max_gates") or 3),
         approach_mm=number("goals.approach_mm"),
-        exit_mm=number("goals.exit_mm"))
+        exit_mm=number("goals.exit_mm"),
+        align_mm=number("goals.align_mm"))
 
     built = (field_map, path, planner, pursuit)
     if len(_CACHE) > 60:
@@ -489,26 +491,6 @@ def pass_report(planner, path, plan, obstacles, direction, progress):
     return report
 
 
-def goal_kinds(goals):
-    """
-    Labels each goal pass / exit / route.
-
-    A pillar contributes two goals in order - the pass beside it and the exit
-    past it - and they are worth telling apart on screen: the exit is the one
-    that keeps the robot out until its TAIL is clear, and seeing it sit too
-    close behind the pass is how you diagnose a pillar clipped on the way out.
-    """
-    seen, kinds = set(), []
-    for goal in goals:
-        if goal.obstacle is None:
-            kinds.append("route")
-            continue
-        key = (goal.obstacle.x, goal.obstacle.y)
-        kinds.append("exit" if key in seen else "pass")
-        seen.add(key)
-    return kinds
-
-
 def plan_payload(scene):
     """
     Everything the browser draws for one layout, live.
@@ -567,10 +549,13 @@ def plan_payload(scene):
     payload.update({
         "path": plan.points.tolist(),
         "headings": plan.headings.tolist(),
+        # The planner says what each goal is for; inferring it from the order
+        # here would break the moment a pillar contributed three goals instead
+        # of two, which is exactly what goals.align_mm made it do.
         "goals": [{"x": goal.x, "y": goal.y, "heading": goal.heading,
-                   "kind": kind, "clearance_mm": finite(goal.clearance_mm),
+                   "kind": goal.kind, "clearance_mm": finite(goal.clearance_mm),
                    "offset_mm": goal.offset}
-                  for goal, kind in zip(plan.goals, goal_kinds(plan.goals))],
+                  for goal in plan.goals],
         "body": body.tolist(),
         "body_radius_mm": planner.half_width_mm,
         "compromised": plan.compromised,
