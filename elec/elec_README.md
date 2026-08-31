@@ -85,8 +85,6 @@ The final architecture uses:
 
 The annotated photographs show the physical relationship between the controllers, sensors, power electronics, actuators, and wiring in the Version 3 robot.
 
-These images should be used together with the schematic and wiring diagrams later in this document.
-
 ---
 
 ## 1.2 Hardware Roles
@@ -219,9 +217,7 @@ The final design divides the battery supply into two principal branches:
           peripherals
 ```
 
-The negative side of the electrical system is distributed through the **PCT-21 common-ground connector**.
-
-All connected subsystems therefore share a common electrical reference.
+The negative side of the electrical system is distributed through the **PCT-21 common-ground connector**. This allows all connected subsystems to share a common electrical reference.
 
 ---
 
@@ -252,17 +248,10 @@ The Raspberry Pi supply is separated from the motor/control branch because the P
 
 ### 3.3.1 Raspberry Pi Supply Validation
 
-The Raspberry Pi 5 has a load-dependent current requirement.
+The Raspberry Pi 5 has a load-dependent current requirement, meaning its actual power consumption varies with factors such as CPU load, connected USB devices, camera activity, peripherals, and software workload. 
 
-Its actual consumption depends on:
+Therefore, the completed robot should be tested under conditions similar to competition use rather than assuming a fixed current requirement.
 
-- CPU load,
-- connected USB devices,
-- camera activity,
-- peripherals,
-- and software workload.
-
-For this reason, the completed robot should be validated under representative competition load rather than assuming a fixed Raspberry Pi current.
 
 > **[TODO: Measure Raspberry Pi-branch voltage and current while running the final Obstacle Challenge software with LiDAR, camera, IMU and Arduino connected.]**
 
@@ -275,7 +264,7 @@ Recommended measurements:
 | Full navigation software | **[TODO]** | **[TODO]** |
 | Highest observed load | **[TODO]** | **[TODO]** |
 
-This is more useful for validating the actual robot than relying only on the maximum capability published for the Raspberry Pi power interface.
+This approach is more useful for validating the actual robot than relying only on the maximum power capability specified for the Raspberry Pi power interface.
 
 ---
 
@@ -307,54 +296,23 @@ Until this measurement is confirmed, this document intentionally does not claim 
 
 ### 3.4.1 Why the Branches Are Separated
 
-Drive motors and steering servos do not draw constant current.
+Drive motors and steering servos do not draw a constant amount of current. Their current can change during acceleration, deceleration, steering, mechanical loading, and near-stall conditions. If the computing electronics and actuators share the same poorly isolated power path, these changes can cause voltage disturbances. 
 
-Their current changes during:
-
-- acceleration,
-- deceleration,
-- steering movement,
-- mechanical loading,
-- and near-stall conditions.
-
-If sensitive computing electronics and actuators depend on the same unregulated or poorly isolated supply path, these rapid changes can create voltage disturbances.
-
-Our final architecture therefore separates the Raspberry Pi power conversion from the motor/control-side conversion.
-
-The design objective is:
-
-> **Reduce the electrical interaction between high-current actuator behavior and the Raspberry Pi computing supply.**
+Therefore, the final architecture separates the Raspberry Pi power conversion from the motor and control-side conversion. The main goal is to reduce electrical interaction between high-current actuator loads and the Raspberry Pi’s computing supply.
 
 ---
 
 ## 3.5 Power Distribution Hardware
 
-The final power-distribution structure uses:
+The final power-distribution structure uses **D1-2** for positive power distribution and **PCT-21** for negative or common-ground distribution. 
 
-### D1-2
-
-Used for **positive power distribution**.
-
-### PCT-21
-
-Used for **negative / common-ground distribution**.
-
-This provides a more organized and reproducible power layout than joining several wires through undocumented temporary connections.
+This creates a more organized and reproducible power layout compared with connecting multiple wires through temporary or undocumented connections.
 
 ---
 
 # 4. Power Budget and Electrical Load Analysis
 
-A power budget is required because selecting a battery or voltage converter only from its nominal voltage is not sufficient.
-
-The electrical design must also consider:
-
-- continuous current,
-- transient current,
-- stall current,
-- converter capability,
-- voltage drop,
-- and simultaneous subsystem operation.
+A power budget is necessary because selecting a battery or voltage converter based only on its nominal voltage is not sufficient. The electrical design must also consider continuous current, transient current, stall current, converter capability, voltage drop, and the simultaneous subsystem operation.
 
 ---
 
@@ -395,9 +353,7 @@ Stall current  <= 2.7 A
 
 This means a drivetrain that appears to consume a small amount of current while the wheels spin freely may require several times more current during heavy loading or stall.
 
-Therefore:
-
-> **The motor-side power path must be evaluated for transient and near-stall demand, not only for normal driving current.**
+Therefore, **the motor-side power path must be evaluated for transient and near-stall demand, not only for normal driving current**.
 
 ---
 
@@ -467,14 +423,7 @@ Runtime = Capacity / Current
 
 are only rough estimates because the complete robot current is not constant.
 
-Current changes with:
-
-- drivetrain load,
-- steering activity,
-- CPU workload,
-- camera processing,
-- LiDAR operation,
-- and battery voltage.
+Current can change depending on drivetrain load, steering activity, CPU workload, camera processing, LiDAR operation, and battery voltage.
 
 For this reason, actual competition runtime should be validated experimentally.
 
@@ -512,27 +461,9 @@ Arduino UNO R4 Minima
 
 **Purpose:** High-level perception, localization and navigation.
 
-The Raspberry Pi processes information from:
+The Raspberry Pi processes information from the RPLiDAR C1, camera, BNO055 IMU, and the autonomous software system. Its main responsibilities include sensor processing, localization, computer vision, field-position estimation, path generation, obstacle mapping, navigation, and generating drive and steering requests. 
 
-- RPLiDAR C1,
-- camera,
-- BNO055 IMU,
-- and the autonomous software architecture.
-
-Its high-level responsibilities include:
-
-- sensor processing,
-- localization,
-- computer vision,
-- field-position estimation,
-- path generation,
-- obstacle mapping,
-- navigation,
-- and generating drive / steering requests.
-
-The Raspberry Pi does not directly perform every low-level actuator operation.
-
-Instead, actuator requests are sent to the Arduino.
+However, the Raspberry Pi does not directly control every low-level actuator operation. Instead, it sends actuator requests to the Arduino, which handles the lower-level control.
 
 ---
 
@@ -542,29 +473,9 @@ Instead, actuator requests are sent to the Arduino.
 
 **Purpose:** Raspberry Pi peripheral interface and organized GPIO breakout.
 
-The DFR0566 exposes Raspberry Pi interfaces including:
+The DFR0566 exposes Raspberry Pi interfaces such as digital I/O, analog input, PWM, I²C, UART, SPI, and IIS, along with DFRobot Gravity-compatible connections. In our robot, the HAT serves as a structured interface layer for the Raspberry Pi rather than providing additional computing capability. 
 
-- digital I/O,
-- analog input,
-- PWM,
-- I²C,
-- UART,
-- SPI,
-- IIS.
-
-It also provides DFRobot Gravity-compatible connections.
-
-In our robot, the HAT acts as a structured Raspberry Pi-side interface layer.
-
-The reason for using the board is not additional computing capability.
-
-Its purpose is mainly to:
-
-- simplify physical Raspberry Pi wiring,
-- reduce direct loose connections to the Pi GPIO header,
-- provide convenient connectors,
-- organize peripheral interfaces,
-- and improve reproducibility.
+Its main purpose is to simplify wiring, reduce loose connections to the Pi’s GPIO header, provide convenient connectors, organize peripheral interfaces, and make the system easier to reproduce.
 
 ---
 
@@ -580,13 +491,7 @@ The HAT is mainly important for Raspberry Pi-side GPIO / I²C peripherals such a
 
 **Purpose:** Low-level actuator and interface controller.
 
-The Arduino handles:
-
-- drive-motor control,
-- steering-servo control,
-- quadrature encoder input,
-- competition start switch,
-- and command reception from the Raspberry Pi.
+The Arduino handles the robot’s low-level control functions, including drive-motor control, steering-servo control, quadrature encoder input, and the competition start switch. It also receives control commands from the Raspberry Pi and executes the required actuator actions.
 
 Separating these responsibilities from the Raspberry Pi provides a clear control boundary:
 
@@ -640,9 +545,7 @@ These response messages allow the Raspberry Pi to determine whether the low-leve
 
 # 6. Sensor Architecture and Selection
 
-No single sensor provides all the information required by the robot.
-
-The final sensing architecture therefore combines several sensors with different strengths.
+No single sensor can provide all the information required by the robot. Therefore, the final sensing architecture combines multiple sensors, with each sensor providing different types of information and supporting different functions.
 
 ```text
                  FINAL SENSOR ARCHITECTURE
