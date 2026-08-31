@@ -115,6 +115,61 @@ RELAXATION_STEPS = 4
 # signs, because which way helps depends on the corner and the side.
 PASS_HEADINGS_DEG = (0.0, 12.0, -12.0, 25.0, -25.0, 40.0, -40.0)
 
+# How far BACK along the lap a pass goal may be brought when the pose beside
+# the pillar cannot be reached without sweeping the body through something.
+#
+# This is the axis that actually rescues a corner pass, and it was not obvious.
+# Measured over 72 placements around the first bend where the planned body
+# overlapped the pillar:
+#
+#     heading alone, the +/-40 set above      0 of 72
+#     heading alone, widened to +/-60         0 of 72
+#     lateral offset alone, down to the face  0 of 72
+#     moving the goal back along the lap     49 of 72
+#
+# Because what runs out on a bend is not which way the robot points, it is the
+# room beside the pillar AT THAT PROGRESS - the corridor and the bend's own
+# inward limit are both functions of progress, so the way to find room is to
+# look somewhere else along the lap for it.
+#
+# BACKWARD ONLY, and that is also measured: allowing forward shifts as well
+# rescued FEWER passes (46 of 72) and cost twice the search. A goal moved
+# later is one the robot arrives at while it is still swinging out, and it can
+# overtake the exit goal that is supposed to follow it.
+PASS_SHIFTS_MM = (0.0, -100.0, -200.0, -300.0, -400.0)
+
+# How many candidates are drawn AND SWEPT for one pass goal before the search
+# settles for the best it has found. Only the expensive half is bounded: the
+# screen in front of it is analytic and costs nothing to run over all of them.
+# Measured, a pass that can be met at all is met in a median of 7 sweeps, so
+# this cap is reached only where nothing fits - which is exactly the case that
+# ends in Plan.compromised anyway, and which must not be allowed to cost the
+# control loop its tick on the way there.
+MAX_SWEPT_CANDIDATES = 16
+
+# And how many are put through the ANALYTIC screen. Bounded separately and
+# more loosely, because dubins_cost neither draws nor sweeps - but bounded all
+# the same: it solves all six Dubins words per call and profiling put it at
+# 68% of plan(), so an unbounded search over every offset, heading and shift
+# is what costs the control loop its tick, not the sweeping that follows it.
+MAX_SCREENED_CANDIDATES = 48
+
+# How much coarser the sweep is while SEARCHING than the path finally drawn.
+# The winner is redrawn at full resolution before it is returned, so this only
+# decides how finely a candidate is inspected before being preferred to
+# another - and at 3x it is still one sample per 75mm against a body 140mm
+# wide. A collision missed between two coarse samples is not missed twice:
+# check() sweeps the finished plan at full resolution and reports it, which is
+# the behaviour this whole search is trying to improve on rather than replace.
+SEARCH_STEP_FACTOR = 3.0
+
+# How much lap has to be left between the pose a segment starts from and the
+# goal it is aimed at. A pass goal brought BACK along the lap must not be
+# brought back past the cursor: a goal behind you is one Dubins can only reach
+# by turning a full circle, which is the exact failure LOOP_TURN_DEG exists to
+# catch, and allowing it turned 4 looping plans in 3000 into 86.
+MIN_SEGMENT_MM = 150.0
+
 # ============================================================================
 # Geometry
 # ============================================================================
@@ -338,7 +393,12 @@ class GoalPlanner:
         ahead = self._obstacles_ahead(progress, direction, obstacles)
         goals, compromised, reason = self._build_goals(progress, lateral,
                                                        direction, ahead)
-        points, headings, driven, skipped = self._chain(pose, goals, direction)
+        # The pillars go INTO the chaining, not just into the check afterwards:
+        # a candidate pass is now accepted for clearing them, not merely for
+        # being reachable. See _reach.
+        nearby = [item[3] for item in ahead]
+        points, headings, driven, skipped = self._chain(pose, goals, direction,
+                                                        nearby)
         if skipped:
             compromised = True
             late = "; ".join(f"pillar {goal.progress - progress:+.0f}mm ahead "
@@ -358,7 +418,7 @@ class GoalPlanner:
                 if shortfall not in reason:
                     reason = "; ".join(filter(None, [reason, shortfall]))
         plan = Plan(points, headings, driven, compromised, reason)
-        return self.check(plan, [item[3] for item in ahead])
+        return self.check(plan, nearby)
 
     def _obstacles_ahead(self, progress, direction, obstacles):
         """
@@ -678,7 +738,7 @@ class GoalPlanner:
     # CHAINING
     # ========================================================================
 
-    def _chain(self, pose, goals, direction):
+    def _chain(self, pose, goals, direction, obstacles=()):
         """
         Dubins from the pose through every goal in order, concatenated.
 
@@ -707,8 +767,17 @@ class GoalPlanner:
         that survives is written back into the goal, so a pass the robot had to
         give ground on still reports what it actually got.
 
+        Which candidate a goal settles on is _reach's business, and it is not
+        only about whether the steering can hold it: the segment is SWEPT
+        before it is accepted, so a pass that would put the body through the
+        pillar it is dodging is rejected here rather than merely reported by
+        check() afterwards. That is why the pillars are passed in.
+
         I/O:
-            return: (points Nx2, headings N, goals actually used)
+            obstacles: the pillars the segments are swept against - see
+                       _reach. Without them a pass goal is only checked for
+                       being REACHABLE, which is not the same question.
+            return: (points Nx2, headings N, goals actually used, skipped)
         """
         points = [np.array([[pose.x, pose.y]])]
         headings = [np.array([pose.heading])]
@@ -716,31 +785,7 @@ class GoalPlanner:
         driven, skipped = [], []
 
         for goal in goals:
-            # Screen every candidate analytically first - dubins_cost does not
-            # sample the path - and draw only the one that wins. With seven
-            # headings against four offsets that is 28 candidates a pillar, so
-            # the difference between costing and drawing them is the
-            # difference between fitting in a control tick and not.
-            attempt = None
-            for offset, clearance, turn in self._attempts(goal):
-                candidate = self._goal_at(goal.progress, offset, direction,
-                                          goal.obstacle, clearance,
-                                          goal.fallbacks, heading_deg=turn)
-                _, turned = dubins_cost(
-                    cursor, (candidate.x, candidate.y, candidate.heading),
-                    self.min_radius_mm)
-                if turned <= LOOP_TURN_DEG:
-                    attempt = candidate
-                    break
-
-            segment = None
-            if attempt is not None:
-                segment = plan_dubins(cursor,
-                                      (attempt.x, attempt.y, attempt.heading),
-                                      self.min_radius_mm, step_mm=self.step_mm)
-                if segment is not None and len(segment.points) < 2:
-                    segment = None
-
+            attempt, segment = self._reach(cursor, goal, direction, obstacles)
             if segment is None:
                 # Nothing from the full offset down to the tightest fallback
                 # was reachable from here. A route goal is no loss. A PILLAR
@@ -762,27 +807,166 @@ class GoalPlanner:
 
         return np.vstack(points), np.concatenate(headings), driven, skipped
 
+    def _reach(self, cursor, goal, direction, obstacles):
+        """
+        The pose to actually drive at for one goal, and the path to it.
+
+        THE DIFFERENCE THIS MAKES, and the reason it exists: a candidate used
+        to be accepted for being REACHABLE - dubins_cost said the steering
+        could hold it and no more was asked. Whether the robot's body cleared
+        the pillar on the way was a different question, and it was not asked
+        until check(), by which time the plan was built and the answer could
+        only be reported. So a pass on a bend could be planned straight
+        through the pillar it was dodging, confidently, and the round would
+        drive it slowly rather than drive a clear one.
+
+        Reachability and clearance are now the same test. Candidates are tried
+        in preference order and the first one whose SWEPT BODY is clear wins;
+        the cheap answer - beside the pillar, square to the track, full offset
+        - is still tried first and still wins almost every time, so the common
+        case costs one extra sweep and nothing else.
+
+        WHAT GETS SPENT, cheapest first (see _attempts):
+
+            1. WHERE ALONG THE LAP the pass happens. Free: arriving at the
+               offset earlier is if anything better, since the robot is
+               already settled when it draws level with the pillar.
+            2. BEING SQUARE to the track. A preference, not a clearance.
+            3. THE CLEARANCE ITSELF, last, because it is the only one of the
+               three that is actually keeping the robot off the pillar.
+
+        When nothing is clear the best-scoring candidate is driven anyway and
+        check() reports it - that is deliberate and unchanged. Roughly a fifth
+        of corner placements have no solution at all: the corridor is full,
+        something has to be driven, and a bad plan the round KNOWS about beats
+        a confident one it does not.
+
+        I/O:
+            cursor: (x, y, heading) the segment starts from
+            obstacles: pillars to sweep against; walls, the centre block and
+                       the bay come from the map inside clearances()
+            return: (goal actually used, sampled segment), or (None, None)
+        """
+        # How much lap there is between where this segment starts and the goal
+        # it aims at. A backward shift may not eat all of it - see
+        # MIN_SEGMENT_MM.
+        here, _ = self.path.project(cursor[0], cursor[1], direction)
+        room = self.path.gap(here, goal.progress) - MIN_SEGMENT_MM
+        search_step = self.step_mm * SEARCH_STEP_FACTOR
+
+        best = None                     # (score, candidate)
+        first = None                    # the cheap answer, kept as a floor
+        swept = screened = 0
+
+        for offset, clearance, turn, shift in self._attempts(goal):
+            if shift < 0.0 and -shift > room:
+                continue
+            candidate = self._goal_at(goal.progress + shift, offset, direction,
+                                      goal.obstacle, clearance,
+                                      goal.fallbacks, heading_deg=turn)
+
+            # Two coordinates decide whether the body AT the goal is already
+            # inside the pillar, and a candidate that fails that can never
+            # produce a clear segment. Tested BEFORE dubins_cost, not after:
+            # the analytic screen is the most expensive thing in this loop by
+            # a wide margin - measured, 68% of plan() - because it solves all
+            # six Dubins words to answer one question. Never pay it for a
+            # candidate two subtractions can reject.
+            if goal.obstacle is not None and math.hypot(
+                    candidate.x - goal.obstacle.x,
+                    candidate.y - goal.obstacle.y) <= (
+                    BLOCK_RADIUS_MM + self.half_width_mm):
+                continue
+
+            screened += 1
+            if screened > MAX_SCREENED_CANDIDATES:
+                break
+            _, turned = dubins_cost(
+                cursor, (candidate.x, candidate.y, candidate.heading),
+                self.min_radius_mm)
+            if turned > LOOP_TURN_DEG:
+                continue
+
+            # A route goal is one pose on the racing line, take it or leave
+            # it. There is nothing for it to be dodging and nothing to search,
+            # so it is accepted exactly as it always was.
+            if goal.obstacle is None:
+                return self._draw(cursor, candidate)
+
+            if first is None:
+                first = candidate       # what the planner would have taken
+
+            segment = plan_dubins(cursor,
+                                  (candidate.x, candidate.y, candidate.heading),
+                                  self.min_radius_mm, step_mm=search_step)
+            if segment is None or len(segment.points) < 2:
+                continue
+
+            pillar_gap, wall_gap = self.clearances(
+                segment.points, segment.headings, obstacles)
+            score = min(pillar_gap, wall_gap)
+            if score > 0.0:
+                return self._draw(cursor, candidate)
+            if best is None or score > best[0]:
+                best = (score, candidate)
+
+            swept += 1
+            if swept >= MAX_SWEPT_CANDIDATES:
+                break
+
+        # Nothing was clear. Drive the least-bad thing found, or - where the
+        # search never got as far as scoring anything - the candidate the
+        # planner would have taken before any of this existed. Falling back to
+        # that rather than to nothing is what keeps a pass that cannot be given
+        # its clearance a REPORTED tight pass instead of a dropped goal.
+        chosen = best[1] if best is not None else first
+        if chosen is None:
+            return None, None
+        return self._draw(cursor, chosen)
+
+    def _draw(self, cursor, candidate):
+        """One candidate, sampled at the resolution the plan is followed at."""
+        segment = plan_dubins(cursor,
+                              (candidate.x, candidate.y, candidate.heading),
+                              self.min_radius_mm, step_mm=self.step_mm)
+        if segment is None or len(segment.points) < 2:
+            return None, None
+        return candidate, segment
+
     def _attempts(self, goal):
         """
-        The (offset, clearance, heading turn) triples to try for one goal, best
-        first.
+        The (offset, clearance, heading turn, progress shift) tuples to try for
+        one goal, best first.
 
         Ordered offset-outermost so that GIVING UP CLEARANCE IS THE LAST
-        RESORT: every heading is tried at the full offset before any of them is
-        tried at a reduced one. Clearance is what actually stops the robot
-        touching the pillar; being square to the track is a preference, so the
-        preference is what gets spent first.
+        RESORT: every heading and every shift is tried at the full offset
+        before any of them is tried at a reduced one. Clearance is what
+        actually stops the robot touching the pillar; being square to the
+        track and passing at the pillar's own progress are both preferences,
+        so the preferences are what get spent first.
 
-        A route goal has neither to spend - it is one pose on the racing line,
-        take it or leave it - so it is a single attempt.
+        The shift is innermost, which makes it the FIRST thing spent - it is
+        the cheapest of the three and, on a bend, much the most effective.
+        See PASS_SHIFTS_MM for the measurements.
+
+        A route goal has none of the three to spend, so it is one attempt.
         """
         if goal.obstacle is None:
-            return [(goal.offset, goal.clearance_mm, 0.0)]
-        triples = []
+            return [(goal.offset, goal.clearance_mm, 0.0, 0.0)]
+        attempts = []
         for offset, clearance in [(goal.offset, goal.clearance_mm)] + list(goal.fallbacks):
-            for turn in PASS_HEADINGS_DEG:
-                triples.append((offset, clearance, turn))
-        return triples
+            # One preference at a time, not the cross product of all of them.
+            # Moving the goal back while ALSO turning it off square is both the
+            # most expensive part of the search and the least useful: the two
+            # are alternative ways of buying the same room, so trying every
+            # combination multiplies the cost of the analytic screen - the
+            # dominant cost in here - without finding passes that one axis
+            # alone would not. 11 candidates an offset rather than 35.
+            for shift in PASS_SHIFTS_MM:
+                attempts.append((offset, clearance, 0.0, shift))
+            for turn in PASS_HEADINGS_DEG[1:]:
+                attempts.append((offset, clearance, turn, 0.0))
+        return attempts
 
     # ========================================================================
     # CHECKING
