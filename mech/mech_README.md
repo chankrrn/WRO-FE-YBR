@@ -2,16 +2,9 @@
 
 This document describes the complete mechanical development of the **YBR-SUNFLOWER WRO 2026 Future Engineers robot**, including the drivetrain, steering system, chassis, structural components, mechanical calculations, material selection, manufacturing process, prototype iterations, testing, trade-offs, and final engineering decisions.
 
-The purpose of this document is not only to show the final mechanical design, but also to explain:
+The purpose of this document is not only to show the final mechanical design. It explains why the main components were selected, how torque and speed influenced the drivetrain, why the steering and transmission use their current architecture, and how the robot developed from a previous-generation reference platform into the final Version 3 vehicle.
 
-- why each major mechanical component was selected,
-- how torque and speed influenced the drivetrain design,
-- why the steering and drivetrain use their current architecture,
-- how the robot evolved from its reference blueprint to the final Version 3 platform,
-- which mechanical problems were discovered during development,
-- how testing changed the design,
-- what trade-offs were accepted,
-- and how the final mechanical system can be reproduced.
+It also documents the mechanical problems discovered during development, the changes made after testing, the trade-offs accepted by the team, and the information required to reproduce the final mechanical platform.
 
 ---
 
@@ -36,27 +29,17 @@ The purpose of this document is not only to show the final mechanical design, bu
 
 # 1. Mechanical Engineering Overview
 
-The YBR-SUNFLOWER robot uses a four-wheel automotive-style mechanical architecture.
+The YBR-SUNFLOWER robot uses a four-wheel automotive-style architecture with rear-wheel drive and front-wheel steering.
 
-The final mobility system consists of:
+The final mobility system uses one rear drive motor connected to a rear differential through a custom external gear reduction. The two rear wheels provide propulsion, while the two front wheels are controlled by a servo-driven Ackermann-style steering mechanism. The drivetrain shafts are supported by bearings to improve alignment and reduce friction against printed components.
 
-- one rear drive motor,
-- a rear differential,
-- a custom external gear reduction,
-- two rear driven wheels,
-- two front steering wheels,
-- servo-driven Ackermann-style steering,
-- bearing-supported drivetrain shafts,
-- a multi-layer 3D-printed chassis,
-- adjustable camera mounting,
-- a dedicated LiDAR / IMU structure,
-- and modular electronics mounting plates.
+The mechanical structure is built mainly from modular FDM 3D-printed parts. These include the main chassis, electronics layers, camera structure, LiDAR / IMU mount, drivetrain mounts and steering components. This modular architecture allows individual parts to be redesigned or replaced without rebuilding the complete robot.
 
-Our mechanical system was developed around one central principle:
+Our mechanical design was developed around one central principle:
 
-> **Precision, controllability, stability, and repeatability are more important to our application than maximum theoretical speed.**
+> **Precision, controllability, stability and repeatability are more important to our application than maximum theoretical speed.**
 
-This decision affected the motor, gearbox, wheel size, steering geometry, chassis structure, bearing system and material selection.
+This principle influenced the motor, drivetrain reduction, wheel choice, steering geometry, bearing system, chassis structure and material selection.
 
 ---
 
@@ -83,21 +66,23 @@ This decision affected the motor, gearbox, wheel size, steering geometry, chassi
 
 ## 1.2 Mechanical Animation
 
-This section provides a quick visual explanation of the final mechanical system.
+This section provides a quick visual explanation of the final mechanical system before the individual subsystems are examined in detail.
 
 > **[TODO: Add 360° rotating CAD animation / GIF of the complete Version 3 robot]**
->
-> Recommended file:
->
-> `models/animations/final_robot_360.gif`
 
-Optional additional animations:
+Recommended file:
+
+```text
+models/animations/final_robot_360.gif
+```
+
+A drivetrain animation showing the motor, 16T drive gear, differential and rear wheels would also make the transmission easier to understand.
 
 > **[TODO: Add drivetrain animation showing motor → 16T gear → differential → wheels]**
 
-> **[TODO: Add Ackermann steering animation showing left/right wheel motion]**
+A separate steering animation could demonstrate the different inner and outer wheel motion produced by the Ackermann-style mechanism.
 
-These animations should help demonstrate how the mechanical subsystems interact before the detailed design sections below.
+> **[TODO: Add Ackermann steering animation showing left/right wheel motion]**
 
 ---
 
@@ -121,17 +106,11 @@ These animations should help demonstrate how the mechanical subsystems interact 
 
 ## 2.1 Mechanical Requirements
 
-The mechanical system must allow the robot to:
+The mechanical platform must accelerate smoothly from a stop, maintain a controllable driving speed and respond consistently to repeated steering corrections. It also needs to negotiate the WRO corners, pass traffic pillars with sufficient control and perform low-speed parking maneuvers.
 
-- accelerate smoothly from a stop,
-- maintain controllable speed,
-- make repeated steering corrections,
-- negotiate the WRO track corners,
-- pass traffic pillars without excessive wheel slip,
-- perform low-speed parking maneuvers,
-- support the complete electrical and sensing system,
-- maintain stable sensor placement,
-- and remain compact enough for the competition field.
+At the same time, the chassis must support the complete computing, power and sensing system without allowing excessive sensor movement. The vehicle must remain compact enough for the competition field while still providing enough structural space for the Raspberry Pi, Arduino, converters, battery, camera, LiDAR and IMU.
+
+These requirements mean that mechanical performance cannot be evaluated only by maximum speed. Low-speed control, steering repeatability, rigidity and component integration are equally important.
 
 ---
 
@@ -152,22 +131,15 @@ The mechanical system must allow the robot to:
 
 ## 2.3 Design Philosophy
 
-Our initial mechanical development showed that a fast drivetrain is not automatically a better drivetrain.
+Our initial development showed that the fastest drivetrain is not automatically the most useful drivetrain for an autonomous WRO vehicle.
 
-For WRO Future Engineers, the robot must repeatedly:
-
-- enter corners,
-- make steering corrections,
-- pass close to obstacles,
-- and perform precise low-speed motion.
-
-A drivetrain that produces high speed but cannot be controlled consistently therefore creates problems for the autonomous software.
+The robot repeatedly needs to enter corners, make steering corrections, pass close to obstacles and perform precise low-speed movement. If the drivetrain produces high speed but cannot be controlled consistently, the software has less time and less mechanical authority to correct the vehicle.
 
 This led to our main mechanical philosophy:
 
-> **We deliberately accept lower maximum speed when the change increases torque, low-speed controllability, stability, and repeatability.**
+> **We deliberately accept lower maximum speed when the change increases torque, low-speed controllability, stability and repeatability.**
 
-This philosophy can be seen directly in the progression of our drivetrain:
+The drivetrain progression demonstrates this philosophy clearly:
 
 ```text
 28:28
@@ -177,15 +149,13 @@ This philosophy can be seen directly in the progression of our drivetrain:
 16:28
 ```
 
-Each change increased the external reduction and therefore increased available output torque while reducing maximum wheel speed.
+Each step increased the external gear reduction. The theoretical maximum wheel speed decreased, but the available torque multiplication and low-speed controllability increased.
 
 ---
 
 # 3. Mechanical Development Process — V0 to V3
 
-The final robot was not produced in one design step.
-
-The mechanical architecture developed through a sequence of reference study, prototyping, testing and redesign.
+The final robot was not created in one design step. Its mechanical architecture developed through a sequence of reference study, prototyping, physical testing and redesign.
 
 ```text
 V0 — Reference Blueprint
@@ -199,58 +169,41 @@ V3 — Final Competition Robot
 
 ---
 
-# 3.1 V0 — Reference Blueprint / Previous-Generation Robot
+## 3.1 V0 — Reference Blueprint / Previous-Generation Robot
 
 > **Important:** V0 was not built as part of the current YBR-SUNFLOWER 2026 development cycle.
 
-V0 refers to the **white robot developed by our senior team in the previous season**.
+V0 refers to the **white robot developed by our senior team in the previous season**. Before starting the current robot, we studied this platform as a mechanical reference.
 
-We studied this robot as a mechanical reference before beginning our own design.
+We did not treat V0 as a design that should simply be copied. Instead, it acted as a starting blueprint that helped us identify mechanical requirements, limitations and questions that should be investigated in the new platform.
 
-Rather than treating the previous robot as a final design to copy, we used it as a **starting blueprint for identifying mechanical requirements and limitations**.
-
-> **[TODO: Add photograph of the white previous-generation robot]**
-
-Recommended caption:
+<img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/robot-photos/ver-0/v0-landscape.jpg">
 
 > **Figure — V0 reference robot from the previous season. This vehicle was studied as a mechanical reference before the current team began developing V1.**
 
 ---
 
-## 3.1.1 Lessons Taken from V0
+### 3.1.1 Lessons Taken from V0
 
-One important lesson from the previous-generation design was the relationship between **speed and controllability**.
+One of the most important lessons from the previous-generation robot was the relationship between **speed and controllability**.
 
-The previous approach focused more heavily on speed and used conventional DC motors without the encoder configuration selected for our current robot.
+The previous approach focused more strongly on speed and used conventional DC motors without the encoder configuration selected for our current platform. From this reference design, we recognized that high speed alone does not guarantee consistent autonomous performance. A robot can move quickly but still struggle with very low-speed motion, precise positioning and parking.
 
-The resulting system demonstrated that:
-
-- high speed alone does not guarantee consistent autonomous performance,
-- insufficient usable torque makes very low-speed movement difficult,
-- accurate parking becomes more difficult without motor feedback,
-- and mechanical design must support the requirements of the autonomous control system.
-
-These observations influenced our decision to investigate a geared encoder motor for the new robot.
+The reference platform also helped us recognize that the mechanical drivetrain must support the requirements of the autonomous control system. These observations influenced our decision to investigate a geared motor with integrated encoder feedback for the new robot.
 
 ---
 
-## 3.1.2 How V0 Influenced V1
+### 3.1.2 How V0 Influenced V1
 
-The purpose of V0 was therefore not to define the final 2026 robot.
+V0 gave us several engineering questions that became the starting point for V1.
 
-Instead, it gave us an initial set of engineering questions:
+We wanted to determine how to obtain more controllable low-speed movement and how to balance drivetrain speed with torque. We also needed a steering mechanism designed specifically for the new chassis, a structure that could be modified rapidly during development and enough space to support the sensors and electronics required by the new navigation strategy.
 
-1. How can we obtain more controllable low-speed movement?
-2. How should the drivetrain balance speed and torque?
-3. How can we design a steering mechanism specifically for our own chassis?
-4. How can mechanical components be made easier to modify during development?
-5. How can the chassis support the new sensors and electronics required by our navigation strategy?
-
-These questions became the starting point for V1.
+These questions guided the design of the first current-generation prototype.
 
 ---
 
-# 3.2 V1 — Initial Mechanical Prototype
+## 3.2 V1 — Initial Mechanical Prototype
 
 <table align="center">
   <tr>
@@ -260,14 +213,7 @@ These questions became the starting point for V1.
   </tr>
 </table>
 
-V1 was the first mechanical prototype developed for the current robot.
-
-Its main purpose was not to create a complete competition vehicle immediately.
-
-Instead, V1 was used to test the two most fundamental mechanical systems:
-
-- drivetrain,
-- and steering.
+V1 was the first mechanical prototype developed for the current robot. Its purpose was not to create a complete competition-ready vehicle immediately, but to test whether the basic drivetrain, steering and printed-chassis concept could work physically.
 
 The prototype used a 3D-printed base and a **28:28 external gear configuration**, creating a **1:1 external ratio**.
 
@@ -281,32 +227,27 @@ External Ratio = 1:1
 
 ---
 
-## 3.2.1 Goal of V1
+### 3.2.1 Goal of V1
 
-The goal was to answer:
+The main engineering question for V1 was:
 
-> Can the basic motor, drivetrain, chassis and steering concept physically move the vehicle as expected?
+> **Can the basic motor, drivetrain, chassis and steering concept physically move the vehicle as expected?**
 
-At this stage, simplicity was more important than optimization.
-
----
-
-## 3.2.2 Problem Identified
-
-Testing showed that the 1:1 external drivetrain did not provide the amount of torque and low-speed control that we wanted.
-
-The robot could move, but:
-
-- acceleration from a stop was less controllable,
-- low-speed movement was difficult,
-- steering corrections were harder to perform consistently,
-- and the drivetrain behavior did not match our precision-focused design philosophy.
-
-This became one of the main reasons for changing the drivetrain in V2.
+At this stage, simplicity was more important than optimization. The team first needed to establish a working baseline before changing the drivetrain ratio or building a more complex structure.
 
 ---
 
-# 3.3 V2 — Functional Mechanical Prototype
+### 3.2.2 Problem Identified
+
+Testing showed that the 1:1 external drivetrain did not provide the amount of low-speed torque and controllability that we wanted.
+
+The robot could move, but acceleration from rest was less controllable, slow movement was difficult and repeated steering corrections were harder to perform consistently. This behavior did not match our precision-focused design philosophy.
+
+The drivetrain result therefore became one of the main reasons for changing the external gear ratio in V2.
+
+---
+
+## 3.3 V2 — Functional Mechanical Prototype
 
 <table align="center">
   <tr>
@@ -316,27 +257,23 @@ This became one of the main reasons for changing the drivetrain in V2.
   </tr>
 </table>
 
-V2 expanded V1 from a basic motion prototype into a more complete robot platform.
+V2 developed the V1 concept into a much more complete mechanical platform.
 
-Major mechanical changes included:
+The motor drive gear was reduced from 28 teeth to **21 teeth**, increasing the external reduction. An Ackermann-style steering architecture was introduced, rear drivetrain bearings were added and the chassis was expanded to support more of the final electronic system.
 
-- changing the motor drive gear from 28 teeth to **21 teeth**,
-- developing an **Ackermann-style steering mechanism**,
-- adding the rear bearing system,
-- installing more of the final electronics,
-- and creating a more complete mechanical structure.
-
-At this stage, the robot was mechanically usable, although several areas could still be improved.
+At this point the robot became mechanically usable, although several areas still required further improvement.
 
 ---
 
-## 3.3.1 Drivetrain Change
+### 3.3.1 Drivetrain Change
 
-The external drivetrain changed from:
+The drivetrain changed from:
 
 ```text
 V1
+
 28T → 28T
+
 1:1
 ```
 
@@ -344,47 +281,39 @@ to:
 
 ```text
 V2
+
 21T → 28T
+
 28 / 21 ≈ 1.33:1 reduction
 ```
 
-The smaller driver gear increased the external reduction.
+The smaller driver gear increased the external reduction. The theoretical wheel speed decreased, while the theoretical output torque increased.
 
-This produced:
-
-- greater theoretical output torque,
-- lower output speed,
-- improved low-speed control,
-- and better steering precision.
+In practice, the change also produced better low-speed behavior and made the drivetrain more suitable for repeated autonomous steering corrections.
 
 ---
 
-## 3.3.2 Steering Development
+### 3.3.2 Steering Development
 
-V2 introduced the Ackermann-style steering architecture used as the basis of the final system.
+V2 introduced the Ackermann-style steering architecture that became the basis of the final steering system.
 
-Instead of treating both front wheels as if they followed the same turning radius, the steering geometry was designed so that the inner and outer wheels could follow different paths during a turn.
+During a turn, the inner front wheel and outer front wheel follow different path radii. The steering mechanism was therefore designed so that the wheels do not need to use exactly the same steering angle.
 
-This reduced unnecessary tire scrub and made the vehicle geometry more suitable for automotive-style cornering.
+This geometry reduces unnecessary tire scrub and better matches the automotive-style motion of the vehicle.
 
 ---
 
-## 3.3.3 Bearing Development
+### 3.3.3 Bearing Development
 
 V2 also introduced bearings to support the rear drivetrain shaft.
 
-This prevented the axle from rotating directly against 3D-printed structural surfaces.
+Without bearings, the rotating axle would interact directly with printed structural surfaces. The bearing system separates the rotating shaft from the fixed printed structure and improves alignment, smoothness and rigidity.
 
-The bearing system improved:
-
-- alignment,
-- rotational smoothness,
-- drivetrain rigidity,
-- and long-term mechanical reliability.
+This also improves drivetrain consistency over repeated use because the axle is less dependent on sliding directly against the 3D-printed material.
 
 ---
 
-# 3.4 V3 — Final Competition Robot
+## 3.4 V3 — Final Competition Robot
 
 <table align="center">
   <tr>
@@ -394,23 +323,15 @@ The bearing system improved:
   </tr>
 </table>
 
-Version 3 is the current final mechanical platform.
+Version 3 is the final current mechanical platform.
 
-Unlike the transition from V1 to V2, V3 involved a more complete redesign and rebuild of the vehicle.
+Unlike the smaller transition from V1 to V2, V3 involved a more complete redesign and physical rebuild. The motor drive gear was reduced again from 21 teeth to **16 teeth**, increasing the final external reduction to 1.75:1.
 
-Major changes included:
-
-- reducing the motor drive gear again from 21 teeth to **16 teeth**,
-- strengthening the rear structure,
-- adding additional structural pillars,
-- creating the final LiDAR / IMU mounting system,
-- integrating the additional XL4015 tray,
-- revising component placement,
-- and adding the rear wing / handling structure.
+The rear structure was reinforced with additional pillars, the component layout was revised and new structures were created for the LiDAR / IMU, XL4015 converter and rear handling wing.
 
 ---
 
-## 3.4.1 Final Drivetrain Change
+### 3.4.1 Final Drivetrain Change
 
 The final external drivetrain is:
 
@@ -424,29 +345,21 @@ External Reduction
 = 1.75:1
 ```
 
-Compared with V2, this provides additional torque multiplication at the cost of additional speed reduction.
+Compared with V2, this configuration provides additional theoretical torque multiplication while further reducing the theoretical maximum drivetrain speed.
 
-After testing the different mechanical versions, this configuration provided the best balance for our robot between:
-
-- acceleration,
-- torque,
-- low-speed control,
-- steering correction,
-- and usable speed.
+After testing the different mechanical versions, the 16:28 configuration provided the most useful balance for our current robot between acceleration, usable speed, low-speed control, torque and repeated steering correction.
 
 ---
 
-## 3.4.2 Structural Improvements
+### 3.4.2 Structural Improvements
 
-The rear section was reinforced with additional vertical supports.
+The rear section was reinforced using additional vertical supports to improve rigidity around the stacked electronics and sensor structures.
 
-The goal was to increase rigidity around the stacked electronics and sensor structures.
-
-The final version also integrates the camera structure, LiDAR support and rear handling wing into the main mechanical platform.
+The final robot also integrates the camera support, LiDAR / IMU mount and rear handling structure into the same mechanical platform. This allows the upper sensing system to remain mechanically connected to the main chassis rather than behaving as several independent mounts.
 
 ---
 
-# 3.5 Mechanical Evolution Summary
+## 3.5 Mechanical Evolution Summary
 
 | Version | Driver Gear | External Ratio | Major Mechanical Change | Main Reason |
 |---|---:|---:|---|---|
@@ -459,7 +372,7 @@ The final version also integrates the camera structure, LiDAR support and rear h
 
 ## 3.6 Iteration Logic
 
-The drivetrain progression demonstrates one of the clearest engineering trade-offs in our robot.
+The drivetrain progression demonstrates one of the clearest mechanical trade-offs in the project.
 
 ```text
 Higher Speed
@@ -474,9 +387,7 @@ Higher Speed
 Higher Torque / Control
 ```
 
-We did not select the final ratio only because it produced more torque.
-
-We selected it because the increased reduction produced behavior that better matched the requirements of autonomous navigation and parking.
+The final ratio was not selected only because it produced more theoretical torque. It was selected because the increased reduction produced behavior that better matched the practical requirements of autonomous navigation and parking.
 
 ---
 
@@ -484,23 +395,7 @@ We selected it because the increased reduction produced behavior that better mat
 
 > **[TODO: Add NEW annotated final mechanical layout image]**
 
-Recommended labels:
-
-- Main Base
-- Front Steering Assembly
-- Steering Servo
-- Camera Mechanism
-- Motor
-- 16T Drive Gear
-- Differential
-- Rear Axle
-- Bearing Mounts
-- Electrical Base
-- UNO Base
-- Raspberry Pi Base
-- LiDAR / IMU Mount
-- Rear Wing
-- Step-down Tray
+The recommended labels for the image are **Main Base, Front Steering Assembly, Steering Servo, Camera Mechanism, Motor, 16T Drive Gear, Differential, Rear Axle, Bearing Mounts, Electrical Base, UNO Base, Raspberry Pi Base, LiDAR / IMU Mount, Rear Wing and Step-down Tray**.
 
 ---
 
@@ -528,15 +423,17 @@ Front Wheels            Differential
                         Rear Wheels
 ```
 
-This arrangement keeps the main drivetrain and steering mechanisms close to the lower structural layer while allowing electronics and sensors to be mounted above them.
+The drivetrain and steering remain close to the lower structural layer, while the electronics and sensing systems use the vertical space above them.
+
+This arrangement separates the major moving mechanisms from the upper computing and sensor layers while keeping the complete robot compact.
 
 ---
 
 # 5. Drivetrain Engineering
 
-# 5.1 Drivetrain Architecture
+## 5.1 Drivetrain Architecture
 
-The final power path is:
+The final drivetrain transfers power through the following mechanical path:
 
 ```text
 CHP-20GP-180 Motor
@@ -559,51 +456,38 @@ LEGO Differential
  Wheel   Wheel
 ```
 
-This arrangement combines the motor's internal reduction with an additional external reduction before the wheels.
+This architecture combines the motor's internal 19:1 reduction with an additional 16:28 external gear reduction before power reaches the two rear wheels.
 
 ---
 
-# 5.2 Motor Selection
+## 5.2 Motor Selection
 
-## CHP-20GP-180 DC 12 V Geared Motor
+### CHP-20GP-180 DC 12 V Geared Motor
 
 <img src="../other/DrivingMotor1.png" width="400">
 <img src="../other/DrivingMotor2.jpg" width="500">
 
 We selected the **CHP-20GP-180 DC geared motor** with a **19:1 internal gearbox** and dual-phase quadrature encoder.
 
-The main reasons for selecting this motor were:
+The motor was chosen because its higher reduction provides more torque than faster variants while still maintaining a useful output speed. The integrated encoder also provides motor-rotation feedback, which is valuable for controlled finite movements.
 
-- increased torque compared with higher-speed variants,
-- integrated encoder feedback,
-- suitable physical size,
-- reliable operation during prototype testing,
-- and better suitability for precise autonomous movement.
-
-Our project places greater value on controlled low-speed movement than on the highest possible no-load motor speed.
+Its physical size was suitable for our compact chassis and the motor remained usable throughout prototype testing. These characteristics made it better suited to the precision-focused behavior required by our autonomous vehicle than simply selecting the highest-speed available option.
 
 ---
 
-## 5.2.1 Why We Prioritized the 19:1 Configuration
+### 5.2.1 Why We Prioritized the 19:1 Configuration
 
-A faster motor configuration can increase maximum vehicle speed.
+A faster motor configuration can increase maximum vehicle speed, but that benefit becomes less useful if the robot becomes harder to accelerate smoothly, control through corners, position accurately or park.
 
-However, increased maximum speed is less useful if the robot becomes more difficult to:
-
-- accelerate smoothly,
-- control through corners,
-- position accurately,
-- or park.
-
-We therefore selected the higher-reduction configuration because the mechanical characteristics better matched the requirements of the WRO tasks.
+The 19:1 configuration therefore reflects the same design philosophy used for the external transmission. We prefer a drivetrain that gives the autonomous software enough mechanical control authority rather than maximizing theoretical speed alone.
 
 ---
 
-## 5.2.2 Motor Encoder
+### 5.2.2 Motor Encoder
 
-The integrated dual-phase encoder provides feedback about motor rotation.
+The integrated dual-phase encoder measures motor rotation instead of requiring the control system to rely only on the commanded motor power.
 
-This is especially valuable for movements that require a defined amount of travel instead of relying only on open-loop motor power.
+This is especially useful when the robot needs a defined amount of drivetrain movement. Battery state, friction and loading can change the relationship between a PWM command and the real physical rotation, while an encoder directly observes rotational motion.
 
 <table align="center">
   <tr>
@@ -615,16 +499,18 @@ This is especially valuable for movements that require a defined amount of trave
 
 ### Encoder Wiring
 
-- **Red** — Motor power positive
-- **Black** — Hall-effect sensor GND
-- **Yellow** — Encoder Signal B
-- **Green** — Encoder Signal A
-- **Blue** — Hall-effect sensor 5 V
-- **White** — Motor power negative
+| Wire | Function |
+|---|---|
+| Red | Motor power positive |
+| Black | Hall-effect sensor GND |
+| Yellow | Encoder Signal B |
+| Green | Encoder Signal A |
+| Blue | Hall-effect sensor 5 V |
+| White | Motor power negative |
 
 ---
 
-## 5.2.3 Electrical Specifications
+### 5.2.3 Electrical Specifications
 
 | Specification | Value |
 |---|---:|
@@ -635,7 +521,7 @@ This is especially valuable for movements that require a defined amount of trave
 
 ---
 
-## 5.2.4 Mechanical Specifications
+### 5.2.4 Mechanical Specifications
 
 | Specification | Value |
 |---|---:|
@@ -650,7 +536,7 @@ This is especially valuable for movements that require a defined amount of trave
 
 ---
 
-## 5.2.5 Encoder Specifications
+### 5.2.5 Encoder Specifications
 
 | Specification | Value |
 |---|---|
@@ -659,11 +545,13 @@ This is especially valuable for movements that require a defined amount of trave
 | Supply Voltage | 3.3 V / 5.0 V DC |
 | Output | Square Wave |
 
+> **[TODO: Reconcile the ~211 PPR value with the encoder count terminology used in `elec_README.md` and the Arduino implementation so that PPR, quadrature counts and gearbox-output counts are clearly distinguished.]**
+
 ---
 
-# 5.3 Custom Motor Drive Gear
+## 5.3 Custom Motor Drive Gear
 
-## 16-Tooth Motor Gear
+### 16-Tooth Motor Gear
 
 <table align="center">
   <tr>
@@ -674,19 +562,15 @@ This is especially valuable for movements that require a defined amount of trave
   </tr>
 </table>
 
-The final motor drive gear is a custom **16-tooth 3D-printed gear**.
+The final drive gear is a custom **16-tooth 3D-printed gear** that connects directly to the CHP-20GP-180 output shaft and meshes with the 28-tooth differential gear.
 
-It connects directly to the CHP-20GP-180 motor shaft and meshes with the 28-tooth differential gear.
-
-The center bore is designed to fit the motor shaft tightly to reduce slipping.
-
-The custom design also removes the need for an additional adapter between the motor and the drivetrain.
+The center bore is designed to fit the motor shaft tightly to reduce relative slipping. Integrating the shaft interface into the gear itself also eliminates the need for a separate motor-to-gear adapter, keeping the drivetrain more compact.
 
 ---
 
-# 5.4 Gearbox Development
+## 5.4 Gearbox Development
 
-## V1 — 28:28
+### V1 — 28:28
 
 ```text
 28T Driver
@@ -696,13 +580,13 @@ The custom design also removes the need for an additional adapter between the mo
 Ratio = 1:1
 ```
 
-The initial objective was to maximize speed while keeping the transmission mechanically simple.
+The initial configuration used equal-size gears because it was mechanically simple and preserved the motor output speed.
 
-Testing showed that this configuration did not provide enough usable low-speed torque for our application.
+Testing showed that this arrangement did not provide enough usable low-speed torque and control for the behavior we wanted.
 
 ---
 
-## V2 — 21:28
+### V2 — 21:28
 
 ```text
 21T Driver
@@ -713,13 +597,13 @@ Reduction = 28 / 21
           ≈ 1.33:1
 ```
 
-This increased torque and improved low-speed behavior.
+Reducing the driver gear to 21 teeth increased the external reduction. The theoretical output speed decreased, while the theoretical torque increased.
 
-The custom 21-tooth gear also connected directly to the motor shaft, making the drivetrain more compact and rigid.
+The direct-fit custom gear also maintained a compact connection between the motor and differential.
 
 ---
 
-## V3 — 16:28
+### V3 — 16:28
 
 ```text
 16T Driver
@@ -730,46 +614,34 @@ Reduction = 28 / 16
           = 1.75:1
 ```
 
-This further increased torque multiplication.
+The final 16-tooth driver increases torque multiplication further.
 
-The additional reduction decreased theoretical maximum speed but improved:
+The additional reduction sacrifices theoretical maximum speed, but the resulting drivetrain provides more useful low-speed stability, acceleration control and steering authority for our autonomous vehicle.
 
-- acceleration,
-- low-speed stability,
-- control authority,
-- and precision.
-
-This became our final configuration.
+This became the final configuration.
 
 ---
 
-# 5.5 Differential
+## 5.5 Differential
 
-## LEGO Technic Differential Gear — 28 Teeth
+### LEGO Technic Differential Gear — 28 Teeth
 
 <img src="../other/DifferentialGear1.png" width="300">
 <img src="../other/DifferentialGear2.jpg" width="400">
 
-The LEGO Technic differential transfers power to both rear wheels while allowing them to rotate at different speeds during a turn.
+The LEGO Technic differential transfers power to both rear wheels while still allowing the two outputs to rotate at different speeds.
 
-This is important because the inside and outside wheels travel different distances when cornering.
+This is important because the inner and outer rear wheels travel different distances during a turn. If both rear wheels were locked to the same rotational speed, one wheel would need to slip or scrub across the field surface.
 
-Without a differential, a rigidly connected rear axle would force both wheels to rotate at the same speed, increasing tire scrub and resistance.
-
-The differential therefore provides:
-
-- smoother cornering,
-- reduced wheel scrub,
-- improved maneuverability,
-- and better compatibility with the automotive-style steering system.
+The differential therefore reduces unnecessary wheel scrub and resistance while improving maneuverability and compatibility with the automotive-style front steering geometry.
 
 ---
 
-# 5.6 Final Drivetrain Calculation
+## 5.6 Final Drivetrain Calculation
 
 <img src="models/Powertrains.png" width="800">
 
-The final drivetrain uses:
+The final external drivetrain uses:
 
 ```text
 Motor Output Gear = 16 teeth
@@ -778,7 +650,7 @@ Differential Gear = 28 teeth
 
 ---
 
-## Step 1 — External Gear Reduction
+### Step 1 — External Gear Reduction
 
 ```text
 External Reduction
@@ -791,7 +663,7 @@ External Reduction
 
 ---
 
-## Step 2 — Rated Output RPM
+### Step 2 — Rated Output RPM
 
 Using the documented motor rated speed of approximately **680 RPM**:
 
@@ -810,9 +682,11 @@ Using the documented no-load speed of approximately **780 RPM**:
 780 / 1.75 ≈ 446 RPM
 ```
 
+The approximately 389 RPM result explains why an older drivetrain description could contain a value close to 390 RPM even though the motor's documented geared-output rated speed is approximately 680 RPM. These values refer to different points in the transmission.
+
 ---
 
-## Step 3 — Output Torque
+### Step 3 — Output Torque
 
 Using the documented rated motor torque:
 
@@ -820,7 +694,7 @@ Using the documented rated motor torque:
 Motor Rated Torque = 0.0392 N·m
 ```
 
-The ideal theoretical output after the external reduction is:
+The ideal theoretical torque after the external reduction is:
 
 ```text
 Output Torque
@@ -831,19 +705,19 @@ Output Torque
 ≈ 0.069 N·m
 ```
 
-Ignoring drivetrain losses, the differential then distributes torque between the two rear outputs.
-
-Approximate theoretical torque per wheel:
+If drivetrain losses are ignored and the differential load is simplified as equally distributed between the two rear outputs:
 
 ```text
 0.069 / 2
 
-≈ 0.035 N·m
+≈ 0.035 N·m per rear output
 ```
+
+This per-wheel value is a simplified theoretical estimate rather than a directly measured wheel torque.
 
 ---
 
-## 5.6.1 Calculated Final Results
+### 5.6.1 Calculated Final Results
 
 | Parameter | Calculated Value |
 |---|---:|
@@ -851,35 +725,27 @@ Approximate theoretical torque per wheel:
 | Differential input speed — rated | ~389 RPM |
 | Differential input speed — no load | ~446 RPM |
 | Ideal differential input torque | ~0.069 N·m |
-| Ideal torque per rear output | ~0.035 N·m |
+| Simplified ideal torque per rear output | ~0.035 N·m |
 
 > These calculations are ideal theoretical values and do not include mechanical losses from gear friction, bearings, differential friction, tire deformation or drivetrain alignment.
 
-This distinction is important because calculated drivetrain performance and measured vehicle performance are not identical.
+The distinction between calculated and measured values is important because the physical robot will not reproduce the ideal calculation exactly.
 
 ---
 
-# 5.7 Wheel Selection
+## 5.7 Wheel Selection
 
-## LEGO Tire 43.2 × 22 ZR  
-## Wheel 30.4 mm D × 20 mm Reinforced Rim
+### LEGO Tire 43.2 × 22 ZR  
+### Wheel 30.4 mm D × 20 mm Reinforced Rim
 
 <img src="../other/wheel1.png" width="200">
 <img src="../other/wheel2.png" width="200">
 
-The wheel was selected because its size provides a practical balance between:
+The selected wheel size provides a practical balance between ground speed, acceleration, axle torque demand, ground clearance and vehicle controllability.
 
-- speed,
-- acceleration,
-- torque demand,
-- ground clearance,
-- and controllability.
+A smaller wheel travels less distance for each axle revolution and therefore reduces linear vehicle speed. A larger wheel travels farther per revolution but also requires more axle torque to create the same force at the ground.
 
-A smaller wheel travels less distance per revolution and can reduce vehicle speed.
-
-A larger wheel increases distance traveled per revolution but also increases the torque required at the axle for the same force at the ground.
-
-Our selected wheel size works well with the motor and drivetrain reduction while maintaining predictable handling.
+The selected LEGO wheel and tire combination works with the final drivetrain reduction while maintaining predictable handling and sufficient physical clearance for the chassis.
 
 ---
 
@@ -902,9 +768,7 @@ The final robot uses a servo-driven **Ackermann-style front steering system**.
 
 ## 6.2 Why Ackermann-Style Steering?
 
-During a turn, the inner front wheel follows a smaller-radius path than the outer wheel.
-
-The steering geometry is therefore designed so that the two wheels do not need identical steering angles.
+During a turn, the inner front wheel travels around a smaller radius than the outer front wheel. The front wheels therefore should not ideally use exactly the same steering angle.
 
 Conceptually:
 
@@ -917,14 +781,9 @@ Conceptually:
           Wheel  /   |  Wheel
 ```
 
-The inward steering-arm geometry approximates Ackermann behavior.
+The inward steering-arm geometry approximates this Ackermann relationship.
 
-The design aims to:
-
-- reduce tire scrub,
-- reduce resistance during turns,
-- improve cornering stability,
-- and create more predictable automotive-style motion.
+The purpose of the design is to reduce unnecessary tire scrub and turning resistance while creating more predictable automotive-style cornering. This geometry also works naturally with the rear differential, which allows the rear wheels to rotate at different speeds through the same turn.
 
 ---
 
@@ -970,71 +829,63 @@ The design aims to:
 
 ### Steering Axle
 
-The steering axle acts as the primary pivot for the steering arms.
-
-It maintains wheel alignment while allowing the steering arms to rotate with minimal unwanted lateral movement.
+The steering axle acts as the primary pivot for the steering arms. It maintains wheel alignment while still allowing the arms to rotate with minimal unwanted lateral movement.
 
 ### Steering Linkage Arm
 
-The linkage connects the servo output to the steering arms.
-
-It converts servo rotation into a push-pull motion that changes the angle of both front wheels.
+The linkage connects the steering servo to the two front steering arms. It converts servo rotation into the push-pull motion that changes the angle of both front wheels.
 
 ### Top Steering Mount / Cap
 
-The upper structure stabilizes the steering pivots and works together with the lower mount to keep the steering assembly rigid.
+The upper structure stabilizes the steering pivots and works together with the lower structure to maintain steering rigidity.
 
 ### Bottom Steering Mount
 
 The lower mount supports and aligns the steering pivots.
 
-The original design also included a mounting location for the light sensor used in the earlier sensing architecture.
-
-Although the light sensor was later removed from the final sensing system, the mechanical history of this feature is retained because it shows how the steering structure evolved together with the sensor architecture.
+An earlier version of this part also included a location for the light sensor used in the original sensing concept. Although the light sensor was removed from the final robot, the feature is part of the mechanical development history because it shows that the steering structure changed together with the sensing architecture.
 
 ### Left and Right Steering Arms
 
-The steering arms connect directly to the front wheels.
-
-Their inward geometry creates the Ackermann-style relationship between the inside and outside wheels during cornering.
+The steering arms connect the linkage to the front wheels. Their inward geometry produces the approximate Ackermann relationship between the inner and outer wheel angles during cornering.
 
 ---
 
 ## 6.4 Steering Geometry Measurements
 
-> **[TODO: Add final measured wheelbase]**
+The final mechanical documentation should include measured steering geometry from the completed V3 robot rather than relying only on CAD assumptions.
 
-> **[TODO: Add final measured front track width]**
+| Measurement | Final Value |
+|---|---|
+| Wheelbase | **[TODO]** |
+| Front track width | **[TODO]** |
+| Maximum inner wheel steering angle | **[TODO]** |
+| Maximum outer wheel steering angle | **[TODO]** |
+| Minimum turning radius | **[TODO]** |
 
-> **[TODO: Add maximum inner wheel steering angle]**
-
-> **[TODO: Add maximum outer wheel steering angle]**
-
-> **[TODO: Add measured minimum turning radius if available]**
-
-These measurements should be taken from the completed Version 3 robot rather than only from the CAD model.
+These measurements are especially useful because the software steering model depends on the real physical geometry of the vehicle.
 
 ---
 
-# 6.5 Steering Servo
+## 6.5 Steering Servo
 
-## GEEKSERVO 2 kg 360° Servo
+### GEEKSERVO 2 kg 360° Servo
 
 <img src="../other/servo.png" width="400">
 
-The GEEKSERVO was selected because it provides sufficient speed and torque for the steering system while also being mechanically compatible with LEGO-style mounting.
+The GEEKSERVO was selected because it provides sufficient torque and response for the steering mechanism while remaining mechanically compatible with LEGO-style mounting.
 
-This simplifies its integration with the hybrid custom / LEGO mechanical structure.
+This compatibility simplifies its integration with the hybrid custom-printed and LEGO mechanical structure. The servo has also been used through the prototype process without significant mechanical failure.
 
-The servo has also been used reliably during earlier development without significant mechanical failures.
-
-The gear mechanism can slip under excessive blocking load instead of remaining completely locked, which can reduce the chance of damage under severe mechanical overload.
+The gear mechanism can slip under excessive blocking load rather than remaining completely rigid, which may reduce mechanical damage during severe overload.
 
 ### Servo Wiring
 
-- **Red** — Positive
-- **Brown** — Ground
-- **Yellow** — Signal
+| Wire | Function |
+|---|---|
+| Red | Positive |
+| Brown | Ground |
+| Yellow | Signal |
 
 ### Electrical Specifications
 
@@ -1045,6 +896,8 @@ The gear mechanism can slip under excessive blocking load instead of remaining c
 | Rated Current | 200 mA |
 | Stall Current | 700 mA |
 | Sliding Current | 450 mA |
+
+> **[TODO: Verify the exact final servo model and its current specification against the purchased unit / original product documentation, because electrical documentation has contained different stall-current values.]**
 
 ---
 
@@ -1059,33 +912,23 @@ The gear mechanism can slip under excessive blocking load instead of remaining c
   </tr>
 </table>
 
-The servo bracket securely holds the LEGO-compatible steering servo.
+The servo bracket holds the steering actuator at the required height and alignment relative to the steering linkage.
 
-Built-in cylindrical mounting features allow the servo to integrate directly with the surrounding structure while maintaining the required height and alignment.
-
-The bracket was designed to be:
-
-- compact,
-- lightweight,
-- easy to print,
-- and rigid enough to keep the steering actuator aligned.
+Its cylindrical mounting features allow the LEGO-compatible servo to integrate directly with the surrounding structure. The part was designed to remain compact and lightweight while still being simple to print and rigid enough to prevent unwanted actuator movement.
 
 ---
 
 # 7. Structural Design and Final 3D Components
 
-The final chassis is divided into modular structural layers.
+The final chassis is divided into modular structural layers instead of being printed as one large part.
 
-This makes it easier to:
+This makes individual components easier to manufacture and replace. It also allows one area of the robot to be redesigned without requiring the complete chassis to be reprinted.
 
-- manufacture individual parts,
-- replace damaged parts,
-- modify one subsystem without redesigning the complete robot,
-- and organize the electronics vertically.
+The layered structure is especially useful for organizing the electronics vertically while keeping the drivetrain and steering mechanisms near the lower part of the vehicle.
 
 ---
 
-# 7.1 Main Base
+## 7.1 Main Base
 
 <table align="center">
   <tr>
@@ -1096,22 +939,13 @@ This makes it easier to:
   </tr>
 </table>
 
-The Main Base is the robot's primary structural layer.
+The Main Base is the primary structural layer of the robot. It supports the battery, Arduino UNO R4, steering servo and the main drivetrain components.
 
-It supports:
-
-- the battery,
-- Arduino UNO R4,
-- steering servo,
-- and drivetrain components.
-
-Placing heavier mechanical and power components low in the robot helps keep the center of mass closer to the ground.
-
-The mounting points also provide a rigid interface for the upper structural layers.
+Placing several of the heavier mechanical and electrical components near the bottom of the robot helps keep the center of mass lower. The base also provides the mounting points that support the upper structural layers.
 
 ---
 
-# 7.2 Supporting Base 1 — Electrical Base
+## 7.2 Supporting Base 1 — Electrical Base
 
 <table align="center">
   <tr>
@@ -1122,19 +956,13 @@ The mounting points also provide a rigid interface for the upper structural laye
   </tr>
 </table>
 
-This plate supports several electrical-system components, including:
+The Electrical Base supports the LM2596 converter, PCT-21 ground connector, D1-2 positive connector, main power switch and competition start switch.
 
-- LM2596,
-- PCT-21 connector,
-- D1-2 connector,
-- main power switch,
-- competition start switch.
-
-It also acts as part of the support structure for the Raspberry Pi layer.
+The plate also contributes to the structural support of the Raspberry Pi layer above it, so it functions as both an electronics mount and part of the stacked chassis.
 
 ---
 
-# 7.3 Supporting Base 2 — Arduino Base
+## 7.3 Supporting Base 2 — Arduino Base
 
 <table align="center">
   <tr>
@@ -1145,13 +973,13 @@ It also acts as part of the support structure for the Raspberry Pi layer.
   </tr>
 </table>
 
-The Arduino base supports the Arduino UNO R4 Minima and its motor-control hardware.
+The Arduino Base supports the Arduino UNO R4 Minima and its motor-control hardware. The XL4015 assembly is also integrated around this section of the robot.
 
-The XL4015 assembly is also integrated around this section of the robot.
+This arrangement keeps the low-level control hardware close to the drivetrain and steering system while leaving the upper layers available for high-level computing and sensors.
 
 ---
 
-# 7.4 Supporting Base 3 — Raspberry Pi Base
+## 7.4 Supporting Base 3 — Raspberry Pi Base
 
 <table align="center">
   <tr>
@@ -1162,18 +990,13 @@ The XL4015 assembly is also integrated around this section of the robot.
   </tr>
 </table>
 
-This layer supports:
+This layer supports the Raspberry Pi 5, Raspberry Pi I/O Expansion HAT, camera structure and rear structural supports.
 
-- Raspberry Pi 5,
-- Raspberry Pi I/O Expansion HAT,
-- camera structure,
-- and rear structural supports.
-
-The stacked layout allows the high-level computing system to occupy otherwise unused vertical space without interfering directly with the drivetrain.
+Using the upper vertical space for the high-level computer keeps the Raspberry Pi away from the main drivetrain while still allowing it to remain connected to the camera, LiDAR, IMU and Arduino.
 
 ---
 
-# 7.5 Motor Bracket
+## 7.5 Motor Bracket
 
 <table align="center">
   <tr>
@@ -1184,21 +1007,15 @@ The stacked layout allows the high-level computing system to occupy otherwise un
   </tr>
 </table>
 
-The motor bracket is a custom 3D-printed structural component designed to secure the drive motor rigidly.
+The motor bracket is a custom 3D-printed structural component that holds the CHP-20GP-180 rigidly relative to the differential.
 
-The mount includes threaded mounting features so that screws can be fastened without separate nuts.
+The mount includes threaded features that allow screws to be installed without requiring separate nuts in some locations. This keeps the assembly compact while maintaining access during maintenance.
 
-This provides:
-
-- compact assembly,
-- easier access,
-- and rigid motor alignment.
-
-Maintaining motor alignment is particularly important because misalignment between the 16T motor gear and 28T differential gear can increase friction or cause poor gear meshing.
+Motor alignment is mechanically important because misalignment between the 16T motor gear and the 28T differential gear can increase friction, create poor tooth engagement or increase drivetrain wear.
 
 ---
 
-# 7.6 Rear Bearing Mount System
+## 7.6 Rear Bearing Mount System
 
 <table align="center">
   <tr>
@@ -1226,23 +1043,13 @@ Maintaining motor alignment is particularly important because misalignment betwe
   </tr>
 </table>
 
-The rear-wheel bearing system uses ball bearings to support the differential output shaft.
+The rear drivetrain uses ball bearings to support the differential output shaft. The inner bearing race interfaces with the shaft through custom sleeves, while the outer race remains fixed in the printed bearing mount.
 
-The inner bearing race interfaces with the shaft through custom sleeves while the outer race remains fixed in the mount.
-
-This prevents the axle from rotating directly against printed plastic.
-
-The bearing system therefore improves:
-
-- rotational efficiency,
-- axle alignment,
-- structural rigidity,
-- durability,
-- and drivetrain consistency.
+This arrangement prevents the rotating axle from sliding directly against the printed structure. It improves rotational efficiency, axle alignment, rigidity, durability and drivetrain consistency.
 
 ---
 
-# 7.7 Rear Wing / Handling Structure
+## 7.7 Rear Wing / Handling Structure
 
 <table align="center">
   <tr>
@@ -1253,21 +1060,17 @@ The bearing system therefore improves:
   </tr>
 </table>
 
-The rear wing is based on an **S1223 airfoil profile**, but aerodynamic performance is not its primary purpose on this robot.
+The rear wing is based on an **S1223 airfoil profile**, but aerodynamic performance is not its primary function on this robot.
 
-At the low operating speed of the vehicle, and with the camera support disturbing airflow, meaningful aerodynamic downforce is expected to be very small.
+At the relatively low operating speed of the vehicle, and with the nearby camera structure disturbing the airflow, meaningful aerodynamic downforce is expected to be very small.
 
-Its main practical function is therefore as:
+The part is therefore used mainly as a structural rear element, additional support for the camera assembly and a practical handling point when carrying the robot.
 
-- a structural rear element,
-- additional support for the camera structure,
-- and a convenient handling point for carrying the robot.
-
-This distinction prevents us from claiming an aerodynamic benefit that is not significant at the robot's operating speed.
+This interpretation avoids claiming an aerodynamic benefit that has not been demonstrated at the robot's operating speed.
 
 ---
 
-# 7.8 Step-Down Tray
+## 7.8 Step-Down Tray
 
 <table align="center">
   <tr>
@@ -1278,26 +1081,23 @@ This distinction prevents us from claiming an aerodynamic benefit that is not si
   </tr>
 </table>
 
-The step-down tray holds the XL4015 converter above the Arduino / motor-shield section.
+The Step-Down Tray holds the XL4015 converter above the Arduino / motor-shield section.
 
-The tray allows the converter to be mechanically secured instead of relying only on wiring or loose mounting.
+The tray allows the converter to be fixed mechanically instead of depending only on the connected wiring to hold it in position. This reduces unwanted movement and improves the organization of the final electrical layout.
 
 ---
 
 # 8. Mechanical Sensor and Electronics Integration
 
-Mechanical design and sensor performance are directly connected.
+Mechanical design affects sensor performance directly.
 
-The mechanical structure must hold each sensor:
+A sensor may be electrically correct but still produce poor information if it is mounted at the wrong orientation, if its field of view is obstructed or if its supporting structure moves excessively.
 
-- securely,
-- at the correct orientation,
-- with a clear field of view,
-- and without excessive vibration or movement.
+For this reason, the chassis is designed to hold the sensors rigidly, maintain the required orientation and keep their sensing areas as clear as possible.
 
 ---
 
-# 8.1 Camera Positioning Mechanism
+## 8.1 Camera Positioning Mechanism
 
 <table align="center">
   <tr>
@@ -1308,11 +1108,9 @@ The mechanical structure must hold each sensor:
   </tr>
 </table>
 
-The camera positioning mechanism allows the camera height and angle to be adjusted.
+The camera positioning mechanism allows the camera height and angle to be adjusted without redesigning the complete chassis.
 
-This was selected instead of a completely fixed mount because competition and testing environments can differ.
-
-A fixed mount would require:
+A completely fixed mount would require CAD modification and reprinting whenever the team wanted to test a different camera position:
 
 ```text
 Change Camera Position
@@ -1324,7 +1122,7 @@ Reprint Part
 Reassemble Robot
 ```
 
-The adjustable mechanism instead allows:
+The adjustable system instead allows:
 
 ```text
 Change Camera Position
@@ -1334,11 +1132,11 @@ Adjust Existing Mechanism
 Continue Testing
 ```
 
-This reduces mechanical iteration time.
+This reduces mechanical iteration time and allows the camera view to be tuned more quickly during testing.
 
 ---
 
-## 8.1.1 Camera Components
+### 8.1.1 Camera Components
 
 <table align="center">
   <tr>
@@ -1359,21 +1157,19 @@ This reduces mechanical iteration time.
 
 ### Camera Plate
 
-The camera plate holds the camera rigidly and reduces unwanted movement during autonomous operation.
+The camera plate holds the camera rigidly so that its orientation does not change unnecessarily during autonomous operation.
 
 ### Camera Arm
 
-The camera arm positions the camera at the required height and angle while maintaining a clear view of the field.
+The camera arm positions the camera at the required height and angle while maintaining a clear view toward the field.
 
 ### Camera Arm Connector
 
-The connector links the camera support to the Raspberry Pi / rear structure.
-
-This distributes the mechanical load and increases rigidity during acceleration, braking and steering.
+The connector links the camera support to the Raspberry Pi / rear structural area. This spreads the load into the surrounding chassis and improves rigidity during acceleration, braking and steering.
 
 ---
 
-# 8.2 LiDAR and IMU Mount
+## 8.2 LiDAR and IMU Mount
 
 <table align="center">
   <tr>
@@ -1384,51 +1180,37 @@ This distributes the mechanical load and increases rigidity during acceleration,
   </tr>
 </table>
 
-The LiDAR mount is designed to hold the RPLiDAR securely while maintaining a clear scanning area.
+The LiDAR mount holds the RPLiDAR securely while maintaining a clear scanning area around the sensor.
 
-The recessed center allows the IMU to be positioned underneath the LiDAR.
+Its recessed centre creates space for the BNO055 underneath the LiDAR. This makes more efficient use of the vertical space, reduces congestion around the Raspberry Pi and keeps the LiDAR mechanically stable.
 
-The final arrangement:
-
-- uses vertical space efficiently,
-- reduces crowding around the Raspberry Pi,
-- keeps the LiDAR mechanically stable,
-- and moves the IMU away from some of the denser electronics and wiring around the Pi area.
-
-The IMU placement was also chosen to reduce exposure to nearby sources of magnetic interference that could influence magnetometer-based heading information.
+The IMU position also moves the device away from some of the denser electronics and wiring near the Pi. Because the BNO055 contains a magnetometer, physical separation from high-current wiring and electronics may be beneficial, although the improvement has not been quantified experimentally.
 
 ---
 
 # 9. Manufacturing and Material Selection
 
-Most custom mechanical parts were manufactured using FDM 3D printing.
+Most custom components are produced by FDM 3D printing.
 
-This allowed us to rapidly modify parts between prototypes rather than depending on fixed commercial chassis components.
+This manufacturing method allows the team to modify one part, print a new version and test it without waiting for a commercial chassis component. It is particularly useful for the iterative development of the drivetrain mounts, steering system and sensor structures.
 
 ---
 
-# 9.1 3D Printer
+## 9.1 3D Printer
 
-## Bambu Lab H2D
+### Bambu Lab H2D
 
 <img src="../other/X2D.png" width="400">
 
-The **Bambu Lab H2D** was used to manufacture the custom robot parts.
+The **Bambu Lab H2D** was used to manufacture the custom robot components.
 
-It was suitable for our development process because it provides:
+Its printing speed and dimensional capability were useful during rapid prototype development, while the enclosed heated system and high-temperature hotend allowed the team to use engineering materials such as ABS and ABS-GF.
 
-- high printing speed,
-- dimensional accuracy,
-- large build volume,
-- a heated chamber,
-- high-temperature printing capability,
-- and compatibility with engineering filaments.
-
-Rapid printing was especially useful during prototype development because mechanical changes could be manufactured and tested quickly.
+The large build volume was also sufficient for the major chassis plates and structural components.
 
 ---
 
-## 9.1.1 General Specifications
+### 9.1.1 General Specifications
 
 | Specification | Value |
 |---|---|
@@ -1446,7 +1228,7 @@ Rapid printing was especially useful during prototype development because mechan
 
 ---
 
-## 9.1.2 Physical Dimensions
+### 9.1.2 Physical Dimensions
 
 | Specification | Value |
 |---|---|
@@ -1455,7 +1237,7 @@ Rapid printing was especially useful during prototype development because mechan
 
 ---
 
-## 9.1.3 Build Plate
+### 9.1.3 Build Plate
 
 | Specification | Value |
 |---|---|
@@ -1467,52 +1249,36 @@ Rapid printing was especially useful during prototype development because mechan
 
 ---
 
-# 9.2 Filament Selection
+## 9.2 Filament Selection
 
-## Bambu Lab ABS and ABS-GF
+### Bambu Lab ABS and ABS-GF
 
 <img src="../other/ABS-GF.jpg" width="350">
 <img src="../other/ABS Olive.jpg" width="350">
 
-We use two main materials:
+The custom robot uses both **ABS** and **ABS-GF**, which is glass-fiber-reinforced ABS.
 
-- **ABS**
-- **ABS-GF — glass-fiber-reinforced ABS**
-
-The materials are not used interchangeably.
-
-They are selected according to the mechanical requirements of each part.
+These materials are not treated as interchangeable. Each one is selected according to the mechanical requirement of the component being printed.
 
 ---
 
-## ABS
+### ABS
 
-ABS provides a useful balance of:
+ABS provides a useful balance of impact toughness, strength and a relatively smooth printed surface. It also retains more flexibility than the glass-fiber-reinforced material.
 
-- impact toughness,
-- strength,
-- smoother printed surface,
-- and some additional flexibility compared with ABS-GF.
-
-It is useful for general structural components and parts where extreme stiffness is not the primary requirement.
+For this reason, ABS is suitable for general structural components and locations where extreme stiffness is not the primary requirement.
 
 ---
 
-## ABS-GF
+### ABS-GF
 
-ABS-GF contains glass-fiber reinforcement.
+ABS-GF contains glass-fiber reinforcement, which increases the material's stiffness and dimensional stability.
 
-This increases:
-
-- stiffness,
-- dimensional stability,
-- and heat resistance.
-
-It is used for components that require greater rigidity and resistance to deformation.
+It is therefore useful for components where deformation or flex is more critical, although the increase in stiffness comes with lower impact toughness compared with standard ABS.
 
 ---
 
-## 9.2.1 Material Trade-off
+### 9.2.1 Material Trade-off
 
 | Property | ABS | ABS-GF |
 |---|---|---|
@@ -1524,7 +1290,7 @@ It is used for components that require greater rigidity and resistance to deform
 
 ---
 
-## 9.2.2 Material Specifications
+### 9.2.2 Material Specifications
 
 | Specification | Bambu Lab ABS | Bambu Lab ABS-GF |
 |---|---:|---:|
@@ -1536,11 +1302,11 @@ It is used for components that require greater rigidity and resistance to deform
 | HDT @ 0.45 MPa | 87°C | 99°C |
 | Filament Diameter | 1.75 mm | 1.75 mm |
 
-The material data shows the design trade-off clearly:
+The material data shows the main trade-off clearly:
 
 > **ABS provides greater impact toughness, while ABS-GF provides greater stiffness and heat resistance.**
 
-We therefore select the material according to the function of each component rather than printing the complete robot from one material.
+The final robot therefore does not use one material for every printed component. Material choice depends on the mechanical function and required behavior of the part.
 
 > **[TODO: Add manufacturer datasheet links for the material-property values above.]**
 
@@ -1548,19 +1314,21 @@ We therefore select the material according to the function of each component rat
 
 # 10. Mechanical Testing and Iteration
 
-Mechanical testing is used to modify the design rather than only verify that the final vehicle moves.
+Mechanical testing is used as part of the design process rather than only as a final check that the robot moves.
+
+The clearest example is the drivetrain, where the external ratio changed twice because the earlier configurations did not provide the level of low-speed control we wanted.
 
 ---
 
 ## 10.1 Drivetrain Testing
-
-The clearest mechanical iteration was the drivetrain.
 
 | Version | Configuration | Observation | Decision |
 |---|---|---|---|
 | V1 | 28:28 | Insufficient low-speed torque / control | Increase reduction |
 | V2 | 21:28 | Improved torque and controllability | Test further reduction |
 | V3 | 16:28 | Best balance found for current robot | Selected as final |
+
+This progression provides direct evidence that testing affected the final mechanical architecture rather than merely confirming a design that had already been selected.
 
 ---
 
@@ -1581,19 +1349,17 @@ V3 — 16:28
 Final Configuration
 ```
 
-This is a direct example of testing affecting the final mechanical design.
+The progression demonstrates the trade-off between theoretical maximum speed and usable torque/control.
 
 ---
 
 ## 10.3 Steering Testing
 
-The steering mechanism was tested together with the software rather than evaluated only from CAD geometry.
+The steering mechanism was evaluated together with the software rather than only from CAD geometry.
 
-Software steering-calibration tools later showed that the real robot's steering response differed from the original assumed geometry.
+Dedicated steering-calibration tools later showed that the real robot did not turn exactly according to the original assumed steering model. The measured vehicle turned approximately **21% more than the original assumed full-lock value**.
 
-The measured vehicle turned approximately **21% more than the original assumed full-lock value**.
-
-This demonstrates why the physical mechanical system must be measured after assembly.
+This is important because the physical steering geometry directly affects the Pure Pursuit model used by the software. Measuring the assembled robot therefore provides more useful information than assuming the printed mechanism behaves exactly like the ideal CAD design.
 
 > **[TODO: Add link to steering test evidence / log.]**
 
@@ -1601,7 +1367,7 @@ This demonstrates why the physical mechanical system must be measured after asse
 
 ## 10.4 Additional Mechanical Measurements
 
-To strengthen the final competition documentation, record the following using the completed V3 robot:
+The following values should be measured directly from the completed Version 3 robot.
 
 | Measurement | Final Value |
 |---|---|
@@ -1615,29 +1381,29 @@ To strengthen the final competition documentation, record the following using th
 | Minimum turning radius | **[TODO]** |
 | Maximum steering angle | **[TODO]** |
 
+Measured values should be distinguished from nominal CAD dimensions wherever the physical assembly can differ.
+
 ---
 
 ## 10.5 Optional Mechanical Repeatability Test
 
-> **[TODO: If enough testing data exists, add a short repeatability table.]**
-
-Example structure:
+If enough testing time is available, repeated mechanical tests can provide stronger evidence than a single successful run.
 
 | Test | Trials | Result |
 |---|---:|---|
-| Smooth start from rest | [TODO] | [TODO] |
-| Full steering left / right | [TODO] | [TODO] |
-| Corner completion | [TODO] | [TODO] |
-| Parking approach | [TODO] | [TODO] |
-| Mechanical failure | [TODO] | [TODO] |
+| Smooth start from rest | **[TODO]** | **[TODO]** |
+| Full steering left / right | **[TODO]** | **[TODO]** |
+| Corner completion | **[TODO]** | **[TODO]** |
+| Parking approach | **[TODO]** | **[TODO]** |
+| Mechanical failure | **[TODO]** | **[TODO]** |
 
-Only actual recorded test results should be entered.
+Only actual recorded results should be entered. Estimated success rates should not be presented as measured data.
 
 ---
 
 # 11. Mechanical Trade-offs and Engineering Decisions
 
-The final mechanical design contains several intentional trade-offs.
+The final mechanical platform contains several deliberate trade-offs.
 
 | Decision | Benefit | Cost / Trade-off | Final Reason |
 |---|---|---|---|
@@ -1657,22 +1423,21 @@ The final mechanical design contains several intentional trade-offs.
 
 ## 11.1 Most Important Mechanical Decision
 
-The most important mechanical trade-off was:
+The most important mechanical trade-off in the project is:
 
 > **Maximum speed vs. torque and controllability.**
 
-Our prototype development showed that maximizing drivetrain speed did not produce the most useful autonomous vehicle.
+Our prototype development showed that maximizing drivetrain speed did not create the most useful autonomous vehicle.
 
-The final design therefore uses both:
+The final system therefore combines a **19:1 internal motor gearbox** with a **1.75:1 external reduction**. This sacrifices theoretical maximum wheel speed in exchange for greater torque multiplication and more controllable behavior at lower speed.
 
-- a 19:1 internal motor reduction,
-- and a 1.75:1 external reduction.
-
-The final drivetrain sacrifices maximum theoretical speed in exchange for greater torque multiplication and more controllable low-speed behavior.
+That trade-off directly supports the steering corrections, close obstacle passes and parking movements required by the autonomous software.
 
 ---
 
 # 12. Mechanical Risks and Failure Modes
+
+Mechanical reliability also requires the team to consider what can go wrong rather than only documenting the intended geometry.
 
 | Mechanical Risk / Failure Mode | Possible Effect | Design Response |
 |---|---|---|
@@ -1687,48 +1452,54 @@ The final drivetrain sacrifices maximum theoretical speed in exchange for greate
 | Electronics structure flex | Sensor / wiring movement | Reinforced rear structure |
 | Mechanical obstruction | Limited sensor view | Elevated / dedicated sensor mounts |
 
+The important connection is that several of these mechanical failures would also appear as software or sensing problems. For example, a moving camera mount can look like a vision problem, and an incorrectly aligned LiDAR mount can look like a localization problem.
+
+Mechanical stability is therefore part of the reliability of the complete autonomous system.
+
 ---
 
 # 13. CAD Files and Reproducibility
 
-The complete mechanical system is designed so that another team can reproduce the physical structure using the provided CAD / STL files.
+The final mechanical platform is designed so that another builder can reproduce the structure using the CAD / STL files provided in the repository.
 
-Mechanical assembly instructions are provided separately in:
+The detailed assembly sequence is documented separately in:
 
 [`../BUILD.md`](../BUILD.md)
+
+This README explains the design reasoning, while `BUILD.md` explains the order in which the mechanical structure should be manufactured and assembled.
 
 ---
 
 ## 13.1 Final Mechanical Files
 
-| Component | Model / STL |
-|---|---|
-| Main Base | [`MainBase.stl`](models/MainBase.stl) |
-| Electrical Base | [`ElecPlate.stl`](models/ElecPlate.stl) |
-| Arduino Base | [`UnoPlate.stl`](models/UnoPlate.stl) |
-| Raspberry Pi Base | [`PiPlate.stl`](models/PiPlate.stl) |
-| 16T Driver Gear | [`GearAdapter.stl`](models/GearAdapter.stl) |
-| Motor Bracket | [`MotorBracket.stl`](models/MotorBracket.stl) |
-| Bearing System | [`BearingSystem.stl`](models/BearingSystem.stl) |
-| Bearing Mount | [`BearingMount.stl`](models/BearingMount.stl) |
-| Left / Right Axle Sleeve | [`L&R_AxleSleeve.stl`](models/L%26R_AxleSleeve.stl) |
-| Middle Axle Sleeve | [`Mid_AxleSleeve.stl`](models/Mid_AxleSleeve.stl) |
-| Steering System | [`SteeringSystem.stl`](models/SteeringSystem.stl) |
-| Steering Axle | [`SteeringAxle.stl`](models/SteeringAxle.stl) |
-| Top Steering Mount | [`Top_SteeringMount.stl`](models/Top_SteeringMount.stl) |
-| Bottom Steering Mount | [`Bottom_SteeringMount.stl`](models/Bottom_SteeringMount.stl) |
-| Left Steering Arm | [`L_SteeringArm.stl`](models/L_SteeringArm.stl) |
-| Right Steering Arm | [`R_SteeringArm.stl`](models/R_SteeringArm.stl) |
-| Top Steering Cap | [`Top_SteeringCap.stl`](models/Top_SteeringCap.stl) |
-| Steering Linkage | [`SteeringLinkageArm.stl`](models/SteeringLinkageArm.stl) |
-| Servo Bracket | [`ServoBracket.stl`](models/ServoBracket.stl) |
-| Camera Mount | [`CamMount.stl`](models/CamMount.stl) |
-| Camera Plate | [`CamPlate.stl`](models/CamPlate.stl) |
-| Camera Arm | [`CamArm.stl`](models/CamArm.stl) |
-| Camera Connector | [`CamArmConnector.stl`](models/CamArmConnector.stl) |
-| LiDAR / IMU Mount | [`LiDARMount.stl`](models/LiDARMount.stl) |
-| Rear Wing | [`RearWing.stl`](models/RearWing.stl) |
-| Step-Down Tray | [`StepdownTray.stl`](models/StepdownTray.stl) |
+| Component | Model | STL File |
+|---|---|---|
+| Main Base | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/MainBase.PNG"> | [`MainBase.stl`](models/MainBase.stl) |
+| Electrical Base | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/ElecPlate.PNG"> | [`ElecPlate.stl`](models/ElecPlate.stl) |
+| Arduino Base | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/UnoPlate.PNG"> | [`UnoPlate.stl`](models/UnoPlate.stl) |
+| Raspberry Pi Base | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/PiPlate.PNG"> | [`PiPlate.stl`](models/PiPlate.stl) |
+| 16T Driver Gear | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/GearAdapter.PNG"> | [`GearAdapter.stl`](models/GearAdapter.stl) |
+| Motor Bracket | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/MotorBracket.PNG"> | [`MotorBracket.stl`](models/MotorBracket.stl) |
+| Bearing System | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/BearingSystem.PNG"> | [`BearingSystem.stl`](models/BearingSystem.stl) |
+| Bearing Mount | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/BearingMount.PNG"> | [`BearingMount.stl`](models/BearingMount.stl) |
+| Left / Right Axle Sleeve | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/L%26R_AxleSleeve.PNG"> | [`L&R_AxleSleeve.stl`](models/L%26R_AxleSleeve.stl) |
+| Middle Axle Sleeve | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/Mid_AxleSleeve.PNG"> | [`Mid_AxleSleeve.stl`](models/Mid_AxleSleeve.stl) |
+| Steering System | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/SteeringSystem.PNG"> | [`SteeringSystem.stl`](models/SteeringSystem.stl) |
+| Steering Axle | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/SteeringAxle.PNG"> | [`SteeringAxle.stl`](models/SteeringAxle.stl) |
+| Top Steering Mount | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/Top_SteeringMount.PNG"> | [`Top_SteeringMount.stl`](models/Top_SteeringMount.stl) |
+| Bottom Steering Mount | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/Bottom_SteeringMount.PNG"> | [`Bottom_SteeringMount.stl`](models/Bottom_SteeringMount.stl) |
+| Left Steering Arm | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/L_SteeringArm.PNG"> | [`L_SteeringArm.stl`](models/L_SteeringArm.stl) |
+| Right Steering Arm | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/R_SteeringArm.PNG"> | [`R_SteeringArm.stl`](models/R_SteeringArm.stl) |
+| Top Steering Cap | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/Top_SteeringCap.PNG"> | [`Top_SteeringCap.stl`](models/Top_SteeringCap.stl) |
+| Steering Linkage | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/SteeringLinkageArm.PNG"> | [`SteeringLinkageArm.stl`](models/SteeringLinkageArm.stl) |
+| Servo Bracket | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/ServoBracket.PNG"> | [`ServoBracket.stl`](models/ServoBracket.stl) |
+| Camera Mount | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/CamMount.PNG"> | [`CamMount.stl`](models/CamMount.stl) |
+| Camera Plate | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/CamPlate.PNG"> | [`CamPlate.stl`](models/CamPlate.stl) |
+| Camera Arm | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/CamArm.PNG"> | [`CamArm.stl`](models/CamArm.stl) |
+| Camera Connector | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/CamArmConnector.PNG"> | [`CamArmConnector.stl`](models/CamArmConnector.stl) |
+| LiDAR / IMU Mount | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/LiDARMount.PNG"> | [`LiDARMount.stl`](models/LiDARMount.stl) |
+| Rear Wing | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/RearWing.PNG"> | [`RearWing.stl`](models/RearWing.stl) |
+| Step-Down Tray | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/StepdownTray.PNG"> | [`StepdownTray.stl`](models/StepdownTray.stl) |
 
 ---
 
@@ -1753,63 +1524,27 @@ mech/
     └── ABS-GF/
 ```
 
-Including slicer files would improve reproducibility because another team could reproduce not only the geometry but also the intended printing orientation and manufacturing parameters.
+Including slicer project files would improve mechanical reproducibility because another builder could reproduce not only the STL geometry but also the intended print orientation, support configuration and manufacturing parameters.
 
 ---
 
 # 14. Final Mechanical Configuration
 
-The final Version 3 mechanical system consists of:
+The final Version 3 drivetrain uses the **CHP-20GP-180 DC geared motor** with its **19:1 internal reduction**, integrated dual-phase encoder, custom **16-tooth motor gear**, LEGO Technic **28-tooth differential**, **1.75:1 external reduction**, bearing-supported rear axle and LEGO wheel system.
 
-## Drivetrain
+The steering system uses the **GEEKSERVO** together with the custom servo bracket, steering linkage, left and right steering arms, steering axle and upper/lower mounting structure. The geometry approximates Ackermann steering so that the inner and outer wheels can follow different turning radii.
 
-- CHP-20GP-180 DC geared motor
-- 19:1 internal gearbox
-- dual-phase encoder
-- custom 16-tooth drive gear
-- LEGO Technic 28-tooth differential
-- 1.75:1 external reduction
-- bearing-supported rear axle
-- LEGO rear wheels
+The main chassis is formed by the **Main Base**, **Electrical Base**, **Arduino Base** and **Raspberry Pi Base**, together with the reinforced rear structure and rear handling wing.
 
-## Steering
+Sensor mounting is integrated mechanically through the adjustable camera mechanism and dedicated LiDAR / IMU mount. These structures are intended to maintain sensor alignment while allowing the camera position to be tuned during testing.
 
-- GEEKSERVO steering servo
-- custom servo bracket
-- Ackermann-style steering geometry
-- custom left / right steering arms
-- steering linkage
-- upper and lower steering mounts
-
-## Structure
-
-- Main Base
-- Electrical Base
-- Arduino Base
-- Raspberry Pi Base
-- reinforced rear structure
-- rear handling wing
-
-## Sensor Mounting
-
-- adjustable camera mechanism
-- dedicated LiDAR mount
-- IMU mounting below LiDAR
-
-## Manufacturing
-
-- Bambu Lab H2D
-- ABS
-- ABS-GF
-- modular 3D-printed components
+The custom components are manufactured primarily using the **Bambu Lab H2D** with **ABS** and **ABS-GF**. The modular printed architecture allows individual mechanical parts to be changed without rebuilding the entire robot.
 
 ---
 
 # Final Mechanical Summary
 
-The mechanical development of YBR-SUNFLOWER progressed from a previous-generation reference vehicle through three new mechanical stages.
-
-The most important development path was:
+The mechanical development of YBR-SUNFLOWER progressed from a previous-generation reference vehicle through three current-generation mechanical stages.
 
 ```text
 Previous-Generation Reference
@@ -1823,20 +1558,14 @@ Complete Mechanical Rebuild
 Final Competition Platform
 ```
 
-The final design reflects several deliberate engineering decisions:
+The final robot reflects several deliberate engineering decisions.
 
-- torque was prioritized over maximum speed,
-- the drivetrain reduction was increased through testing,
-- a differential was used to support automotive-style cornering,
-- Ackermann-style steering was adopted,
-- bearings were added to improve drivetrain alignment and efficiency,
-- material selection was based on stiffness and toughness requirements,
-- and modular sensor / electronics mounts were designed to support continued iteration.
+Torque and low-speed controllability were prioritized over maximum theoretical speed, which led to the progression from 28:28 to 21:28 and finally 16:28 external gearing. The rear differential and Ackermann-style steering were selected to better support automotive-style cornering, while bearings improved drivetrain alignment and reduced direct axle friction against printed components.
 
-The final mechanical design is therefore not only the result of component selection.
+The chassis uses modular printed layers so that mechanical parts can be redesigned and replaced independently. Material selection is based on the different stiffness and toughness characteristics of ABS and ABS-GF, while the adjustable camera structure and dedicated LiDAR / IMU mount allow sensor requirements to influence the mechanical design directly.
 
-It is the result of repeated:
+The final mechanical platform is therefore not simply a set of selected parts. It is the result of repeated engineering iteration:
 
 > **Design → Build → Test → Identify → Modify → Validate**
 
-cycles throughout the development of the robot.
+Each major mechanical change was made to move the robot toward greater controllability, structural reliability and repeatable autonomous performance.
