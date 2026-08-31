@@ -346,16 +346,9 @@ Recommended evidence:
 
 ### Electronics Assembly and Soldering
 
-> **[TODO: Add photograph of soldering, connector preparation or wiring work]**
+<img width="400" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/d517b8e67f0eb4ee75be5f6ee4206786ad332d23/team-photos/elec_solder.png">
 
-Recommended evidence:
-
-- soldering,
-- power-distribution wiring,
-- converter installation,
-- sensor connections,
-- connector assembly,
-- cable management.
+<img width="400" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/d517b8e67f0eb4ee75be5f6ee4206786ad332d23/team-photos/elec_moresolder.png">
 
 ### Software Development
 
