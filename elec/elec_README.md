@@ -1403,8 +1403,6 @@ The final system was not created by selecting every current sensor at the beginn
 
 # 11.1 Version 1 — Initial Sensing Concept
 
-<img width="500" height="550" alt="V1" src="https://github.com/user-attachments/assets/2cd51408-8423-43bb-8a1c-9e98e6d49be4" />
-
 Version 1 used the initial sensing concept:
 
 ```text
