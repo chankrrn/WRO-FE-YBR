@@ -39,7 +39,7 @@ resolution_mm = 20.0
 # Gap from the outer wall to the straights. Unset centres the loop in the
 # corridor (500mm to the wall, 500mm to the centre block), which is the most
 # forgiving line and leaves a pass equal room either way.
-wall_margin_mm = 480.0
+wall_margin_mm = 400.0
 
 # Corner radius. Unset takes the biggest that still clears the centre block,
 # which here is 480mm - this is deliberately WIDER than that.
@@ -65,7 +65,7 @@ wall_margin_mm = 480.0
 #
 # So 620. Past about 650 the corner itself starts running out of room against
 # the wall and the block, and what the pass gains the lap loses.
-corner_radius_mm = 620.0
+corner_radius_mm = 500.0
 
 [pursuit]
 wheelbase_mm = 165.0
@@ -77,13 +77,13 @@ wheelbase_mm = 165.0
 # runs wide, and re-measure after any change to max_road_wheel_deg.
 lookahead_base_mm = 130.0
 lookahead_per_speed_mm = 2.5
-lookahead_min_mm = 120.0
-lookahead_max_mm = 400.0
+lookahead_min_mm = 100.0
+lookahead_max_mm = 200.0
 
 # Inside a bend the lookahead is additionally capped at this fraction of the
 # bend's radius, which is what stops the robot cutting the apex and then
 # running wide correcting. Lower it if it still cuts; raise it if it weaves.
-corner_lookahead_fraction = 0.60
+corner_lookahead_fraction = 0.70
 
 # Measured from a normal driven lap (SteeringCalibrator, which fits this from
 # ordinary cornering rather than a raw test_steering.py arc - the raw arcs
@@ -171,7 +171,7 @@ memory_s = 1.5
 # detection uncertainty, so this can run tighter than clearance_mm - but not
 # to 0; pose tracking still has noise, and a plan is checked against half this
 # before it is called clear.
-wall_clearance_mm = 130.0
+wall_clearance_mm = 110.0
 
 # How much of the robot's turning circle to keep in hand. The plan is drawn
 # with arcs no tighter than turning_circle x this, because a path at exactly
@@ -219,10 +219,10 @@ route_spacing_mm = 400.0
 
 # How far short of a pillar the route goals stop, so nothing pulls the robot
 # back onto the centreline on the run-in to a pass.
-approach_mm = 200.0
+approach_mm = 400.0
 # How far past a pillar the plan holds its offset before returning to the
 # line. Raise it if the robot clips pillars with its back end on the way out.
-exit_mm = 330.0
+exit_mm = 500.0
 
 # How far BEFORE the pass to name a pose carrying the PASS's heading, so the
 # run-in is a straight line and the robot arrives already pointing the way it
@@ -250,7 +250,7 @@ exit_mm = 330.0
 # Holding the EXIT on the pass's heading too, making a straight band right
 # past the pillar, was tried and is not here: it took worst wall clearance to
 # -24mm and crashed a run.
-align_mm = 200.0
+align_mm = 300.0
 
 # How many pillars one plan reaches through. Beyond three the far ones are
 # replanned before they are reached anyway.
