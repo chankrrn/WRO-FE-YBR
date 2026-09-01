@@ -310,6 +310,8 @@ The electrical design includes relatively stable computing loads and rapidly cha
 | D1-2 quick connector | Distribution | — | 32 A / 250 V reference | D1-2 technical reference |
 | PCT-21 series connector | Distribution / common ground | — | 32 A / 250 V reference | PCT-21 technical reference |
 
+---
+
 ## 4.2 Measured Static Power-Path Values
 
 | Measurement Point | Measured Value |
@@ -324,6 +326,8 @@ The electrical design includes relatively stable computing loads and rapidly cha
 | Motor/control static voltage drop | ~0.1 V |
 
 These values were measured with the robot powered but without an autonomous run.
+
+---
 
 ## 4.3 Estimated Dynamic Power Budget
 
@@ -347,6 +351,8 @@ These values were measured with the robot powered but without an autonomous run.
 | Short high-load condition | 10.6 V | ~3.20 A | ~33.92 W |
 
 The values in this subsection are **engineering estimates** based on published component currents and representative autonomous operation. They are intentionally not labeled as measured results.
+
+---
 
 ## 4.4 Combined System Power
 
@@ -374,6 +380,8 @@ Motor/control peak        ≈ 33.9 W
 Combined short peak       ≈ 46.6 W
 ```
 
+---
+
 ## 4.5 Estimated Battery-Side Current
 
 Assuming approximately **90% overall conversion efficiency** during a short high-load condition:
@@ -391,6 +399,8 @@ I ≈ 51.8 W / 11.7 V
 ```
 
 A reasonable short battery-side peak estimate is therefore approximately **4–4.5 A**, well below the theoretical 33 A obtained from the battery's 30C product rating.
+
+---
 
 ## 4.6 Estimated Battery Runtime
 
