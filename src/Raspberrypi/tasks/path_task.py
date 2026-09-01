@@ -73,12 +73,24 @@ DEFAULTS = {
     # Cap on the lookahead inside a bend, as a fraction of the bend's radius.
     # Lower it if the robot still cuts corners; raise it if it weaves.
     "pursuit.corner_lookahead_fraction": 0.8,
+
+    # How near a pillar has to be before it starts pulling the lookahead in,
+    # and how short it may pull it. 0 for the window disables the whole thing
+    # and the lookahead is whatever speed and curvature asked for. See
+    # FinalTask.block_lookahead_cap_mm.
+    "pursuit.block_lookahead_window_mm": 700.0,
+    "pursuit.block_lookahead_near_mm": 120.0,
+    "pursuit.block_lookahead_margin_mm": 0.0,
     # Seconds of actuator lag to steer ahead of. The wheels do not reach the
     # angle you asked for instantly, so by the time they get there the robot
     # has moved - steering off the pose it has THEN, rather than the pose it
     # has now, cancels that delay. Set it to the steering system's response
     # time; test_steering.py measures it.
     "pursuit.lag_compensation_s": 0.0,
+    # Time constant of the steering servo, from test_steering.py --lag. 0 says
+    # the wheels reach the commanded angle instantly, which is what everything
+    # here assumed before - see PurePursuit.advance_servo.
+    "pursuit.servo_lag_s": 0.0,
 
     # Speed cap while the planner reports a pass it could not give the
     # clearance asked for. Such a plan is still the best available and is
@@ -136,6 +148,13 @@ DEFAULTS = {
     "safety.reverse_speed": 50,
 
     "startup.localize_timeout_s": 8.0,
+    # Which way the robot is PLACED facing, degrees clockwise from +Y (0=+Y,
+    # 90=+X, 180=-Y, 270=-X). Unset leaves the compass unanchored, and an
+    # unanchored compass picks the robot's quadrant off its own boot-time
+    # zero - the same wrong quadrant every run, on a field the lidar cannot
+    # tell the quadrants of. One number, and it is one you know: it is how you
+    # put the robot down.
+    "startup.start_heading_deg": None,
     # The rules only allow the robot to be set down in the four non-corner
     # cells. Seeding the filter's search there instead of over the whole ring
     # locks on faster and cannot pick a pose that was never legal.
@@ -148,21 +167,27 @@ DEFAULTS = {
     # used as a raw PWM duty, which analogWrite constrains to 0-255 (see
     # src/Arduino/Main.ino, motor_dc) - so a speed command is NOT a percentage,
     # and the two rounds bear that out: qualification asks for 255 and the
-    # final round for 70. The divisor here is therefore an arbitrary constant
+    # final round for 60. The divisor here is therefore an arbitrary constant
     # rather than a top-speed reading, and mm_per_s_at_full is whatever makes
     # the product come out right. That is fine - the model only has to be
     # linear and self-consistent - but it means this number is meaningless
-    # unless it was MEASURED against this same formula:
+    # unless it was MEASURED against this same formula.
     #
-    #     python test_steering.py --calibrate
+    # 700 was right through the original gearing. 390 is MEASURED with a tape
+    # after the 16:28 reduction was fitted (700mm in 3.0s at command 60),
+    # within 3% of the 400 the ratio predicts. Re-measure it the same way if
+    # the drivetrain changes again:
+    #     python test_steering.py --tape 3 --drive-speed 60
+    # Not with --calibrate: that derives distance from the pose track, and
+    # this number is what makes the pose track trustworthy in the first place.
     #
     # It is worth measuring, because this is the particle filter's entire
-    # motion model between lidar scans. Set it 2.5x too high and the filter is
-    # told the robot has driven two and a half times as far as it has, every
-    # tick, and the pose runs ahead of the truth until the next scan drags it
-    # back. Pillars mapped during that walk land in the wrong place, and the
-    # round plans around pillars that are not where it thinks they are.
-    "startup.mm_per_s_at_full": 700.0,
+    # motion model between lidar scans. Set it too high and the filter is told
+    # the robot has driven further than it has, every tick, and the pose runs
+    # ahead of the truth until the next scan drags it back. Pillars mapped
+    # during that walk land in the wrong place, and the round plans around
+    # pillars that are not where it thinks they are.
+    "startup.mm_per_s_at_full": 390.0,
 
     # ---- Final round: the pillars. See classes/goal_planner.py -----------
     # These live here so that setting() has a default for them whatever
@@ -207,7 +232,23 @@ DEFAULTS = {
     # steer a dodge straight into one.
     "parking.wall_margin_mm": 40.0,
     # A bay is only believed after this many scans agree about it.
+    # Bay DETECTION. The park itself no longer needs it - the sequence finds
+    # the bay wall with the side lidar as it drives past. This is still what
+    # keeps a pillar dodge from clipping a bay wall, and what puts the walls
+    # on the map the filter matches against.
+    "parking.detect_min_depth_mm": 120.0,
+    "parking.detect_min_gap_mm": 250.0,
+    "parking.detect_max_gap_mm": 400.0,
     "parking.detect_min_scans": 3,
+    # Scans one blade has to be seen in before a bay is placed from it ALONE.
+    # Half the bay is often all there is to see: the far blade is edge-on from
+    # most of the approach and only 10mm thick, and the near one shadows the
+    # floor behind it. Waiting for two clusters to agree can mean never
+    # parking. One is enough because the WIDTH is a rule, not a measurement -
+    # but it is held to a higher bar than a pair, because a pillar standing
+    # near the wall looks exactly like one blade and cannot look like two the
+    # right distance apart. Raise it if a pillar ever gets parked at.
+    "parking.detect_single_scans": 6,
     # Reversing speed for the manoeuvre, and the slower creep used for the
     # last stretch up to the staging point. The approach is deliberately slow:
     # at racing speed one control tick is 8mm, and every millimetre of
@@ -217,38 +258,250 @@ DEFAULTS = {
     # laps already scored are worth more than a blind park - but it cannot be
     # unbounded, or a round with no bay in front of it never ends at all.
     "parking.extra_laps": 1.5,
+    # How many times a FAILED park may be retried. An attempt that aborts is
+    # thrown away rather than ending the round - the laps are already scored
+    # and the clock is still running, so driving on beats stopping dead
+    # wherever the guard tripped. Each retry costs most of a lap, because the
+    # approach needs a clean run at the bay rather than a restart from where
+    # the last attempt gave up.
+    "parking.retries": 2,
+    # How much of the FINAL lap the manoeuvre may start before the lap counter
+    # says the laps are done - i.e. how far short of the starting point to
+    # park. Zero means "finish the lap first", which puts the approach right
+    # where the robot set off from.
+    #
+    # This is a distance off the END of the last lap only; the first laps are
+    # always driven in full. It never fires while a mapped pillar still lies
+    # between the robot and the bay, so "park early" means "park once the last
+    # block is behind us", not "cut the corner off the last pillar".
+    #
+    # Costs whatever the judges count as a lap: park 1m short and the last lap
+    # is 1m short. Worth it when the alternative is arriving at the bay with
+    # no room left to line up.
+    # Parking starts THIS far before the lap would have finished, so the
+    # follow has a run at the wall before the bay turns up in it - it needs
+    # about 1.4m to settle onto the wall from a bad handover.
+    "parking.start_early_mm": 1500.0,
 
-    # ---- the four-step park itself ----------------------------------------
-    # 2  full lock toward the wall, reversing, until the yaw reaches this
-    "parking.turn_deg": 45.0,
-    # 1  how far off the outer wall the robot lines up before it starts
-    "parking.stage_depth_mm": 350.0,
-    # 1  how far PAST the far wall's inner face the rear axle lines up.
-    # Unset solves it from the rest, so the manoeuvre lands centred; set a
-    # number to place it by hand. Zero is "rear axle level with the far
-    # wall", which is where a driver would start - but at the measured
-    # turning radius the solved value is about +180mm, because the straight
-    # in step 3 carries the robot a long way back before it stops.
-    "parking.stage_along_offset_mm": None,
-    # 3  ends when the closing arc would finish at this depth. Unset lets the
-    # length follow from the depths; a number overrides it.
-    "parking.straight_mm": None,
-    "parking.park_depth_mm": 105.0,
-    # where the parked body sits along the bay, + toward the far wall
-    "parking.end_offset_mm": 0.0,
-    # 0  how much run-up gets the slow, short-lookahead treatment, and what
-    # that lookahead is. Long enough to slide in from the racing line without
-    # leaning more than approach_lean_deg.
-    "parking.approach_mm": 900.0,
-    "parking.approach_lookahead_mm": 200.0,
+    # ---- the park itself: a script the lidar starts ----------------------
+    # See ParkingSequence in classes/parking.py. Drive alongside the outer
+    # wall, wait for the range to step in - that is the bay wall, which stands
+    # 200mm proud of the outer wall and is the only thing on the field that
+    # does it - then run a fixed sequence of angles and distances. Nothing
+    # here reads the pose.
+    #
+    # How far off the outer wall to run while looking, how hard to correct,
+    # and how much correction is allowed. The follow only has to hold the
+    # robot roughly parallel for the length of one wall.
+    # How much wall the FOLLOW phase expects to drive along before it meets
+    # the bay. Not a limit - the follow runs until it sees the step or times
+    # out - but it is what start_early_mm has to buy back, and how far the
+    # robot goes round before a failed attempt is retried.
+    "parking.follow_mm": 1200.0,
+    # WIDE, for two separate reasons. The bay walls stand 200mm proud of the
+    # outer wall, and the body is 150mm across - so anything under 275mm here
+    # drives the robot's flank straight through them. And a 90deg turn at full
+    # lock drops the rear axle 204mm toward the wall, so from 300mm out the
+    # nose would finish 74mm THROUGH it; 450mm leaves the nose 76mm short,
+    # which the nose-in step then closes on the front lidar.
+    "parking.wall_distance_mm": 450.0,
+    "parking.wall_gain": 0.08,
+    "parking.wall_max_steer": 20.0,
+    # Which lidar sector watches the wall, measured from straight ahead. The
+    # sign is applied for you - it looks at whichever side the wall is on.
+    "parking.side_bearing_deg": 90.0,
+    "parking.side_sector_deg": 30.0,
+    # HOLDING THE HEADING, not just the distance. A line is fitted through the
+    # whole visible arc of wall either side of the perpendicular, and its
+    # slope is the yaw relative to that wall. angle_gain is steering command
+    # per degree of it: 0 turns the heading term off and leaves a
+    # distance-only follow, which holds a number and lets the robot crab.
+    # Raise it if it drifts off the wall between corrections, drop it if it
+    # weaves. angle_arc_deg is the half-width of the arc - wider is quieter
+    # (the fit averages more returns) but reaches further forward, where the
+    # bay wall shows up early; it is clamped to the chassis FOV regardless.
+    # Anything past angle_max_deg is a corner or a step, not the wall being
+    # followed, and is discarded rather than steered on.
+    "parking.angle_gain": 0.6,
+    "parking.angle_arc_deg": 25.0,
+    "parking.angle_min_points": 12,
+    "parking.angle_max_deg": 30.0,
+    # The range that says "bay wall". Unset means wall_distance_mm - 120,
+    # which a 200mm-proud wall clears easily and range noise does not.
+    "parking.trigger_below_mm": None,
+    #
+    # ---- THE PARK: head in, square to the wall ---------------------------
+    # Not a parallel park. At 39deg of lock a 210mm body cannot be threaded
+    # lengthwise into a 340mm slot on an arc - the best of 630,000 swept
+    # combinations still swept 50mm through a bay wall on the way in. Driving
+    # in nose-first uses the slot's 340mm against the body's 150mm WIDTH,
+    # which leaves 95mm either side, and the turn clears the walls by 18mm.
+    #
+    # CREEP. The trigger fires off the WIDE sector, which reports its closest
+    # return and so catches a bay wall well before the robot is level with it.
+    # The NARROW beam is what says "level", and that is the reference the turn
+    # is measured from. turn_after_mm rolls on further before turning: the
+    # turn lands the robot 204mm past the wall it started from against a bay
+    # half-width of 170, so it sits about 30mm past centre with 60mm still to
+    # spare - raise this only if it needs to sit deeper along the bay.
+    # Pure pursuit is off from the moment parking starts, so the sequence has
+    # to watch where it is going itself. Closer than this dead ahead means a
+    # corner, and the follow gives up so the retry can try the next lap. It is
+    # NARROW and it has to persist: a wide sector reads the wall it is
+    # following as an obstacle the moment the robot is angled at all.
+    "parking.front_stop_mm": 450.0,
+    "parking.front_sector_deg": 10.0,
+    "parking.front_hold_s": 0.4,
+    # PURE PURSUIT IS OFF ONCE PARKING STARTS, and the pillar dodging with it.
+    # Nothing else is watching where the approach is going, so it watches for
+    # itself: 30deg covers +-80mm at 300mm ahead, which is the body's own
+    # width, while the wall being followed is 1700mm down that ray and a bay
+    # wall 970mm, so neither trips it. Anything closer is something the body
+    # would hit, and the attempt is handed back so the lap can drive round it.
+    "parking.body_stop_mm": 300.0,
+    "parking.body_sector_deg": 30.0,
+    # KEEPING STATION WHILE THE WALL SIDE IS BLIND. Alongside the bay the side
+    # lidar reads a bay wall rather than the wall, so an ordinary follow would
+    # see 250mm, decide it was too close and steer AWAY from the thing it is
+    # trying to park in. The centre block on the far side of the road is used
+    # instead: the road's width is measured on the way in, so the distance to
+    # the block that matches the right distance from the wall is known.
+    # inner_slack_mm is how far off that it may read before being disbelieved
+    # - near a corner the block is not there at all, and a beam that sees
+    # across the field instead would pull the robot into the wall.
+    "parking.inner_sector_deg": 30.0,
+    "parking.inner_slack_mm": 250.0,
+    "parking.mouth_sector_deg": 6.0,       # the NARROW beam's width
+    "parking.blade_below_mm": None,        # unset = the same as the trigger
+    # THE LIDAR IS NOT AT THE AXLE - it sits this far forward of it, which
+    # moves both ends of the sequence: the beam goes level with a bay wall
+    # while the axle is still that far short of it, and it reads the outer
+    # wall from that much closer than the nose is.
+    "parking.lidar_ahead_mm": 130.0,
+    # Unset means "land in the middle of the bay": half the bay, plus how far
+    # the lidar leads the axle, minus the radius the turn carries the axle
+    # through - 170 + 130 - 204, about 96mm. At zero it lands 96mm off centre,
+    # which is enough to graze the far wall.
+    "parking.turn_after_mm": None,
+    # Drive past BOTH bay walls to measure the bay, then reverse to its
+    # middle, instead of turning a fixed distance after the first wall. Costs
+    # a bay-length of travel and the reverse that undoes it, and buys a turn
+    # aimed at the bay actually in front of the robot rather than a nominal
+    # 340mm one. Falls back to turn_after_mm if the second wall is never seen.
+    "parking.measure_bay": True,
+    # A bay wall is 10mm thick and the beam's footprint is wider, so at the
+    # crossing it flickers clear-then-blocked within 20mm - which reads as a
+    # 20mm bay. The mouth only counts once the beam has been clear for this
+    # far, and the far wall only counts beyond bay_min_mm from the near one.
+    "parking.mouth_clear_mm": 60.0,
+    "parking.bay_min_mm": 170.0,
+    # SQUARE UP BEFORE BACKING IN. Everything after the reverse is open loop,
+    # so the pose it starts from is the one the whole manoeuvre is measured
+    # from - and alongside the bay is the worst place to take it, because the
+    # side lidar has been looking at a bay wall rather than the wall. Past the
+    # far wall the beam is clean again, so it is given a little road to settle
+    # on. What it spends is added to the reverse, so it costs position
+    # nothing. settle_max_mm caps it; the tolerances say "close enough".
+    "parking.settle_max_mm": 600.0,
+    "parking.settle_tolerance_mm": 40.0,
+    "parking.settle_angle_deg": 3.0,
+    "parking.settle_relax": 2.0,
+    "parking.creep_max_mm": 700.0,
+    # TURN IN, counted on the COMPASS. Unset steer = full lock, the tightest
+    # arc, which is what the 204mm drop above assumes.
+    "parking.turn_in_deg": 90.0,
+    "parking.turn_in_steer": None,
+    # The least distance off the wall the turn may START from. Unset means
+    # radius + nose + 30, about 404mm: the turn carries the axle a whole
+    # radius toward the wall before the nose comes round, so from closer than
+    # that the body is through a bay wall before it is halfway round - at
+    # 360mm it clips by 40mm, at 320mm the nose ends 54mm INSIDE the outer
+    # wall. Under this the attempt is given up rather than driven into it.
+    "parking.turn_in_min_mm": None,
+    # Steering command per degree of heading error on the legs that are meant
+    # to be straight - the creep and the drive into the bay. Steering zero is
+    # not the same as going straight: those legs run on from a servo that has
+    # just been at full lock, and two degrees held for half a metre is the
+    # difference between arriving square in the bay and across it. The
+    # reference is the wall's own heading, learned by the follow while the
+    # side lidar could still measure it. 0 turns the correction off.
+    "parking.heading_gain": 1.0,
+    # How far the NOSE stops off the outer wall. Converted to what the front
+    # beam reads at that moment, which is lidar_ahead_mm less. The one place
+    # an error in everything upstream is absorbed rather than added to.
+    "parking.nose_stop_mm": 20.0,
+    # THE CAMERA'S JOB. The lidar sees a step 200mm proud of the wall and
+    # cannot tell a bay wall from a pillar standing next to one; the camera
+    # can see that it is pink but, through an object of unknown size, not how
+    # far away it is. So the lidar picks the moment and the camera only has to
+    # agree the thing is pink and roughly on the expected side. Setting
+    # camera_confirms false falls back to the lidar on its own.
+    "parking.camera_confirms": True,
+    "parking.camera_bearing_deg": 60.0,
+    # Forward and reverse speeds, and the pause that lets the servo reach a
+    # new angle before the wheels move - asking for lock and drive on the same
+    # tick spends the first part of the leg going straight.
     "parking.speed": 25,
-    "parking.approach_speed": 25,
-    # How far out from the outer wall a return has to be to count as a bay
-    # wall rather than the wall itself, and the gap between the two clusters
-    # that reads as a bay.
-    "parking.detect_min_depth_mm": 120.0,
-    "parking.detect_min_gap_mm": 250.0,
-    "parking.detect_max_gap_mm": 400.0,
+    "parking.reverse_speed": 25,
+    "parking.servo_settle_s": 0.4,
+    "parking.timeout_s": 20.0,
+    # How many times a failed park may be retried. An attempt that aborts is
+    # thrown away rather than ending the round - the laps are already scored
+    # and the clock is still running.
+    "parking.retries": 2,
+
+    # Final round only - leaving a bay the robot STARTED in. Off by default,
+    # because a run that starts on the track and switches this on drives a
+    # pointless swerve before its first lap. See UnparkController.
+    "unpark.enabled": False,
+    # THE TWO NUMBERS THAT ARE THE MANOEUVRE, and both are left unset on
+    # purpose - they are what a tape measure on the mat tells you, not what
+    # geometry does, because they depend on where in the bay the robot was
+    # placed and how much lock the servo really has. With either unset the
+    # exit refuses to run and says so.
+    #   reverse_mm:    how far to back up, wheels centred, before turning.
+    #                  The turn out is an arc, and an arc needs length before
+    #                  it has moved the robot sideways at all; this is where
+    #                  that length comes from. Zero means no reverse.
+    #   steer_command: how hard to turn out, as a MAGNITUDE in MotorManager's
+    #                  units. Which way it points is not set here - it is
+    #                  whichever side the lidar found open.
+    #   forward_mm:    how far to drive on that lock before the path follower
+    #                  takes over. Long enough to be clear of the bay walls
+    #                  and pointing down the track, short enough not to cross
+    #                  it.
+    "unpark.reverse_mm": None,
+    # Counter-steer for the reverse leg, as a MAGNITUDE - applied toward the
+    # side the robot is NOT leaving by. Yaw rate reverses with the direction
+    # of travel, so backing up on the opposite lock rotates the robot the same
+    # way the forward leg will, and the reverse arrives at the mouth of the
+    # bay with the nose already aimed at the way out. Zero is straight back,
+    # which is what a bay too tight to give the TAIL room wants.
+    "unpark.reverse_steer_command": 0.0,
+    "unpark.steer_command": None,
+    "unpark.forward_mm": None,
+    "unpark.speed": 25,
+    # Slower than the way out: what is behind the robot is the wall it was
+    # parked against, and the commanded speed is the only thing measuring the
+    # distance to it.
+    "unpark.reverse_speed": 20,
+    # How long the robot stands still reading the lidar before it decides
+    # which way is out, and how long it then holds still while the servo
+    # actually gets to the lock it has been asked for.
+    "unpark.look_s": 0.5,
+    "unpark.servo_settle_s": 0.4,
+    # The two sectors compared to find the open side: centred on straight
+    # left and straight right, this wide. Wide enough to survive a nan or
+    # three, narrow enough not to include what is in front of the robot.
+    "unpark.side_bearing_deg": 90.0,
+    "unpark.side_sector_deg": 45.0,
+    # How much further one side has to reach before it counts as the open
+    # one. Under this the two are the same wall seen twice, and
+    # default_side decides (+1 right, -1 left).
+    "unpark.side_margin_mm": 100.0,
+    "unpark.in_bay_mm": 250.0,
+    "unpark.default_side": 1,
+    "unpark.timeout_s": 15.0,
 }
 
 
@@ -322,7 +575,8 @@ class PathDrivingTask(Task):
             max_road_wheel_deg=self.setting("pursuit.max_road_wheel_deg"),
             max_steer_command=self.setting("pursuit.max_steer_command"),
             rear_axle_offset_mm=self.setting("pursuit.rear_axle_offset_mm"),
-            corner_lookahead_fraction=self.setting("pursuit.corner_lookahead_fraction"))
+            corner_lookahead_fraction=self.setting("pursuit.corner_lookahead_fraction"),
+            servo_lag_s=self.setting("pursuit.servo_lag_s"))
 
         # Always on: it costs one arithmetic step per tick and turns every
         # lap into a measurement of the one gain that cannot be derived.
@@ -351,6 +605,7 @@ class PathDrivingTask(Task):
             context.vision.resume()
         self.direction = self.path.direction_for(pose)
         self._warn_if_started_outside_a_zone(pose)
+        self._setup_manoeuvres(pose)
         self.progress, self.lateral = self.path.project(pose.x, pose.y, self.direction)
         self.aim_progress = self.progress
         self.distance_driven = 0.0
@@ -358,8 +613,32 @@ class PathDrivingTask(Task):
 
         print(f"Placed at {pose} -> running {RacingLine.direction_name(self.direction)}, "
               f"{self.laps_goal} laps of {self.path.length / 1000:.2f}m")
-        self.speed = int(self.setting("speed.base"))
-        context.motor.forward(self.speed)
+        # Not always forward: a round that starts inside a parking bay has a
+        # wall in front of it, and setup() ends some milliseconds before the
+        # first tick. Rolling for those milliseconds and stopping again is the
+        # difference between the exit starting from where it was placed and
+        # starting from against a bay wall.
+        self.speed = self._start_speed()
+        if self.speed:
+            context.motor.forward(self.speed)
+        else:
+            context.motor.stop()
+
+    def _setup_manoeuvres(self, pose):
+        """
+        Builds whatever owns the wheels before the path follower does, now
+        that the pose is known and believable.
+
+        Nothing here: the qualification round starts on the track. The final
+        round overrides it to build the bay exit - see tasks/final/task.py.
+        """
+
+    def _start_speed(self):
+        """
+        What the drive motor is set to at the end of setup, before the first
+        tick. Zero holds the robot still until a manoeuvre takes the wheels.
+        """
+        return int(self.setting("speed.base"))
 
     def _wait_for_localization(self):
         """
@@ -375,10 +654,21 @@ class PathDrivingTask(Task):
         minimum = float(self.setting("safety.min_pose_confidence"))
         deadline = time.monotonic() + timeout
 
+        placed = self.setting("startup.start_heading_deg")
         if self.setting("startup.assume_start_zone"):
             zones = self.context.nav.map.start_zones()
-            self.context.nav.start(zones=zones)
+            # The heading matters more than it looks. The field is 90-degree
+            # rotationally symmetric, so the lidar cannot tell the four
+            # quadrants apart - only the IMU can, and the IMU's own zero is
+            # wherever it booted until something anchors it. Passing the
+            # heading here is what anchors it; without it the filter snaps
+            # every pose into a quadrant chosen by an arbitrary but REPEATABLE
+            # offset, which reads as "the robot always thinks it is facing the
+            # same way, whichever way I put it down". See Pose's docstring and
+            # NavigationManager.set_start_heading.
+            self.context.nav.start(heading_deg=placed, zones=zones)
             print(f"Searching the {len(zones)} legal start cells...")
+        self._warn_if_the_compass_is_adrift(placed)
 
         pose = self.context.nav.get_pose()
         while time.monotonic() < deadline:
@@ -391,6 +681,28 @@ class PathDrivingTask(Task):
         print(f"WARNING: still unsure of the pose after {timeout:.0f}s "
               f"(confidence {pose.confidence:.2f}) - starting slowly anyway")
         return pose
+
+    def _warn_if_the_compass_is_adrift(self, placed):
+        """
+        Says so when the round is about to trust an unanchored compass.
+
+        Not fatal, and not always wrong: without a compass at all the lidar
+        picks one of the four quadrants and stays consistent with it, which is
+        a valid alias of the truth and drives perfectly well. What does not
+        work is a compass whose zero nobody has set, because the filter
+        believes it over the lidar.
+        """
+        nav = self.context.nav
+        if nav.compass is None or nav.compass_anchored:
+            return
+        print("WARNING: the compass has not been anchored, so the quadrant it "
+              "puts the robot in is whatever its zero happened to be at boot - "
+              "the same wrong way every run. Set startup.start_heading_deg to "
+              "the direction the robot is PLACED facing (0=+Y, 90=+X, 180=-Y, "
+              "270=-X), or pass --start-pose.")
+        if placed is None:
+            print("         Until then the lap direction, the start section and "
+                  "the parking bay's position are all read off that quadrant.")
 
     def _warn_if_lookahead_unusable(self):
         """
@@ -468,7 +780,11 @@ class PathDrivingTask(Task):
         # scan-derived pose forward to now - which is what lets this loop run
         # at 50Hz off a lidar that only produces a pose at 10Hz.
         distance = self._travelled(dt)
-        context.nav.report_motion(distance, self._turned(distance))
+        # ONCE per tick, before anything reads the wheel angle. The servo is
+        # still on its way to the last command, and the mean angle it actually
+        # held over this dt - not the command - is what the robot turned on.
+        held = self.pursuit.advance_servo(dt)
+        context.nav.report_motion(distance, self._turned(distance, held))
         pose = context.nav.get_pose()
 
         self._track_progress(pose)
@@ -479,6 +795,15 @@ class PathDrivingTask(Task):
         # SUPPOSED to be full of bay wall). Odometry above is untouched, so
         # the filter keeps tracking through the manoeuvre - see
         # _drive_parking.
+        # Same deal at the other end of the run: an exit from a bay the robot
+        # started in owns the wheels for its first second or so. First,
+        # because on tick 1 there is no useful racing line to follow from
+        # inside a slot - see _drive_unparking.
+        if self._drive_unparking(dt):
+            if context.debug:
+                self.show_debug()
+            return
+
         if self._drive_parking(dt):
             if context.debug:
                 self.show_debug()
@@ -533,6 +858,23 @@ class PathDrivingTask(Task):
         """
         return (None, None)
 
+    def block_lookahead_cap_mm(self):
+        """
+        What a nearby pillar wants the lookahead limited to, or None for no
+        limit.
+
+        Same job as the lookahead half of parking_caps, for the same reason: a
+        long lookahead is what makes pure pursuit cut a corner, and the dodge
+        around a pillar IS a corner. Aiming a full lookahead past a block puts
+        the target point beyond the far side of the swerve, and the robot
+        drives the chord instead of the curve - which is the line clipping the
+        very block it was bending around.
+
+        Nothing here: the qualification round has no pillars. The final round
+        overrides it - see tasks/final/task.py.
+        """
+        return None
+
     def parking_command(self, dt):
         """
         The parking manoeuvre's (steer_command, speed) for this tick, or None
@@ -542,6 +884,26 @@ class PathDrivingTask(Task):
         overrides it - see tasks/final/task.py.
         """
         return None
+
+    def unparking_command(self, dt):
+        """
+        The exit manoeuvre's (steer_command, speed) for this tick, or None
+        when it is not driving.
+
+        Nothing here: the qualification round never starts in a bay. The final
+        round overrides it - see tasks/final/task.py.
+        """
+        return None
+
+    def _drive_unparking(self, dt):
+        """
+        Hands the wheels to the exit manoeuvre for a tick. Same contract as
+        _drive_parking, and the same reasons for it.
+
+        I/O:
+            return: True if this tick was spent leaving the bay
+        """
+        return self._apply_manoeuvre(self.unparking_command(dt))
 
     def _drive_parking(self, dt):
         """
@@ -557,7 +919,17 @@ class PathDrivingTask(Task):
         I/O:
             return: True if this tick was spent parking
         """
-        command = self.parking_command(dt)
+        return self._apply_manoeuvre(self.parking_command(dt))
+
+    def _apply_manoeuvre(self, command):
+        """
+        Puts one manoeuvre command on the wheels, or reports that there was
+        none to put there.
+
+        I/O:
+            command: (steer, speed) from a manoeuvre controller, or None
+            return: True if the manoeuvre drove this tick
+        """
         if command is None:
             return False
         steer, speed = command
@@ -631,22 +1003,35 @@ class PathDrivingTask(Task):
             return pose
 
         distance = self.speed_mm_per_s(self.speed) * lead_s
-        turn = self._turned(distance)
+        # Over the lead the wheels are still ARRIVING at the last command, so
+        # predict the yaw with the mean angle they will hold over it. Assuming
+        # they are already there over-turns the projected pose, which is what
+        # forced lag_compensation_s to be held at less than half the measured
+        # lag; with the approach modelled it can carry the real figure.
+        turn = self._turned(distance, self.pursuit.mean_road_wheel_deg(lead_s))
         midpoint = math.radians(pose.heading + turn / 2.0)
         return replace(pose,
                        x=pose.x + distance * math.sin(midpoint),
                        y=pose.y + distance * math.cos(midpoint),
                        heading=(pose.heading + turn) % 360.0)
 
-    def _turned(self, distance_mm):
+    def _turned(self, distance_mm, road_wheel_deg=None):
         """
-        Yaw change over that distance, from the bicycle model and the steering
-        angle we last commanded. Free - the road-wheel angle is already known,
-        it is what we asked the servo for.
+        Yaw change over that distance, from the bicycle model and the angle the
+        wheels were actually at.
+
+        `road_wheel_deg` is that angle; left out it falls back to the modelled
+        current one. NOT the commanded angle: the servo takes
+        `pursuit.servo_lag_s` to get there, so during a correction the command
+        and the wheels disagree by most of the correction, and dead-reckoning
+        off the command hands the filter yaw the robot never did. See
+        PurePursuit.advance_servo for what that costs on the mat.
         """
         if not distance_mm:
             return 0.0
-        road_wheel = math.radians(self.pursuit.last_road_wheel_deg)
+        if road_wheel_deg is None:
+            road_wheel_deg = self.pursuit.actual_road_wheel_deg
+        road_wheel = math.radians(road_wheel_deg)
         return math.degrees(distance_mm / self.pursuit.wheelbase_mm * math.tan(road_wheel))
 
     def _track_progress(self, pose):
@@ -729,6 +1114,9 @@ class PathDrivingTask(Task):
         _, reach_cap = self.parking_caps()
         if reach_cap is not None:
             lookahead = min(lookahead, float(reach_cap))
+        block_cap = self.block_lookahead_cap_mm()
+        if block_cap is not None:
+            lookahead = min(lookahead, float(block_cap))
 
         ahead = self.progress + lookahead
         # Published because the lateral target is a function of THIS point,

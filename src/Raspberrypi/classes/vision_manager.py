@@ -74,6 +74,12 @@ class VisionManager:
         self._resumed = threading.Event()
         self._error = None
 
+        # Off for the whole lap; the park switches it on. See watch_for_parking.
+        self.watch_parking = False
+        self._parking_lock = threading.Lock()
+        self._parking_marks = []
+        self._parking_seen_at = 0.0
+
         self._frames = 0
         self._failures = 0
         self._consecutive_failures = 0
@@ -203,6 +209,13 @@ class VisionManager:
             return
         detections = self.solver.detect(hsv, display_image=self.camera.display_image)
         self.nav.observe_blocks(detections)
+        if self.watch_parking:
+            # Only while parking. A third colour mask on every frame is a third
+            # more work in the camera loop, and for the whole lap there is
+            # nothing to look for - the bay only matters once the laps are done.
+            with self._parking_lock:
+                self._parking_marks = self.solver.detect_parking(hsv)
+                self._parking_seen_at = time.monotonic()
 
         now = time.monotonic()
         self._frame_ms = (now - started_at) * 1000.0
@@ -225,10 +238,42 @@ class VisionManager:
     # REPORTING
     # ========================================================================
 
+    def watch_for_parking(self, enabled=True):
+        """Start (or stop) looking for the pink bay walls in each frame."""
+        self.watch_parking = bool(enabled)
+        if not enabled:
+            with self._parking_lock:
+                self._parking_marks = []
+
+    def parking_marks(self, max_age_s=0.6):
+        """
+        The pink bay walls the camera can see right now, biggest first.
+
+        Empty when the camera has not looked recently enough to be believed -
+        a stale sighting is worse than none, because the thing it is used for
+        is deciding that the bay is HERE.
+        """
+        with self._parking_lock:
+            if not self._parking_marks:
+                return []
+            if time.monotonic() - self._parking_seen_at > max_age_s:
+                return []
+            return list(self._parking_marks)
+
+    def _parking_status(self):
+        """What the park is being handed, for the status line."""
+        if not self.watch_parking:
+            return ""
+        marks = self.parking_marks()
+        if not marks:
+            return "  bay:none"
+        return "  bay:" + ",".join(f"{m.bearing_deg:+.0f}deg" for m in marks[:2])
+
     def status_line(self):
         if not self.is_running:
             return "vision off"
         if not self._resumed.is_set():
             return "vision paused"
         return (f"vision {self.fps:.1f}fps {self._frame_ms:.1f}ms"
-                + (f" {self._failures} failed" if self._failures else ""))
+                + (f" {self._failures} failed" if self._failures else "")
+                + self._parking_status())
