@@ -1383,26 +1383,30 @@ class UnparkController:
         """
         The open side, or `default_side` when the two are too close to call.
 
-        A margin, not a plain comparison: parked square in a 300mm bay both
-        sides read the same wall a few millimetres apart, and a difference
-        that small is noise, not information about where the track is.
+        Also settles `in_bay` and `side_confident`, on every path - see below
+        for why that has to happen before anything returns.
         """
         if self._looks == 0:
             print("WARNING: no lidar to unpark by - "
                   f"exiting {self.side_name(self.default_side)} on faith")
             return self.default_side
-        if abs(self.right_mm - self.left_mm) < self.side_margin_mm:
-            print(f"Unpark: both sides within {self.side_margin_mm:.0f}mm of each "
-                  f"other, going {self.side_name(self.default_side)} by default")
-            return self.default_side
-        # IN A BAY, OR JUST STANDING ON THE TRACK? The comparison below is only
-        # ever meaningful between two bay walls. Out on the mat the two sectors
-        # read hundreds of millimetres either way and they are never equal, so
-        # the margin test above passes on any start at all and the wider side
-        # gets reported as "the track" with full confidence - which
-        # FinalTask._lap_direction then trusts over the racing line and runs
-        # the whole round, and the park, backwards. A bay pins BOTH sides
-        # close: 340mm of slot around a 150mm body is under 100mm a side.
+        # IN A BAY, OR JUST STANDING ON THE TRACK? Asked FIRST, and on every
+        # path out of here. It used to be worked out only after the margin
+        # test had returned, which got it exactly backwards: two walls that
+        # are CLOSE AND EQUAL is what a bay looks like from the middle of one,
+        # and that is the case the margin test returns on. So the robot that
+        # was placed properly - centred, both blades the same distance off -
+        # left `in_bay` at its initial False, and _look read that as "not
+        # started in a bay" and ABORTED THE EXIT. The wheels then went to pure
+        # pursuit with the robot still in the slot, which is a robot swinging
+        # one way and back trying to get itself out. `side_confident` was
+        # stranded False by the same return, so wall_side answered None and
+        # the lap direction fell through to the pose - the one source the
+        # design says must never decide it here.
+        #
+        # Out on the mat the two sectors read hundreds of millimetres either
+        # way, which is what in_bay_mm separates: a bay pins BOTH sides close,
+        # 340mm of slot around a 150mm body being under 100mm a side.
         self.in_bay = min(self.left_mm, self.right_mm) <= self.in_bay_mm
         self.side_confident = self.in_bay
         if not self.in_bay:
@@ -1410,6 +1414,13 @@ class UnparkController:
                   f"{min(self.left_mm, self.right_mm):.0f}mm away, further than the "
                   f"{self.in_bay_mm:.0f}mm a bay puts it - this is not a bay start, "
                   f"so the lap direction is left to the racing line")
+        # A margin, not a plain comparison: parked square in a 300mm bay both
+        # sides read the same wall a few millimetres apart, and a difference
+        # that small is noise, not information about where the track is.
+        if abs(self.right_mm - self.left_mm) < self.side_margin_mm:
+            print(f"Unpark: both sides within {self.side_margin_mm:.0f}mm of each "
+                  f"other, going {self.side_name(self.default_side)} by default")
+            return self.default_side
         return 1 if self.right_mm > self.left_mm else -1
 
     @property
@@ -1537,12 +1548,12 @@ class ParkingSequence:
     applies it, so the odometry and the status line keep working throughout.
     """
 
-    FOLLOW, CREEP, MEASURE, SETTLE, BACK_CENTRE, SET_TURN, TURN_IN, \
+    FOLLOW, RECOVER, CREEP, MEASURE, SETTLE, BACK_CENTRE, SET_TURN, TURN_IN, \
         NOSE_IN, DONE, ABORTED = (
-            "follow", "creep", "measure", "settle", "back_centre", "set_turn",
-            "turn_in", "nose_in", "done", "aborted")
-    DRIVING = (FOLLOW, CREEP, MEASURE, SETTLE, BACK_CENTRE, SET_TURN, TURN_IN,
-               NOSE_IN)
+            "follow", "recover", "creep", "measure", "settle", "back_centre",
+            "set_turn", "turn_in", "nose_in", "done", "aborted")
+    DRIVING = (FOLLOW, RECOVER, CREEP, MEASURE, SETTLE, BACK_CENTRE, SET_TURN,
+               TURN_IN, NOSE_IN)
 
     def __init__(self, lidar=None, compass=None, wall_side=1.0,
                  wall_distance_mm=450.0,
@@ -1590,6 +1601,10 @@ class ParkingSequence:
                  reverse_speed=25,
                  servo_settle_s=0.4,
                  mm_per_s_at_full=390.0,
+                 recover_attempts=2,
+                 recover_mm=900.0,
+                 recover_clear_mm=350.0,
+                 rear_sector_deg=60.0,
                  timeout_s=20.0):
         self.lidar = lidar
         self.compass = compass
@@ -1662,6 +1677,11 @@ class ParkingSequence:
         self.reverse_speed = abs(int(reverse_speed))
         self.servo_settle_s = float(servo_settle_s)
         self.mm_per_s_at_full = float(mm_per_s_at_full)
+        # Reverse-and-try-again on a failed approach - see _recover.
+        self.recover_attempts = max(0, int(recover_attempts))
+        self.recover_mm = abs(float(recover_mm))
+        self.recover_clear_mm = abs(float(recover_clear_mm))
+        self.rear_sector_deg = abs(float(rear_sector_deg))
         self.timeout_s = float(timeout_s)
 
         self.phase = self.FOLLOW
@@ -1698,6 +1718,9 @@ class ParkingSequence:
         self.driven_mm = 0.0            # distance in the current leg
         self._elapsed = 0.0
         self._armed = False             # a plausible wall seen at least once
+        # Reverse-and-try-again, instead of a whole lap. See _recover.
+        self._recoveries = 0
+        self._recover_target_mm = 0.0
 
 
 
@@ -1760,6 +1783,8 @@ class ParkingSequence:
 
         if self.phase == self.FOLLOW:
             return self._follow(dt, max_steer)
+        if self.phase == self.RECOVER:
+            return self._recover(dt, max_steer)
         if self.phase == self.CREEP:
             return self._creep(dt, max_steer)
         if self.phase == self.MEASURE:
@@ -2130,6 +2155,8 @@ class ParkingSequence:
         # meant it was always asked at the one moment it could never answer.
         self._pink_ahead()
         if self._blocked_ahead(dt):
+            # Not recoverable by backing up: whatever it is is still going to
+            # be there, and only the lap can steer round it.
             return self._abort("something in the way on the approach - "
                                "handing back so the lap can drive round it")
         if self._corner_ahead(dt):
@@ -2137,13 +2164,13 @@ class ParkingSequence:
             # of this wall, or a traffic sign standing in it. Either way the
             # approach cannot continue, and the difference does not matter -
             # stop, hand back, and let the lap drive round it.
-            return self._abort(
-                f"blocked {self._range_text(self._front_range())} ahead without "
-                f"finding the bay - handing back so the lap can drive round it"
+            return self._retry_or_abort(
+                f"ran out of road {self._range_text(self._front_range())} ahead "
+                f"without finding the bay"
                 + ("" if self._armed else
-                   f" (and it never settled to {self.wall_distance_mm:.0f}mm "
-                   f"off the wall, so the bay could not have been recognised "
-                   f"anyway)"))
+                   f", and it never settled to {self.wall_distance_mm:.0f}mm "
+                   f"off the wall ({self._range_text(self.side_mm)}), so the "
+                   f"bay could not have been recognised anyway"))
         if self._armed and self.side_mm < self.trigger_below_mm:
             if self.camera_confirms and not self.saw_pink:
                 # The lidar sees SOMETHING 200mm proud of the wall. Only the
@@ -2171,6 +2198,102 @@ class ParkingSequence:
             self._enter(self.CREEP)
             return (0.0, self.speed)
         return (self._track(self.wall_distance_mm, max_steer), self.speed)
+
+    def _retry_or_abort(self, reason):
+        """
+        A failed approach costs a reverse, not a lap.
+
+        THE APPROACH IS THE ONLY PART THAT CAN BE RETRIED CHEAPLY. Everything
+        from the creep onward is an open sequence measured from one settle, so
+        interrupting it means starting the whole thing again - but the follow
+        is a closed loop on the wall, and it fails in exactly two ways, both
+        of which more road fixes:
+
+          RAN OUT OF ROAD  a corner came up before the bay did. The robot is
+                           past the bay, or never had enough straight left to
+                           settle in. Backing up gives it that straight again.
+          NEVER SETTLED    it arrived from pure pursuit too far off the wall
+                           and the arming gate never opened, so the bay wall
+                           went by unrecognised. `_armed` requires being
+                           within settle_tolerance_mm of wall_distance_mm, and
+                           a robot that is 700mm out when it needs to be 300
+                           does not get there in the road it has left.
+
+        Backing STRAIGHT up only fixes the first. So the reverse steers as
+        well - see _recover - which is the answer to "is there another way to
+        look for the wall": there is, and it is to go back and start the look
+        from the right distance off it, rather than to look harder from the
+        wrong one.
+
+        The lap-long retry this replaces is still there underneath, in the
+        task, for a failure this cannot mend.
+        """
+        if self._recoveries >= self.recover_attempts:
+            return self._abort(reason + f" (after {self._recoveries} reverse"
+                               f"{'' if self._recoveries == 1 else 's'})")
+        behind = self._rear_range()
+        if behind < self.recover_clear_mm:
+            return self._abort(reason + f" - and there is only "
+                               f"{self._range_text(behind)} behind, so there is "
+                               f"no room to back up and try again")
+        self._recoveries += 1
+        # Back up far enough to re-run the whole arming: the settle needs
+        # road, and a reverse that only undoes the last few hundred
+        # millimetres puts the robot back at the same wrong distance.
+        room = max(0.0, behind - self.recover_clear_mm)
+        self._recover_target_mm = min(self.recover_mm, room)
+        print(f"Parking: {reason} - backing up "
+              f"{self._recover_target_mm:.0f}mm to try the approach again "
+              f"({self.recover_attempts - self._recoveries} left after this).")
+        self._enter(self.RECOVER)
+        return (0.0, 0)
+
+    def _recover(self, dt, max_steer):
+        """
+        Reverse, closing on the wall, then look again.
+
+        STEERED, NOT STRAIGHT. The point of the reverse is to hand the follow
+        a better starting position than the one it just failed from, and the
+        commonest failure is being too far off the wall to arm at all. Backing
+        up on the same offset would reproduce it exactly. So the wall error is
+        corrected on the way back - with the steering INVERTED, because a car
+        going backwards swings its rear the other way.
+
+        Ends on distance, or early if something turns up behind. Then it
+        clears the arming, the pink and the hold timers and re-enters FOLLOW,
+        so the retry is a genuinely fresh approach rather than a continuation
+        of the failed one.
+        """
+        self.driven_mm += self.reverse_speed / 100.0 * self.mm_per_s_at_full * dt
+        if self._rear_range() < self.recover_clear_mm:
+            print("Parking: something behind - ending the reverse early.")
+            return self._restart_follow()
+        if self.driven_mm >= self._recover_target_mm:
+            return self._restart_follow()
+        steer = 0.0
+        if not math.isnan(self.side_mm):
+            steer = -self._track(self.wall_distance_mm, max_steer)
+        return (steer, -self.reverse_speed)
+
+    def _restart_follow(self):
+        """Forget everything the failed approach learned, and look again."""
+        self._armed = False
+        self.saw_pink = False
+        self._warned_camera = False
+        self._level_armed = False
+        self._level_with_blade = False
+        self._enter(self.FOLLOW)
+        return (0.0, self.speed)
+
+    def _rear_range(self):
+        """Closest return behind the robot, or +inf when nothing is there."""
+        if self.lidar is None:
+            return float("inf")
+        half = self.rear_sector_deg / 2.0
+        distance, _ = self.lidar.get_min_distance(180.0 - half, 180.0 + half)
+        if distance is None or math.isnan(distance):
+            return float("inf")
+        return float(distance)
 
     def _learn_wall_heading(self):
         """
