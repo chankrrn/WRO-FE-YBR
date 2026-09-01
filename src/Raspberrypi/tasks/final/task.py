@@ -396,6 +396,15 @@ class FinalTask(PathDrivingTask):
         if self._start_point is not None:
             bay_progress, _ = self.path.project(*self._start_point, self.direction)
             self.distance_driven = self.path.gap(bay_progress, self.progress)
+            # AND KEEP IT. The robot was PLACED in the bay, so the point it
+            # started from IS the bay, to within the length of the car - known
+            # on tick one, a whole round before the lidar can confirm it. That
+            # is all the arming needs: it only has to know which lap the bay
+            # comes up on and roughly where, not where to steer. _look_for_bay
+            # overwrites this with the measured position when it finds it,
+            # which is better, but no longer something the park waits for.
+            if self._bay_progress is None:
+                self._bay_progress = bay_progress
         self._rejoin_progress = self.progress
         print(f"Out of the bay at {pose} -> running "
               f"{RacingLine.direction_name(self.direction)} ({source})")
@@ -403,37 +412,30 @@ class FinalTask(PathDrivingTask):
 
     def _warn_if_parking_cannot_reach_the_bay(self):
         """
-        Says so when the last lap will end PAST the bay.
+        Says so when `parking.start_early_mm` would pick the wrong lap.
 
-        The lap counter is zeroed here, where the exit ended - which is some
-        way beyond the bay, because leaving it meant driving out of it. So a
-        lap counted from here finishes past the bay too, and parking, which is
-        not allowed to start until the laps are done, arms with the bay
-        already behind the robot. It then has to go round again.
+        It used to warn about something else - that the last lap ended past
+        the bay, so the approach armed with the bay behind it and had to go
+        round again. That cannot happen now: the handover is the bay's own
+        section on the final lap, not a distance off the end of the counter,
+        so where the exit left the robot no longer decides anything.
 
-        parking.start_early_mm is what buys that back, and this says how much
-        of it is needed: the distance from the bay to here, plus the run-up
-        the approach itself wants.
+        What is left for start_early_mm to get wrong is WHICH lap. It is how
+        much of the final lap may still be missing when the bay comes up, so
+        anything under a lap length picks the final lap; a value at or over
+        one would arm a whole lap early and park after two laps of three.
         """
-        if (self._bay_progress is None or self._rejoin_progress is None
-                or self._warned_about_reach):
+        if self._warned_about_reach or self.path is None:
             return
-        # Measured from where the EXIT handed back, not from wherever the
-        # robot is now: that point is where the lap counter reads zero, so it
-        # is also where the last lap will end.
-        past = self.path.gap(self._bay_progress, self._rejoin_progress)
-        if past <= 0.0:
+        early = float(self.setting("parking.start_early_mm"))
+        if early < self.path.length:
             return
         self._warned_about_reach = True
-        approach = float(self.setting("parking.follow_mm"))
-        needed = past + approach
-        early = float(self.setting("parking.start_early_mm"))
-        if early >= needed:
-            return
-        print(f"WARNING: the exit left the robot {past:.0f}mm past the bay, so the "
-              f"last lap ends there too. parking.start_early_mm is {early:.0f}mm but "
-              f"needs about {needed:.0f} ({past:.0f} back to the bay + {approach:.0f} "
-              f"of approach), or the round drives an extra lap before it can park.")
+        print(f"WARNING: parking.start_early_mm is {early:.0f}mm but a lap is only "
+              f"{self.path.length:.0f}mm, so the approach will arm a whole lap early "
+              f"and park after {self.laps_goal - 1} laps instead of {self.laps_goal}. "
+              f"Set it well under a lap length - it only has to absorb the odd "
+              f"metre, not a lap.")
 
     def _lap_direction(self, pose):
         """
@@ -794,6 +796,10 @@ class FinalTask(PathDrivingTask):
             reverse_speed=int(self.setting("parking.reverse_speed")),
             servo_settle_s=float(self.setting("parking.servo_settle_s")),
             mm_per_s_at_full=float(self.setting("startup.mm_per_s_at_full")),
+            recover_attempts=int(self.setting("parking.recover_attempts")),
+            recover_mm=float(self.setting("parking.recover_mm")),
+            recover_clear_mm=float(self.setting("parking.recover_clear_mm")),
+            rear_sector_deg=float(self.setting("parking.rear_sector_deg")),
             timeout_s=float(self.setting("parking.timeout_s")))
         # The camera does nothing about the bay for the whole lap - a third
         # colour mask per frame that nothing reads. Switch it on now.
@@ -860,11 +866,16 @@ class FinalTask(PathDrivingTask):
         if self._parking is not None and self._parking.phase == ParkingSequence.ABORTED:
             self._abandon_the_park()
             return None
-        if self.distance_driven < self._park_after_mm():
-            return None
-        if self._park_retry_at is not None and self.distance_driven < self._park_retry_at:
-            return None                      # coming round for another attempt
+        # THE GATES ARE FOR STARTING, NOT FOR RUNNING. _park_after_mm is
+        # measured to the bay ahead, so it jumps by a whole lap the moment the
+        # bay is behind the robot - which is halfway through the manoeuvre.
+        # Re-asking it then would hand the wheels back mid-reverse.
         if self._parking is None:
+            if self.distance_driven < self._park_after_mm():
+                return None
+            if (self._park_retry_at is not None
+                    and self.distance_driven < self._park_retry_at):
+                return None                  # coming round for another attempt
             self._start_parking()
         if self._parking.finished:
             return None
@@ -880,11 +891,13 @@ class FinalTask(PathDrivingTask):
         """
         How far the robot has to have driven before the manoeuvre may start.
 
-        The whole lap distance, less `parking.start_early_mm` - which is how
-        this parks SHORT of the point it set off from. The saving is real: the
-        robot starts inside the bay and rejoins the line some way past it, so
-        a lap counted from there ends past the bay too, and the approach then
-        has to come round again to reach it.
+        Once the bay has been seen, this is measured TO THE BAY - see
+        _arm_at_the_bay, which is what stops the round driving an extra lap.
+        Until then there is nothing to measure to, so it falls back to the
+        whole lap distance less `parking.start_early_mm`, which parks SHORT of
+        the point it set off from: the robot starts inside the bay and rejoins
+        the line some way past it, so a lap counted from there ends past the
+        bay too, and the approach would have to come round again to reach it.
 
         The early start is withheld while a pillar is still between here and
         the bay, so it means "once the last block is behind us" rather than
@@ -894,9 +907,59 @@ class FinalTask(PathDrivingTask):
         """
         full = self.laps_goal * self.path.length
         early = float(self.setting("parking.start_early_mm"))
+        if self._bay_progress is not None:
+            return self._arm_at_the_bay(full, early)
         if early <= 0.0 or self._pillar_before_the_bay():
             return full
         return full - early
+
+    def _arm_at_the_bay(self, full, early):
+        """
+        Hand over when the robot enters the bay's section on the FINAL lap.
+
+        WHY A SECTION AND NOT A DISTANCE. The follow cannot recognise the bay
+        until it has settled to `wall_distance_mm` off the wall and armed - see
+        ParkingSequence._follow. Settling from a pure-pursuit handover takes
+        the better part of a metre and a half, and the old gate gave it
+        `parking.follow_mm`, 800. So the approach could arrive at the bay
+        still un-armed, sail past a bay it could see perfectly well, and the
+        only way back to it was another whole lap. That is the extra lap.
+
+        Entering the section is the earliest handover that is still safe: the
+        bay is in the middle of one wall, the section is that wall, and pure
+        pursuit has already driven the corner into it. The follow gets the
+        entire straight to settle in, which is several times what it needs.
+
+        WHICH LAP, from where the round started. distance_driven is zeroed AT
+        THE BAY - the robot began in it - so the odometer reading it will have
+        when it next reaches the bay is a whole number of laps. `at_bay` is
+        that reading; once it is the reading that ends the laps, this is the
+        final lap and there is no lap after it.
+
+        I/O:
+            return: the distance driven at which parking may start, or
+                    infinity while this is not yet the moment.
+        """
+        # FORWARD ONLY. path.gap wraps into +/- half a lap, so a bay just
+        # BEHIND the robot comes back as a small negative - and adding that to
+        # the odometer says the bay pass that ends the laps already happened.
+        # The bay that matters is always the next one ahead, which is that
+        # same number brought back into [0, length).
+        to_bay = self.path.gap(self.aim_progress, self._bay_progress)
+        if to_bay < 0.0:
+            to_bay += self.path.length
+        at_bay = self.distance_driven + to_bay
+        if at_bay < full - early:
+            return float("inf")          # not the final lap yet - keep driving
+        pose = self.context.nav.get_pose()
+        if section_of(pose.x, pose.y, self.context.nav.map) != self._start_section:
+            return float("inf")          # not on the bay's wall yet
+        if self._pillar_before_the_bay():
+            # A pillar between here and the bay is one the follow would have
+            # to steer round from inside its own approach, which it cannot do
+            # - every leg of it is an open arc. Re-armed the tick it is past.
+            return float("inf")
+        return self.distance_driven      # now
 
     def _pillar_before_the_bay(self):
         """
