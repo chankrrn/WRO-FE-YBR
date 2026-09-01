@@ -44,6 +44,16 @@ MIN_ANGULAR_HEIGHT_DEG = 0.05   # avoid a division by ~0 on a 1px-tall contour
 
 TARGET_COLORS = (Color.GREEN, Color.RED)
 
+# The parking bay's walls. Found separately from the pillars, and deliberately:
+# they must never reach the block map (a bay wall folded in as a pillar is
+# something the lap would swerve around), and they do not pass the tests the
+# pillars are found by - see detect_parking.
+PARKING_COLOR = Color.PINK
+# Lower than the pillars' threshold: a bay wall is a low bar seen from a
+# couple of metres away, which is a much smaller blob than a 10cm pillar at
+# the same range, and it only has to be caught once while it is still ahead.
+MIN_PARKING_AREA_PX = 150
+
 # ============================================================================
 # Top-down debug visualizer configuration
 # ============================================================================
@@ -55,6 +65,26 @@ COLOR_BGR = {
     Color.GREEN: (0, 255, 0),
     Color.RED: (0, 0, 255),
 }
+PARKING_BGR = (255, 0, 255)      # the bay walls, in the debug overlay
+
+
+@dataclass
+class ParkingMark:
+    """
+    A pink bay wall as the camera sees it: which way, and how big.
+
+    NO DISTANCE, on purpose. Every range in DetectedObject is solved from the
+    apparent height of a 10cm pillar; a bay wall is a different object of a
+    different size, so that number would be confidently wrong. The bearing
+    comes from the pixel centre and is independent of what size the thing is,
+    so that is what this carries - enough to say "the bay is over there", which
+    is all the camera is asked for.
+    """
+    bearing_deg: float      # + right of the camera axis, - left
+    area_px: float
+    width_px: float
+    pixel_center: tuple
+    box_points: np.ndarray
 
 
 @dataclass
@@ -99,6 +129,7 @@ class ObjectSolver:
         self.image_width = image_width or ImageTransformUtils.PIC_WIDTH
         self.image_height = image_height or ImageTransformUtils.PIC_HEIGHT
         self.horizontal_crop_offset_px = horizontal_crop_offset_px
+        self._last_parking = []
 
         # Debug canvases drawn by detect() and waiting to be put on screen.
         # detect() runs on VisionManager's thread (classes/vision_manager.py)
@@ -134,6 +165,40 @@ class ObjectSolver:
             self._render_debug(objects, display_image)
 
         return objects
+
+    def detect_parking(self, hsv_image):
+        """
+        Finds the pink parking-bay walls, biggest first.
+
+        Not part of detect(). A bay wall is a long low bar - wider than it is
+        tall - which is exactly the shape _find_objects_in_mask throws away as
+        noise, since the pillars it looks for stand upright. And the result
+        must stay out of nav.observe_blocks: the lap dodges what it finds
+        there, and it should not dodge the thing it is trying to park in.
+
+        I/O:
+            hsv_image: HSV frame to search
+            return: list of ParkingMark, largest area first
+        """
+        mask = ImageColorUtils.calculate_color_mask(hsv_image, PARKING_COLOR)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
+                                       cv2.CHAIN_APPROX_SIMPLE)
+        marks = []
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area < MIN_PARKING_AREA_PX:
+                continue
+            rect = cv2.minAreaRect(contour)
+            (center_x, center_y), (width, height), _ = rect
+            marks.append(ParkingMark(
+                bearing_deg=round(self._horizontal_pixel_to_angle(center_x), 1),
+                area_px=float(area),
+                width_px=float(max(width, height)),
+                pixel_center=(int(center_x), int(center_y)),
+                box_points=np.intp(cv2.boxPoints(rect))))
+        marks.sort(key=lambda mark: -mark.area_px)
+        self._last_parking = marks      # for the debug overlay
+        return marks
 
     def _find_objects_in_mask(self, mask, color):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -195,7 +260,8 @@ class ObjectSolver:
         """Draws both debug views and parks them for the next show_debug()."""
         frames = {"Object Solver - Top Down": self._render_top_down(objects)}
         if display_image is not None:
-            frames["Object Solver - Camera"] = self._render_camera_overlay(objects, display_image)
+            frames["Object Solver - Camera"] = self._render_camera_overlay(
+                objects, display_image)
         with self._debug_lock:
             self._debug_frames = frames
 
@@ -223,8 +289,7 @@ class ObjectSolver:
             cv2.destroyWindow(window_name)
         self._open_windows.clear()
 
-    @staticmethod
-    def _render_camera_overlay(objects, display_image):
+    def _render_camera_overlay(self, objects, display_image):
         overlay = display_image.copy()
         for obj in objects:
             bgr = COLOR_BGR[obj.color]
@@ -232,6 +297,15 @@ class ObjectSolver:
             label = f"{obj.distance_cm}cm {obj.bearing_deg}deg"
             ImageDrawingUtils.draw_label(overlay, label,
                                          (obj.pixel_center[0] - 45, obj.pixel_center[1] - 10), bgr)
+        # The bay walls, when the park has asked for them. Drawn from the last
+        # detect_parking rather than found again here: the point of showing
+        # them is to see what the PARK is actually being given, not what a
+        # second pass on a different frame would have found.
+        for mark in self._last_parking:
+            cv2.drawContours(overlay, [mark.box_points], 0, PARKING_BGR, 2)
+            ImageDrawingUtils.draw_label(
+                overlay, f"bay {mark.bearing_deg:+.0f}deg {mark.area_px:.0f}px",
+                (mark.pixel_center[0] - 45, mark.pixel_center[1] - 10), PARKING_BGR)
         return overlay
 
     def _render_top_down(self, objects):

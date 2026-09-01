@@ -27,12 +27,14 @@ parking manoeuvre, and pure pursuit itself. The follower was never the
 problem - it was being handed a line that had quietly stopped meaning what it
 said.
 
-One thing this round has to do before any of that is work out where it is.
-The robot starts INSIDE a parking space, between two walls that stick 200mm
+One thing this round has to do before any of that is get OUT of the parking
+space it starts in. The robot is placed between two walls that stick 200mm
 out from the outer wall and are not in the map the particle filter matches
-against. Every beam that hits one is unexplained, so the filter either refuses
-to converge or converges somewhere wrong - and a wrong pose at tick zero is a
-wrong plan for the whole round. See _wait_for_localization.
+against, so the pose on tick one is the least trustworthy of the whole round.
+Leaving is therefore driven open-loop off the lidar rather than off the pose -
+see UnparkController - and the direction the lap runs is taken from which side
+the lidar finds the outer wall on, not from the racing line's guess. See
+_setup_manoeuvres and _lap_direction.
 """
 import math
 import time
@@ -42,9 +44,13 @@ import cv2
 
 from classes.block_map import BLOCK_SIZE_MM
 from classes.goal_planner import GoalPlanner, Obstacle
-from classes.parking import (BayFinder, BayFrame, ParkingController,
-                             section_of, wall_rects)
+from classes.parking import (BayFinder, ParkingSequence, UnparkController,
+                             nearest_outer_wall, section_of,
+                             travel_direction_beside_wall, wall_heading_of,
+                             wall_rects)
+from classes.racing_line import RacingLine
 from tasks.path_task import PathDrivingTask
+from utils.angle_utils import angle_difference
 from utils.enums import Color
 
 # `lateral` is positive to the right of travel (see RacingLine.project).
@@ -81,6 +87,13 @@ SAME_PILLAR_MM = 250.0
 # to prevent. See GoalPlanner._build_goals.
 FORGET_BEHIND_MM = 700.0
 
+# How close to a parking space something has to be before it is not a pillar.
+# The field never puts one within this of a bay, so anything the map has there
+# is a bay wall read as a block. Waiting for such a "pillar" to be passed
+# means waiting until the robot is past the BAY, which costs a whole lap - see
+# _pillar_before_the_bay.
+PILLAR_FREE_MM = 500.0
+
 
 class FinalTask(PathDrivingTask):
     """
@@ -114,8 +127,26 @@ class FinalTask(PathDrivingTask):
         self._bay_progress = None
         self._bay_finder = None
         self._parking = None
-        self._left_the_bay = False
-
+        # Failed park attempts, and the lap distance at which the next one may
+        # start - see _abandon_the_park.
+        self._park_attempts = 0
+        self._park_retry_at = None
+        self._park_given_up = False
+        # The exit from the bay the robot was placed in - see
+        # _setup_manoeuvres.
+        self._unparking = None
+        # Where on the lap the exit handed back to the racing line, and
+        # whether the reach warning has been said - see
+        # _warn_if_parking_cannot_reach_the_bay.
+        self._rejoin_progress = None
+        self._warned_about_reach = False
+        # Which way round the lap the bay says to go. None when the round is
+        # not starting in one.
+        self._bay_direction = None
+        # The round starts INSIDE the bay, so this is where the bay is. Kept
+        # as a raw point rather than a progress: the lap direction is not
+        # settled yet, and project() needs it.
+        self._start_point = None
     # ========================================================================
     # SETUP
     # ========================================================================
@@ -145,6 +176,7 @@ class FinalTask(PathDrivingTask):
         print(self.planner)
 
         pose = self.context.nav.get_pose()
+        self._start_point = (pose.x, pose.y)
         self._start_section = section_of(pose.x, pose.y, self.context.nav.map)
         print(f"Parking bay expected in the {self._start_section} section")
         if self.setting("parking.enabled") and self._start_section is not None:
@@ -153,7 +185,8 @@ class FinalTask(PathDrivingTask):
                 min_depth_mm=float(self.setting("parking.detect_min_depth_mm")),
                 min_gap_mm=float(self.setting("parking.detect_min_gap_mm")),
                 max_gap_mm=float(self.setting("parking.detect_max_gap_mm")),
-                min_scans=int(self.setting("parking.detect_min_scans")))
+                min_scans=int(self.setting("parking.detect_min_scans")),
+                single_scans=int(self.setting("parking.detect_single_scans")))
         self._warn_if_the_corridor_is_too_narrow()
         self._warn_if_the_horizon_is_too_short()
         self._replan(pose, "setup")
@@ -240,95 +273,205 @@ class FinalTask(PathDrivingTask):
         blocks.max_range_mm = float(reach)
 
     # ========================================================================
-    # STARTING FROM INSIDE THE PARKING SPACE
+    # LEAVING THE BAY
     # ========================================================================
 
-    def _wait_for_localization(self):
+    def _setup_manoeuvres(self, pose):
         """
-        Find the robot - after driving it out of the parking space, if that is
-        where it started.
+        Builds the bay exit, when the round is starting from inside a bay.
 
-        The round begins with the robot parked between the two bay walls.
-        Those walls are 100mm tall, stick 200mm out from the outer wall, and
-        are NOT in FieldMap: the filter only knows the outer box and the
-        centre block. So from inside the bay a large share of the lidar's
-        beams are returns the map cannot explain, and an unexplained beam does
-        not merely add noise - it actively pushes weight onto whatever pose
-        would explain it, which is a pose somewhere else on the mat.
-
-        The result is a filter that either sits below min_pose_confidence
-        until the timeout and starts anyway on a pose it does not believe, or
-        converges hard onto a wrong one. Either way `direction_for()` may pick
-        the wrong way round the loop and the first plan is built from a lie.
-
-        Waiting longer cannot fix it, because nothing improves while the robot
-        is stationary between two walls the map does not contain. Driving out
-        does: three or four hundred millimetres forward and the scan is the
-        ordinary corridor the map describes perfectly.
-
-        So: creep out first, THEN localize. The creep is open-loop - it is the
-        one stretch of the round where there is no pose worth steering on -
-        and deliberately short and slow, since it is driven blind.
+        Open loop and off the lidar rather than off the map: see
+        UnparkController for why the pose is the wrong thing to trust on tick
+        one of a run that starts in a slot.
         """
-        if not self.setting("start.in_parking_bay"):
-            return super()._wait_for_localization()
-
-        self._creep_out_of_the_bay()
-        # Start the search over from scratch. Whatever the filter believed
-        # from inside the bay was formed against a map missing the two walls
-        # in front of it, so it is not a prior worth keeping - it is the thing
-        # being corrected.
-        self.context.nav.start(zones=self.context.nav.map.start_zones())
-        pose = super()._wait_for_localization()
-        self._left_the_bay = True
-        print(f"Out of the parking space and localized: {pose}")
-        return pose
-
-    def _creep_out_of_the_bay(self):
-        """
-        Drives straight forward far enough to be clear of the bay walls.
-
-        Open-loop and blind on purpose: there is no pose to steer on yet, and
-        a steering correction computed from a pose that is wrong is worse than
-        no correction at all. Straight ahead out of a parking space is the one
-        manoeuvre that needs neither.
-
-        Distance is dead-reckoned from the commanded speed, which is rough -
-        but the only thing it has to be right about is "further than the bay
-        walls are deep", and they are 200mm deep against a default of 600mm.
-        Overshooting into the corridor is harmless; stopping short is not, so
-        this errs long.
-
-        The filter is fed the motion as it happens, so the pose it starts from
-        afterwards is at least in the right postcode even before the first
-        scan lands.
-        """
-        distance = float(self.setting("start.bay_exit_mm"))
-        speed = int(self.setting("start.bay_exit_speed"))
-        rate = self.speed_mm_per_s(abs(speed))
-        if rate <= 0.0:
-            print("WARNING: start.bay_exit_speed is 0 - not leaving the bay")
+        if not self.setting("unpark.enabled"):
             return
+        self._set_direction_from_the_bay(pose)
+        self._unparking = UnparkController(
+            lidar=self.context.lidar,
+            reverse_mm=self.setting("unpark.reverse_mm"),
+            reverse_steer_command=self.setting("unpark.reverse_steer_command"),
+            steer_command=self.setting("unpark.steer_command"),
+            forward_mm=self.setting("unpark.forward_mm"),
+            speed=int(self.setting("unpark.speed")),
+            reverse_speed=int(self.setting("unpark.reverse_speed")),
+            look_s=float(self.setting("unpark.look_s")),
+            servo_settle_s=float(self.setting("unpark.servo_settle_s")),
+            side_bearing_deg=float(self.setting("unpark.side_bearing_deg")),
+            side_sector_deg=float(self.setting("unpark.side_sector_deg")),
+            side_margin_mm=float(self.setting("unpark.side_margin_mm")),
+            in_bay_mm=float(self.setting("unpark.in_bay_mm")),
+            default_side=int(self.setting("unpark.default_side")),
+            mm_per_s_at_full=float(self.setting("startup.mm_per_s_at_full")),
+            timeout_s=float(self.setting("unpark.timeout_s")))
+        print(f"Starting in the bay - {self._unparking.summary()}")
 
-        print(f"Starting inside the parking space - creeping {distance:.0f}mm "
-              f"forward at speed {speed} before trusting the pose")
-        self.context.motor.steer_center()
-        self.context.motor.drive(0.0, speed)
-        driven, last = 0.0, time.monotonic()
-        # A time bound as well as a distance one: if the wheels are not
-        # actually turning, dead reckoning never reaches the distance and this
-        # would drive into the wall forever.
-        deadline = last + distance / rate * 2.5 + 1.0
-        while driven < distance and time.monotonic() < deadline:
-            time.sleep(0.02)
-            now = time.monotonic()
-            step = rate * (now - last)
-            last = now
-            driven += step
-            self.context.nav.report_motion(step, 0.0)
-        self.context.motor.drive(0.0, 0)
-        print(f"  crept {driven:.0f}mm")
+    def _set_direction_from_the_bay(self, pose):
+        """
+        Settles which way round the lap to go from the wall the bay is on,
+        before a wheel turns.
 
+        The bay is stuck to the OUTER wall and the robot parks parallel to it,
+        so the side that wall is on IS the lap direction - see
+        travel_direction_beside_wall. Worth doing instead of leaving it to
+        RacingLine.direction_for, which picks whichever direction needs the
+        smaller turn: from inside a bay the robot is a long way off the line
+        and up to a full bay-width of lateral error from it, and the two
+        candidate headings it is choosing between are 180 degrees apart. Get
+        that wrong and the round drives a confident lap the wrong way.
+        """
+        field = self.context.nav.map
+        # nearest_outer_wall, not section_of alone: a bay more than 500mm
+        # along its wall sits in a corner CELL, where section_of answers None,
+        # and falling back to the racing line's guess there is exactly the
+        # case this method exists to remove.
+        section = section_of(pose.x, pose.y, field)
+        wall = section or nearest_outer_wall(pose.x, pose.y, field)
+        direction, alignment = travel_direction_beside_wall(wall, pose.heading)
+        if direction is None:
+            off_parallel = math.degrees(math.acos(min(1.0, alignment)))
+            print(f"WARNING: the robot is {off_parallel:.0f}deg off parallel to the "
+                  f"{wall} wall - too close to nose-on for the wall to say which way "
+                  f"the lap runs, so the lap direction is the racing line's guess "
+                  f"from the start pose")
+            return
+        self._bay_direction = direction
+        was = self.direction
+        self.direction = direction
+        # Everything this concluded, in the terms you can check by eye against
+        # the robot on the mat: which wall, which side of the robot it is on,
+        # and what that makes the lap.
+        side = "right" if direction > 0 else "left"
+        cell = "" if section else "  (corner cell - wall found by distance)"
+        agree = "" if was == direction else (
+            f", overriding the racing line's guess of "
+            f"{RacingLine.direction_name(was)}")
+        print(f"Bay is on the {wall} wall{cell}")
+        off_parallel = math.degrees(math.acos(min(1.0, alignment)))
+        print(f"  heading {pose.heading:.0f}deg ({off_parallel:.0f}deg off parallel) "
+              f"puts that wall on the robot's {side} "
+              f"-> running {RacingLine.direction_name(direction)}{agree}")
+
+    def _start_speed(self):
+        """Held still while the exit is pending: it drives its own first tick."""
+        if self._unparking is not None and not self._unparking.finished:
+            return 0
+        return super()._start_speed()
+
+    def unparking_command(self, dt):
+        """
+        The exit's (steer, speed) for this tick - see
+        PathDrivingTask._drive_unparking.
+        """
+        if self._unparking is None or self._unparking.finished:
+            return None
+        command = self._unparking.update(
+            self.context.nav.get_pose(), dt,
+            max_steer=self.pursuit.max_steer_command)
+        if self._unparking.finished:
+            self._rejoin_the_line()
+        return command
+
+    def _rejoin_the_line(self):
+        """
+        Picks the lap up from wherever the exit left the robot.
+
+        setup() projected onto the racing line from inside the bay, which is
+        several hundred millimetres off it and possibly pointing across it, so
+        the direction and the lap counter it derived there describe nothing.
+        Re-derived here, once, on the tick the exit ends - and the distance
+        driven getting out does not count as lap.
+        """
+        pose = self.context.nav.get_pose()
+        self.direction, source = self._lap_direction(pose)
+        self.progress, self.lateral = self.path.project(pose.x, pose.y, self.direction)
+        self.aim_progress = self.progress
+        # ZERO AT THE BAY, NOT HERE. The exit hands back several hundred
+        # millimetres PAST the bay, and zeroing the counter at that point puts
+        # the end of the last lap there too - so the lap finishes with the bay
+        # already behind the robot, which is the round going round again. The
+        # getting-out does not count as lap distance, but the ground between
+        # the bay and here does, because the next lap has to cover it.
+        self.distance_driven = 0.0
+        if self._start_point is not None:
+            bay_progress, _ = self.path.project(*self._start_point, self.direction)
+            self.distance_driven = self.path.gap(bay_progress, self.progress)
+        self._rejoin_progress = self.progress
+        print(f"Out of the bay at {pose} -> running "
+              f"{RacingLine.direction_name(self.direction)} ({source})")
+        self._warn_if_parking_cannot_reach_the_bay()
+
+    def _warn_if_parking_cannot_reach_the_bay(self):
+        """
+        Says so when the last lap will end PAST the bay.
+
+        The lap counter is zeroed here, where the exit ended - which is some
+        way beyond the bay, because leaving it meant driving out of it. So a
+        lap counted from here finishes past the bay too, and parking, which is
+        not allowed to start until the laps are done, arms with the bay
+        already behind the robot. It then has to go round again.
+
+        parking.start_early_mm is what buys that back, and this says how much
+        of it is needed: the distance from the bay to here, plus the run-up
+        the approach itself wants.
+        """
+        if (self._bay_progress is None or self._rejoin_progress is None
+                or self._warned_about_reach):
+            return
+        # Measured from where the EXIT handed back, not from wherever the
+        # robot is now: that point is where the lap counter reads zero, so it
+        # is also where the last lap will end.
+        past = self.path.gap(self._bay_progress, self._rejoin_progress)
+        if past <= 0.0:
+            return
+        self._warned_about_reach = True
+        approach = float(self.setting("parking.follow_mm"))
+        needed = past + approach
+        early = float(self.setting("parking.start_early_mm"))
+        if early >= needed:
+            return
+        print(f"WARNING: the exit left the robot {past:.0f}mm past the bay, so the "
+              f"last lap ends there too. parking.start_early_mm is {early:.0f}mm but "
+              f"needs about {needed:.0f} ({past:.0f} back to the bay + {approach:.0f} "
+              f"of approach), or the round drives an extra lap before it can park.")
+
+    def _lap_direction(self, pose):
+        """
+        Which way round the lap to go, from the most local evidence there is.
+
+        THE LIDAR WINS. The bay is a slot in the OUTER wall, so the side that
+        wall is on settles the direction - and the lidar measures that side in
+        the robot's own frame, out of two sectors, with no pose and no map in
+        the chain. The map can answer the same question, but only through the
+        localizer, and the localizer is at its very worst here: a robot in a
+        bay sees a scan unlike anywhere else on the field, and a pose that is
+        900mm out reports a section, a wall and a direction with complete
+        confidence. Measured on the robot: the pose put it against the centre
+        block on the north wall while the lidar had the wall 116mm off its
+        right, and the map-derived direction was therefore backwards.
+
+        The map stays as the cross-check, because when the two disagree the
+        pose is worth distrusting for the rest of the round too.
+
+        I/O:
+            return: (direction, one-line explanation of where it came from)
+        """
+        wall_side = self._unparking.wall_side if self._unparking else None
+        if wall_side is not None and self._bay_direction is not None \
+                and wall_side != self._bay_direction:
+            print(f"WARNING: the lidar puts the outer wall "
+                  f"{UnparkController.side_name(wall_side)} of the robot, the pose "
+                  f"puts it {UnparkController.side_name(self._bay_direction)} - going "
+                  f"with the lidar. The pose is suspect for the whole round: the "
+                  f"parking bay and every pillar are placed through it.")
+        if wall_side is not None:
+            # Wall on the right is counter-clockwise, the same identity the
+            # park drives on - see travel_direction_beside_wall.
+            return wall_side, (f"outer wall {UnparkController.side_name(wall_side)} "
+                               f"of the robot, by lidar")
+        if self._bay_direction is not None:
+            return self._bay_direction, "the wall the pose says the bay is on"
+        return self.path.direction_for(pose), "the racing line's guess"
     # ========================================================================
     # CONTROL LOOP
     # ========================================================================
@@ -416,10 +559,21 @@ class FinalTask(PathDrivingTask):
             kept.append(Pillar(block.x, block.y, block.color, now))
         self._pillars = kept
 
+    def _progress_of(self, pillar):
+        """
+        Where a pillar sits along the lap.
+
+        A Pillar keeps a field position rather than a progress, because a goal
+        is a pose and not a point on a profile, so this projects on demand.
+        The park's reach test wants the same number - see
+        _pillar_before_the_bay.
+        """
+        at, _ = self.path.project(pillar.x, pillar.y, self.direction)
+        return at
+
     def _gap_to(self, pillar):
         """How far ahead a pillar is, along the lap. Negative means passed."""
-        at, _ = self.path.project(pillar.x, pillar.y, self.direction)
-        return self.path.gap(self.progress, at)
+        return self.path.gap(self.progress, self._progress_of(pillar))
 
     @staticmethod
     def _remembered_index(block, pillars):
@@ -538,7 +692,6 @@ class FinalTask(PathDrivingTask):
     # ========================================================================
     # PARKING
     # ========================================================================
-
     def _look_for_bay(self, pose):
         """
         Watch for the bay on EVERY lap, not just the last one.
@@ -553,6 +706,13 @@ class FinalTask(PathDrivingTask):
         lidar = self.context.lidar
         if lidar is None or section_of(pose.x, pose.y, self.context.nav.map) != self._start_section:
             return
+        # Which way along the wall the robot is going, for a bay placed from a
+        # single blade: the blade it meets first is the near one, so the bay
+        # lies ahead of it. Same test BayFrame uses for its own `forward`.
+        self._bay_finder.travel_sign = (
+            1.0 if abs(angle_difference(pose.heading,
+                                        wall_heading_of(self._start_section))) <= 90.0
+            else -1.0)
         bay = self._bay_finder.observe(pose, lidar.get_scan())
         if bay is None:
             return
@@ -569,32 +729,117 @@ class FinalTask(PathDrivingTask):
                        bay_mm=self._bay_finder.bay_mm))
         print(f"Found the bay: {self._bay_finder.status_line()} "
               f"(lap {self.laps_done:.2f})")
+        self._warn_if_parking_cannot_reach_the_bay()
+        if self._bay_finder.from_single_blade:
+            print(f"  Only one blade was ever seen, so the far wall is where "
+                  f"the rules say it is, not where it was measured. The park "
+                  f"lines up against the blade it DID see "
+                  f"(parking.stage_at_wall), so an error in the assumed width "
+                  f"moves the far end of the bay, not the end being aimed at.")
 
     def _start_parking(self):
-        """Builds the manoeuvre once the laps are done and the bay is known."""
-        _, _, heading = self.path.pose_at(self._bay_progress, self.direction)
-        frame = BayFrame(self._bay[0], self._bay[1], self.context.nav.map,
-                         heading, 1.0 if self.direction > 0 else -1.0)
-        offset = self.setting("parking.stage_along_offset_mm")
-        straight = self.setting("parking.straight_mm")
-        self._parking = ParkingController(
-            frame, bay_mm=self._bay_finder.bay_mm,
-            turn_radius_mm=self.pursuit.min_turn_radius_mm,
-            line_depth_mm=self.path.map.outer - self.path.half,
-            turn_deg=float(self.setting("parking.turn_deg")),
-            stage_depth_mm=float(self.setting("parking.stage_depth_mm")),
-            stage_along_offset_mm=None if offset is None else float(offset),
-            park_depth_mm=float(self.setting("parking.park_depth_mm")),
-            end_offset_mm=float(self.setting("parking.end_offset_mm")),
-            straight_mm=None if straight is None else float(straight),
-            approach_mm=float(self.setting("parking.approach_mm")),
-            approach_lookahead_mm=float(self.setting("parking.approach_lookahead_mm")),
+        """
+        Builds the parking sequence, once the laps are done.
+
+        No bay position, no frame, no map: the sequence finds the bay itself
+        from the side lidar. All this has to supply is which side the wall is
+        on, and that comes from the lap direction - which is itself measured
+        by lidar at the start of the round, so the pose is out of the chain
+        end to end.
+        """
+        self._parking = ParkingSequence(
+            lidar=self.context.lidar,
+            compass=self.context.compass,
+            wall_side=1.0 if self.direction > 0 else -1.0,
+            wall_distance_mm=float(self.setting("parking.wall_distance_mm")),
+            wall_gain=float(self.setting("parking.wall_gain")),
+            wall_max_steer=float(self.setting("parking.wall_max_steer")),
+            side_bearing_deg=float(self.setting("parking.side_bearing_deg")),
+            side_sector_deg=float(self.setting("parking.side_sector_deg")),
+            angle_gain=float(self.setting("parking.angle_gain")),
+            angle_arc_deg=float(self.setting("parking.angle_arc_deg")),
+            angle_min_points=int(self.setting("parking.angle_min_points")),
+            angle_max_deg=float(self.setting("parking.angle_max_deg")),
+            front_stop_mm=float(self.setting("parking.front_stop_mm")),
+            front_sector_deg=float(self.setting("parking.front_sector_deg")),
+            front_hold_s=float(self.setting("parking.front_hold_s")),
+            body_stop_mm=float(self.setting("parking.body_stop_mm")),
+            body_sector_deg=float(self.setting("parking.body_sector_deg")),
+            inner_sector_deg=float(self.setting("parking.inner_sector_deg")),
+            inner_slack_mm=float(self.setting("parking.inner_slack_mm")),
+            trigger_below_mm=self.setting("parking.trigger_below_mm"),
+            mouth_sector_deg=float(self.setting("parking.mouth_sector_deg")),
+            blade_below_mm=self.setting("parking.blade_below_mm"),
+            lidar_ahead_mm=float(self.setting("parking.lidar_ahead_mm")),
+            turn_after_mm=self.setting("parking.turn_after_mm"),
+            measure_bay=bool(self.setting("parking.measure_bay")),
+            mouth_clear_mm=float(self.setting("parking.mouth_clear_mm")),
+            bay_min_mm=float(self.setting("parking.bay_min_mm")),
+            settle_max_mm=float(self.setting("parking.settle_max_mm")),
+            settle_tolerance_mm=float(self.setting("parking.settle_tolerance_mm")),
+            settle_angle_deg=float(self.setting("parking.settle_angle_deg")),
+            settle_relax=float(self.setting("parking.settle_relax")),
+            creep_max_mm=float(self.setting("parking.creep_max_mm")),
+            turn_in_deg=float(self.setting("parking.turn_in_deg")),
+            turn_in_steer=self.setting("parking.turn_in_steer"),
+            turn_in_min_mm=self.setting("parking.turn_in_min_mm"),
+            heading_gain=float(self.setting("parking.heading_gain")),
+            nose_stop_mm=float(self.setting("parking.nose_stop_mm")),
+            wheelbase_mm=float(self.setting("pursuit.wheelbase_mm")),
+            max_road_wheel_deg=float(self.setting("pursuit.max_road_wheel_deg")),
+            vision=self.context.vision,
+            camera_confirms=bool(self.setting("parking.camera_confirms")),
+            camera_bearing_deg=float(self.setting("parking.camera_bearing_deg")),
             speed=int(self.setting("parking.speed")),
-            approach_speed=int(self.setting("parking.approach_speed")))
-        print(f"Laps done - parking. Racing line is "
-              f"{self.path.map.outer - self.path.half:.0f}mm off the wall, "
-              f"turning radius {self.pursuit.min_turn_radius_mm:.0f}mm")
+            reverse_speed=int(self.setting("parking.reverse_speed")),
+            servo_settle_s=float(self.setting("parking.servo_settle_s")),
+            mm_per_s_at_full=float(self.setting("startup.mm_per_s_at_full")),
+            timeout_s=float(self.setting("parking.timeout_s")))
+        # The camera does nothing about the bay for the whole lap - a third
+        # colour mask per frame that nothing reads. Switch it on now.
+        if self.context.vision is not None:
+            self.context.vision.watch_for_parking(True)
+        side = "right" if self.direction > 0 else "left"
+        print(f"Laps done - parking. Outer wall on the {side}.")
         print(f"  {self._parking.summary()}")
+
+    def _abandon_the_park(self):
+        """
+        Throws away a failed attempt instead of the whole round.
+
+        An abort used to end the round, because is_finished asks the
+        controller whether it is `finished` and an aborted one says yes. So
+        the robot stopped dead wherever the guard happened to trip - a
+        different place every run, since where it trips depends on where it
+        committed. Three symptoms, one line: stopping in the wrong section,
+        stopping beside the bay without parking, stopping for no visible
+        reason.
+
+        None of those is worth a round. The laps are already scored and the
+        clock is still running, so the right answer is the one this round
+        already applies when the bay is never found: keep driving. The retry
+        waits almost a full lap, because an attempt restarted on the spot
+        would begin from wherever the last one gave up - past the staging
+        point, off the line, pointing the wrong way - which is how a bad
+        attempt becomes a worse one.
+        """
+        reason = self._parking.reason or "aborted"
+        self._parking = None
+        self._park_attempts += 1
+        allowed = int(self.setting("parking.retries"))
+        if self._park_attempts > allowed:
+            self._park_retry_at = None
+            self._park_given_up = True
+            print(f"Parking failed {self._park_attempts} times ({reason}). Giving up on "
+                  f"the bay and driving on - the laps already count for more than a "
+                  f"park that will not close.")
+            return
+        # Nearly a lap: far enough back that the approach gets a full run at
+        # the bay rather than starting from the wreck of the last attempt.
+        self._park_retry_at = (self.distance_driven + self.path.length
+                               - 1.5 * float(self.setting("parking.follow_mm")))
+        print(f"Parking attempt {self._park_attempts} failed ({reason}) - going round "
+              f"for another run at it ({allowed - self._park_attempts} left).")
 
     def parking_caps(self):
         """Step 0: slow down and shorten the lookahead as the bay comes up."""
@@ -607,21 +852,79 @@ class FinalTask(PathDrivingTask):
         The manoeuvre's steering and speed for this tick, or None to let the
         racing line keep driving - see PathDrivingTask._drive_parking.
         """
-        if not self.setting("parking.enabled") or self._bay is None:
+        if self._park_given_up:
             return None
-        if self.laps_done < self.laps_goal:
+
+        if not self.setting("parking.enabled"):
             return None
+        if self._parking is not None and self._parking.phase == ParkingSequence.ABORTED:
+            self._abandon_the_park()
+            return None
+        if self.distance_driven < self._park_after_mm():
+            return None
+        if self._park_retry_at is not None and self.distance_driven < self._park_retry_at:
+            return None                      # coming round for another attempt
         if self._parking is None:
             self._start_parking()
         if self._parking.finished:
             return None
         pose = self.context.nav.get_pose()
-        # The bay frame's `s` is just a field coordinate, so it means nothing
-        # while the robot is somewhere else on the mat - and would happily
-        # read as "past the staging point" from the far side of the field.
-        if section_of(pose.x, pose.y, self.context.nav.map) != self._bay[0]:
-            return None
+        # ONCE IT IS DRIVING, IT KEEPS THE WHEELS. Everything from the pull
+        # onward is an open sequence measured from one pose; handing the
+        # wheels back to pure pursuit halfway through does not pause it, it
+        # abandons it - and leaves a controller that is neither finished nor
+        # driving, so the round cannot end either.
         return self._parking.update(pose, dt, max_steer=self.pursuit.max_steer_command)
+
+    def _park_after_mm(self):
+        """
+        How far the robot has to have driven before the manoeuvre may start.
+
+        The whole lap distance, less `parking.start_early_mm` - which is how
+        this parks SHORT of the point it set off from. The saving is real: the
+        robot starts inside the bay and rejoins the line some way past it, so
+        a lap counted from there ends past the bay too, and the approach then
+        has to come round again to reach it.
+
+        The early start is withheld while a pillar is still between here and
+        the bay, so it means "once the last block is behind us" rather than
+        "cut the last pillar short". A pillar the line is still dodging is a
+        pillar the manoeuvre would have to steer around from inside its own
+        approach, which it has no way to do - every step of it is an open arc.
+        """
+        full = self.laps_goal * self.path.length
+        early = float(self.setting("parking.start_early_mm"))
+        if early <= 0.0 or self._pillar_before_the_bay():
+            return full
+        return full - early
+
+    def _pillar_before_the_bay(self):
+        """
+        Is a mapped pillar still between the robot and the bay?
+
+        Answered in lap distance rather than in field position, so a pillar
+        beside the bay but a lap away does not count. gap() wraps into +/-
+        half a lap, so a bay that reads as behind the robot means the bay is
+        not what is coming up next and there is nothing to wait for.
+
+        A "pillar" within PILLAR_FREE_MM of the bay is NOT one, and has to be
+        ignored here or it costs a whole lap. The field never puts a pillar
+        within that distance of a parking space, so anything the map has there
+        is a bay wall read as a block, or a misdetection. Waiting for it to be
+        passed means waiting until the robot is past the BAY - at which point
+        the early start it was gating has nothing left to be early about, and
+        the round goes round again. That is not a hypothetical: it is the
+        extra lap, and the reason the approach never gets to slide in.
+        """
+        if self._bay_progress is None:
+            return False
+        to_bay = self.path.gap(self.aim_progress, self._bay_progress)
+        if to_bay <= 0.0:
+            return False
+        return any(0.0 < self.path.gap(self.aim_progress, at) < to_bay
+                   and abs(self.path.gap(at, self._bay_progress)) > PILLAR_FREE_MM
+                   for at in (self._progress_of(pillar)
+                              for pillar in self._pillars))
 
     # ========================================================================
     # FINISHING
@@ -641,14 +944,17 @@ class FinalTask(PathDrivingTask):
             return True
         if not self.setting("parking.enabled"):
             return self.laps_done >= self.laps_goal
+        # DONE only. An aborted attempt is not a reason to stop the round -
+        # see _abandon_the_park, which clears it and comes round again.
         if self._parking is not None:
-            return self._parking.finished
+            return self._parking.phase == ParkingSequence.DONE
+        if self._park_retry_at is not None and self.distance_driven < self._park_retry_at:
+            return False
         # Laps done, no bay found yet: keep going round and keep looking. Not
         # forever, though - without this bound a round with no bay in front of
         # it (a bench test, a practice mat without the walls) never ends at
         # all and just burns the clock.
         return self.laps_done >= self.laps_goal + float(self.setting("parking.extra_laps"))
-
     # ========================================================================
     # REPORTING
     # ========================================================================
@@ -680,6 +986,16 @@ class FinalTask(PathDrivingTask):
         return line
 
     def status(self):
+        # A manoeuvre owns the wheels, so the lap's own trace says nothing
+        # useful about what the robot is doing - report the manoeuvre's.
+        if self._unparking is not None and self._unparking.active:
+            return f"{super().status()}  {self._unparking.status_line()}"
+        if self._parking is not None and self._parking.active:
+            # The park's own trace: which phase, what the side lidar reads and
+            # how square the body is to the wall. Tuning the five distances by
+            # watching the robot is guesswork; this is the line that says
+            # whether it triggered on the bay wall or on the outer one.
+            return f"{super().status()}  {self._parking.status_line()}"
         line = (f"{super().status()}  {self.context.nav.blocks.summary()}"
                 f"  {self._plan_status()}")
         if self.context.vision is not None:
