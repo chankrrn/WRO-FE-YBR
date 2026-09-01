@@ -167,9 +167,7 @@ Always measure converter outputs with a multimeter **before connecting the Raspb
 
 ### Mechanical Testing
 
-During the first motor test:
-
-> **Lift the driven wheels off the ground.**
+During the first motor test **Lift the driven wheels off the ground.**
 
 This prevents an incorrect motor direction or steering command from causing the robot to move unexpectedly.
 
@@ -427,12 +425,12 @@ mech/
 
 The slicer files can preserve:
 
-- orientation,
-- supports,
-- layer settings,
-- wall count,
-- infill,
-- material profile.
+- orientation
+- supports
+- layer settings
+- wall count
+- infill
+- material profile
 
 ---
 
@@ -473,7 +471,7 @@ LiDAR / IMU Structure
 
 ---
 
-# 6.1 Assemble the Rear / Upper Structure
+## 6.1 Assemble the Rear / Upper Structure
 
 We recommend building the rear stacked section from bottom to top.
 
@@ -507,18 +505,18 @@ Before tightening completely:
 
 ---
 
-# 6.2 Assemble the Rear Drivetrain
+## 6.2 Assemble the Rear Drivetrain
 
 Install:
 
-1. CHP-20GP-180 motor,
-2. Motor Bracket,
-3. 16-tooth drive gear,
-4. LEGO 28-tooth differential,
-5. rear bearings,
-6. axle sleeves,
-7. rear axles,
-8. wheels.
+1. CHP-20GP-180 motor
+2. Motor Bracket
+3. 16-tooth drive gear
+4. LEGO 28-tooth differential
+5. rear bearings
+6. axle sleeves
+7. rear axles
+8. wheels
 
 <img width="300" src="other/Drivetrains.jpg" />
 
@@ -538,32 +536,25 @@ The 16T and 28T gears should:
 - rotate without skipping,
 - not be forced tightly together.
 
-Incorrect mesh can cause:
-
-- excess current,
-- drivetrain noise,
-- gear wear,
-- reduced speed.
+Incorrect gear mesh can cause excessive current draw, increased drivetrain noise, gear wear, and reduced speed.
 
 ---
 
-# 6.3 Install Arduino Base and Steering Servo
+## 6.3 Install Arduino Base and Steering Servo
 
 Mount:
 
-- Arduino supporting plate,
-- steering servo,
-- servo bracket.
+- Arduino supporting plate
+- steering servo
+- servo bracket
 
 <img width="300" src="other/Servo and Uno.jpg" />
 
-Do not permanently install the steering linkage until the servo center has been verified during actuator setup.
-
-This makes mechanical steering centering easier.
+The steering linkage should not be permanently installed until the servo center has been verified during actuator setup. This makes mechanical steering centering easier.
 
 ---
 
-# 6.4 Assemble the Front Steering System
+## 6.4 Assemble the Front Steering System
 
 Install:
 
@@ -590,13 +581,13 @@ After assembly:
 
 ---
 
-# 6.5 Install Arduino and Motor Shield
+## 6.5 Install Arduino and Motor Shield
 
-Mount the:
+Mount:
 
-- Arduino UNO R4 Minima,
-- L298P Motor Shield,
-- XL4015 tray / converter assembly.
+- Arduino UNO R4 Minima
+- L298P Motor Shield
+- XL4015 tray / converter assembly
 
 <img width="300" src="other/Arduino mount.jpg" />
 
@@ -604,11 +595,9 @@ Keep enough space around the wiring terminals for later electrical inspection.
 
 ---
 
-# 6.6 Install Raspberry Pi and DFR0566
+## 6.6 Install Raspberry Pi and DFR0566
 
-Install the Raspberry Pi 5 on its mounting plate.
-
-Mount the DFR0566 IO Expansion HAT directly onto the Raspberry Pi header according to the board orientation.
+Install the Raspberry Pi 5 onto its mounting plate. Then, mount the DFR0566 I/O Expansion HAT directly onto the Raspberry Pi header according to the board orientation.
 
 Before installing upper structures:
 
@@ -618,7 +607,7 @@ Before installing upper structures:
 
 ---
 
-# 6.7 Install Camera
+## 6.7 Install Camera
 
 Mount:
 
@@ -627,19 +616,13 @@ Mount:
 - camera connector / support,
 - Raspberry Pi camera.
 
-Connect the CSI cable without sharply folding it.
-
-The camera mount is adjustable.
-
-Do not permanently lock the final viewing angle until camera testing is completed.
+Connect the CSI cable without sharply folding it. Keep the camera mount adjustable, and do not permanently fix the final viewing angle until camera testing has been completed.
 
 ---
 
-# 6.8 Install LiDAR and IMU
+## 6.8 Install LiDAR and IMU
 
-Mount the BNO055 underneath the LiDAR according to the final sensor structure.
-
-Then install the RPLiDAR C1 above it.
+Mount the BNO055 underneath the LiDAR according to the final sensor layout. Then install the RPLiDAR C1 above the BNO055, ensuring that both sensors are securely positioned.
 
 <img width="300" src="other/Lidar mount.jpg" />
 
@@ -656,7 +639,7 @@ Sensor-placement reasoning is documented in:
 
 ---
 
-# 6.9 Mechanical Inspection
+## 6.9 Mechanical Inspection
 
 Before beginning electrical assembly:
 
@@ -690,7 +673,7 @@ Do not reproduce the electrical system only from photographs.
 
 ---
 
-# 7.1 Main Power Distribution
+## 7.1 Main Power Distribution
 
 Current final architecture:
 
@@ -720,7 +703,7 @@ PCT-21
 
 ---
 
-# 7.2 Wire the Main Switch
+## 7.2 Wire the Main Switch
 
 Connect:
 
@@ -738,14 +721,9 @@ The main switch must remove power from the robot's electrical system.
 
 ---
 
-# 7.3 Connect the LM2596 Branch
+## 7.3 Connect the LM2596 Branch
 
-Connect the LM2596 input to:
-
-- positive distribution,
-- common ground.
-
-The output is used for the Raspberry Pi power branch.
+Connect the LM2596 input to the positive power distribution and common ground. Use its output to supply the Raspberry Pi power branch.
 
 Target:
 
@@ -753,20 +731,13 @@ Target:
 Approximately 5.1 V
 ```
 
-**Do not connect the Raspberry Pi yet.**
-
-Voltage is verified in Section 8.
+**Do not connect the Raspberry Pi yet.** Voltage is verified in Section 8.
 
 ---
 
-# 7.4 Connect the XL4015 Branch
+## 7.4 Connect the XL4015 Branch
 
-Connect the XL4015 input to:
-
-- positive distribution,
-- common ground.
-
-Its output supplies the final motor/control-side configuration.
+Connect the XL4015 input to the positive power distribution and common ground. Its output supplies the motor and control-side power system.
 
 > **[TODO: Measure and document the exact final XL4015 output voltage before final submission.]**
 
@@ -776,17 +747,13 @@ Do not assume the previous draft value is correct without measuring the physical
 
 ---
 
-# 7.5 Ground Distribution
+## 7.5 Ground Distribution
 
-Connect the required negative / ground paths to the PCT-21 distribution.
-
-The system must maintain a common electrical reference where signals are shared between subsystems.
-
-Check continuity with a multimeter before power-up.
+Connect the required negative / ground paths to the PCT-21 distribution. Maintain a common electrical reference for signals shared between subsystems. Before powering the system, use a multimeter to check the ground connections for continuity.
 
 ---
 
-# 7.6 Connect Raspberry Pi 5
+## 7.6 Connect Raspberry Pi 5
 
 After the LM2596 output has been verified:
 
@@ -798,7 +765,7 @@ After the LM2596 output has been verified:
 
 ---
 
-# 7.7 Connect BNO055 IMU
+## 7.7 Connect BNO055 IMU
 
 The BNO055 communicates through I²C.
 
@@ -820,7 +787,7 @@ Use the I²C / Gravity connector corresponding to the final wiring diagram.
 
 ---
 
-# 7.8 Connect Raspberry Pi Camera
+## 7.8 Connect Raspberry Pi Camera
 
 Connect the camera through the Raspberry Pi CSI interface.
 
@@ -834,15 +801,13 @@ Do not insert or remove the CSI cable while the Raspberry Pi is powered.
 
 ---
 
-# 7.9 Install Motor Shield
+## 7.9 Install Motor Shield
 
-Mount the L298P Motor Shield onto the Arduino UNO R4 Minima according to the final hardware configuration.
-
-Connect the motor and control wiring according to the wiring diagram.
+Mount the L298P Motor Shield onto the Arduino UNO R4 Minima according to the final hardware configuration. Then connect the motor and control wiring as shown in the wiring diagram.
 
 ---
 
-# 7.10 Connect Drive Motor and Encoder
+## 7.10 Connect Drive Motor and Encoder
 
 Current documented encoder wiring:
 
@@ -868,7 +833,7 @@ Motor Direction-> D13
 
 ---
 
-# 7.11 Connect Steering Servo
+## 7.11 Connect Steering Servo
 
 Current final servo control pin:
 
@@ -884,13 +849,11 @@ Positive
 Ground
 ```
 
-Check the electrical wiring diagram for the exact power path.
-
-Do not force the steering linkage against a mechanical end stop during initial testing.
+Check the electrical wiring diagram for the exact power path. Do not force the steering linkage against a mechanical end stop during initial testing.
 
 ---
 
-# 7.12 Connect Start Button
+## 7.12 Connect Start Button
 
 The ZX-Switch01 is connected to:
 
@@ -912,7 +875,7 @@ ZX-Switch01
 
 ---
 
-# 7.13 Connect Raspberry Pi ↔ Arduino
+## 7.13 Connect Raspberry Pi ↔ Arduino
 
 Connect the Arduino to the Raspberry Pi using a USB data cable.
 
@@ -928,13 +891,11 @@ Serial configuration:
 115200 baud
 ```
 
-The final robot currently routes this cable to one of the Raspberry Pi USB 3 ports.
-
-The exact physical USB port is less important than reliable device detection unless the final software explicitly assumes otherwise.
+The final robot currently routes this cable to one of the Raspberry Pi USB 3 ports. The exact physical USB port is less important than reliable device detection unless the final software explicitly assumes otherwise.
 
 ---
 
-# 7.14 Connect RPLiDAR C1
+## 7.14 Connect RPLiDAR C1
 
 Connect the RPLiDAR C1 through its adapter to the Raspberry Pi USB interface.
 
@@ -954,7 +915,7 @@ The LiDAR cable must not interfere mechanically with the rotating sensor.
 
 ---
 
-# 7.15 Cable Management
+## 7.15 Cable Management
 
 After all wiring is complete:
 
@@ -1015,23 +976,23 @@ Connect Electronics
 
 ---
 
-# 8.2 Multimeter Checklist
+## 8.2 Multimeter Checklist
 
 Before connecting electronics:
 
-- [ ] battery polarity correct
-- [ ] no short between positive and ground
-- [ ] LM2596 input correct
-- [ ] LM2596 output approximately 5.1 V
-- [ ] XL4015 input correct
-- [ ] XL4015 output = **[TODO: final measured value]**
-- [ ] common ground continuity verified
-- [ ] no exposed conductor contacting chassis / PCB
-- [ ] connectors mechanically secure
+- [ ] battery polarity correct,
+- [ ] no short between positive and ground,
+- [ ] LM2596 input correct,
+- [ ] LM2596 output approximately 5.1 V,
+- [ ] XL4015 input correct,
+- [ ] XL4015 output = **[TODO: final measured value]**,
+- [ ] common ground continuity verified,
+- [ ] no exposed conductor contacting chassis / PCB,
+- [ ] connectors mechanically secure.
 
 ---
 
-# 8.3 First Powered Electrical Test
+## 8.3 First Powered Electrical Test
 
 After converter verification:
 
@@ -1042,9 +1003,7 @@ After converter verification:
 5. observe for unexpected heat, smell, sound or resets,
 6. power off immediately if abnormal behavior occurs.
 
-During this first test:
-
-> Do not run full-speed autonomous software.
+During this first test, do not run full-speed autonomous software.
 
 ---
 
@@ -1066,7 +1025,7 @@ uv
 
 ---
 
-# 9.1 Prepare Raspberry Pi OS
+## 9.1 Prepare Raspberry Pi OS
 
 Using Raspberry Pi Imager:
 
@@ -1076,11 +1035,9 @@ Using Raspberry Pi Imager:
 4. enable SSH,
 5. boot the Raspberry Pi.
 
-> **[TODO: Record the exact Raspberry Pi OS release used for the final competition image.]**
-
 ---
 
-# 9.2 Clone the Repository
+## 9.2 Clone the Repository
 
 Open a terminal on the Raspberry Pi:
 
@@ -1096,7 +1053,7 @@ See Section 17.
 
 ---
 
-# 9.3 Run Setup Script
+## 9.3 Run Setup Script
 
 The repository contains:
 
@@ -1118,17 +1075,11 @@ When completed:
 sudo reboot
 ```
 
-The reboot is important because:
-
-- group permissions,
-- I²C configuration,
-- and other system-level changes
-
-may not be active until a new login / restart.
+The reboot is important because changes to group permissions, I²C configuration, and other system settings may not take effect until the system is restarted or the user logs in again.
 
 ---
 
-# 9.4 Verify Raspberry Pi Interfaces
+## 9.4 Verify Raspberry Pi Interfaces
 
 After reboot:
 
@@ -1159,7 +1110,7 @@ Actual numbering may change if USB devices are connected differently.
 
 ---
 
-# 9.5 Install Python Environment
+## 9.5 Install Python Environment
 
 If `setup_pi.sh` already completed this successfully, no additional dependency installation should normally be necessary.
 
@@ -1180,7 +1131,7 @@ The lock file is important because it records reproducible Python dependency ver
 
 ---
 
-# 9.6 Dry Run
+## 9.6 Dry Run
 
 Before accessing the physical actuators:
 
@@ -1212,7 +1163,7 @@ Firmware:
 
 ---
 
-# 10.1 Arduino IDE
+## 10.1 Arduino IDE
 
 Install:
 
@@ -1228,7 +1179,7 @@ Arduino UNO R4 Minima
 
 ---
 
-# 10.2 Required Libraries
+## 10.2 Required Libraries
 
 Current firmware uses:
 
@@ -1256,7 +1207,7 @@ Existing Arduino Library Manager screenshots may remain as supporting instructio
 
 ---
 
-# 10.3 Upload Firmware
+## 10.3 Upload Firmware
 
 1. Open:
 
@@ -1278,7 +1229,7 @@ Arduino UNO R4 Minima
 
 ---
 
-# 10.4 Verify Arduino Startup
+## 10.4 Verify Arduino Startup
 
 Open Serial Monitor at:
 
@@ -1296,7 +1247,7 @@ This confirms that the firmware has reached its initialized state.
 
 ---
 
-# 10.5 Verify Start Button
+## 10.5 Verify Start Button
 
 With the robot waiting:
 
@@ -1325,13 +1276,7 @@ and:
 src/Raspberrypi/tasks/final/config.toml
 ```
 
-These configuration files contain tunable values such as:
-
-- speeds,
-- clearances,
-- Pure Pursuit lookahead,
-- obstacle behavior,
-- path parameters.
+These configuration files contain adjustable values for the robot, including speed settings, clearance distances, Pure Pursuit lookahead, obstacle behavior, and path-planning parameters.
 
 ---
 
@@ -1366,9 +1311,7 @@ This is required so that future repository updates do not change the version tha
 
 # 12. Subsystem Verification
 
-Do not immediately run a full autonomous challenge.
-
-Test the system in stages.
+Do not immediately run the full autonomous challenge. Instead, test the system step by step.
 
 ---
 
@@ -1392,9 +1335,7 @@ Verify:
 ls /dev/ttyACM*
 ```
 
-Arduino should be detected.
-
-Run the appropriate motor / serial test if available.
+Arduino should be detected. Run the appropriate motor / serial test if available.
 
 Expected Arduino initialization response:
 
@@ -1448,9 +1389,7 @@ Verify:
 
 # 12.6 Stage 6 — IMU Test
 
-Run the IMU / software initialization.
-
-Rotate the robot by hand.
+Run the IMU/software initialization, then rotate the robot by hand.
 
 Verify:
 
@@ -1536,9 +1475,7 @@ Before completing full laps:
 uv run python test_navigation.py
 ```
 
-Verify that localization particles converge toward a reasonable robot pose.
-
-Do not proceed to high-speed testing if localization does not converge reliably.
+Verify that localization particles converge toward a reasonable robot pose. Do not proceed to high-speed testing if localization does not converge reliably.
 
 ---
 
@@ -1546,18 +1483,18 @@ Do not proceed to high-speed testing if localization does not converge reliably.
 
 Perform:
 
-1. short straight drive,
-2. left turn,
-3. right turn,
-4. stop,
-5. repeat.
+1. short straight drive
+2. left turn
+3. right turn
+4. stop
+5. repeat
 
 Confirm:
 
-- steering direction,
-- motor direction,
-- vehicle clearance,
-- drivetrain stability.
+- steering direction
+- motor direction
+- vehicle clearance
+- drivetrain stability
 
 ---
 
@@ -1607,9 +1544,7 @@ The final task adds:
 
 # 14. Testing Workflow
 
-Testing is part of the reproducible engineering workflow.
-
-The repository contains dedicated tools instead of requiring every change to be tested through a full competition run.
+Testing is an important part of the reproducible engineering workflow. The repository contains dedicated tools instead of requiring every change to be tested through a full competition run.
 
 ---
 
@@ -1731,9 +1666,7 @@ Robot Version:
 
 # 15. Troubleshooting
 
-Use the troubleshooting steps in order.
-
-Do not immediately change several configuration values at the same time.
+Follow the troubleshooting steps in order. Avoid changing multiple configuration values at the same time, as this makes it more difficult to identify the cause of a problem.
 
 ---
 
@@ -1768,9 +1701,7 @@ If the device appears but access is denied:
 groups
 ```
 
-Confirm that the user has the required serial-device permissions.
-
-The repository setup script is intended to configure these permissions.
+Confirm that the user has the required serial-device permissions. The repository setup script is intended to configure these permissions.
 
 ---
 
@@ -1784,10 +1715,10 @@ ls /dev/ttyUSB*
 
 Then inspect:
 
-- LiDAR power,
-- USB adapter,
-- USB cable,
-- connector seating.
+- LiDAR power
+- USB adapter
+- USB cable
+- connector seating
 
 If the device exists but permission is denied, inspect:
 
@@ -1810,11 +1741,11 @@ i2cdetect -y 1
 
 Check:
 
-- I²C enabled,
-- DFR0566 seated correctly,
-- I²C cable,
-- SDA / SCL connection,
-- power and ground.
+- I²C enabled
+- DFR0566 seated correctly
+- I²C cable
+- SDA / SCL connection
+- power and ground
 
 ---
 
@@ -1822,11 +1753,11 @@ Check:
 
 Check:
 
-- CSI ribbon orientation,
-- CSI locking connector,
-- camera cable damage,
-- camera configuration,
-- Raspberry Pi reboot after setup.
+- CSI ribbon orientation
+- CSI locking connector
+- camera cable damage
+- camera configuration
+- Raspberry Pi reboot after setup
 
 Then test camera functionality before running competition software.
 
@@ -1844,26 +1775,24 @@ Possible causes:
 
 Check:
 
-1. supply voltage,
-2. common ground,
-3. steering mechanism by hand,
-4. servo behavior with drivetrain stopped.
+1. supply voltage
+2. common ground
+3. steering mechanism by hand
+4. servo behavior with drivetrain stopped
 
 ---
 
 ## 15.6 Raspberry Pi Resets During Acceleration
 
-Possible cause:
-
-> actuator-related power disturbance or Pi supply voltage drop.
+Possible cause: actuator-related power disturbance or Pi supply voltage drop.
 
 Check:
 
-1. Raspberry Pi branch voltage while motor starts,
-2. LM2596 output under load,
-3. connectors,
-4. common ground,
-5. battery state.
+1. Raspberry Pi branch voltage while motor starts
+2. LM2596 output under load
+3. connectors
+4. common ground
+5. battery state
 
 > **[TODO: Add measured normal Pi-rail minimum voltage from the final robot.]**
 
@@ -1875,9 +1804,9 @@ Do not change several software signs simultaneously.
 
 First verify:
 
-- motor wiring polarity,
-- Arduino direction convention,
-- software forward command.
+- motor wiring polarity
+- Arduino direction convention
+- software forward command
 
 Document the final convention after correcting it.
 
@@ -1887,9 +1816,9 @@ Document the final convention after correcting it.
 
 Check:
 
-- Encoder A / B wiring,
-- D2 / D3 assignment,
-- motor rotation direction.
+- Encoder A / B wiring
+- D2 / D3 assignment
+- motor rotation direction
 
 Swapping encoder A and B changes quadrature direction.
 
@@ -1897,11 +1826,7 @@ Swapping encoder A and B changes quadrature direction.
 
 ## 15.9 LiDAR Map Looks Distorted
 
-Check physical mounting first.
-
-The LiDAR scan plane should be approximately parallel with the field.
-
-A tilted LiDAR can create incorrect 2D geometry even when communication is working correctly.
+Check the physical mounting first. The LiDAR scan plane should be approximately parallel to the field surface. A tilted LiDAR can produce incorrect 2D geometry even when communication is working correctly.
 
 ---
 
@@ -1909,12 +1834,12 @@ A tilted LiDAR can create incorrect 2D geometry even when communication is worki
 
 Check:
 
-1. LiDAR data,
-2. LiDAR physical orientation,
-3. IMU heading,
-4. field-map configuration,
-5. start pose / configuration,
-6. particle convergence.
+1. LiDAR data
+2. LiDAR physical orientation
+3. IMU heading
+4. field-map configuration
+5. start pose / configuration
+6. particle convergence
 
 Use:
 
@@ -1936,10 +1861,10 @@ uv run python test_color_picker.py
 
 Check:
 
-- lighting,
-- exposure,
-- final camera FOV,
-- HSV thresholds.
+- lighting
+- exposure
+- final camera FOV
+- HSV thresholds
 
 Do not increase threshold ranges without checking real camera values.
 
@@ -2005,9 +1930,7 @@ uv run python main.py final
 
 # 17. Version Lock and Competition Release
 
-A reproducible robot requires more than the latest `main` branch.
-
-The exact competition version should be permanently identifiable.
+A reproducible robot requires more than the latest `main` branch. The exact competition version should be permanently identifiable.
 
 ---
 
@@ -2083,12 +2006,6 @@ Exact submitted mechanical + electrical + software configuration
 
 # 17.4 Meaningful Commit Evidence
 
-WRO evaluation considers meaningful development commits.
-
-Do not fabricate historical commits.
-
-Instead, identify actual important commits already present in the repository.
-
 | Engineering Milestone | Commit |
 |---|---|
 | Major mechanical prototype / redesign | **[TODO: Actual commit]** |
@@ -2097,24 +2014,9 @@ Instead, identify actual important commits already present in the repository.
 | Final competition configuration | **[TODO: Actual commit]** |
 | Final documentation release | **[TODO: Actual commit]** |
 
-Commit messages should describe meaningful engineering changes rather than generic messages such as:
-
-```text
-update
-fix
-new
-final
-```
-
-where possible.
-
 ---
 
 # 18. Reproducibility Checklist
-
-The reproduction is considered complete only when another builder can progress through all stages below.
-
----
 
 ## 18.1 Documentation
 
