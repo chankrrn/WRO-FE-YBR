@@ -126,15 +126,10 @@ DEFAULTS = {
     "goals.robot_front_mm": 200.0,
     "goals.robot_rear_mm": 40.0,
 
-    # ---- Starting inside the parking space (final round) -------------------
-    # The obstacle round starts with the robot parked between two bay walls
-    # that are not in FieldMap, so the lidar sees returns the particle filter
-    # cannot explain and the pose it settles on is not to be trusted. With
-    # this set the round creeps straight out of the space first and localizes
-    # afterwards. See FinalTask._wait_for_localization.
-    "start.in_parking_bay": False,
-    "start.bay_exit_mm": 600.0,
-    "start.bay_exit_speed": 60,
+    # Leaving the bay the round starts in is [unpark], driven off the lidar by
+    # UnparkController - see FinalTask._setup_manoeuvres. There is nothing to
+    # default here, because the three numbers that make up the manoeuvre have
+    # to be measured on the mat and it refuses to drive without them.
 
     "safety.min_pose_confidence": 0.35,
     "safety.lost_timeout_s": 4.0,
