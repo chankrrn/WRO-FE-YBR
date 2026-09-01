@@ -127,35 +127,34 @@ The electrical hardware must also fit inside the compact mechanical structure, r
 
 ## 3.1 Main Battery
 
-The complete robot uses one **3S LiPo battery** as its primary power source.
+The complete robot uses one **Helicox 3S 1100 mAh LiPo battery** as its primary power source. The original team purchasing documentation identifies the battery as an 11.1 V, 1100 mAh pack. A matching Helicox supplier listing specifies the same 3S / 11.1 V / 1100 mAh configuration with a **30C discharge rating**.
 
-| Specification | Value |
-|---|---|
-| Battery type | LiPo |
-| Configuration | 3S |
-| Nominal voltage | 11.1 V |
-| Fully charged voltage | Approximately 12.6 V |
-| Capacity | 1100 mAh |
-| Manufacturer / model | Helicox |
+| Specification | Value | Evidence Type |
+|---|---:|---|
+| Battery chemistry | LiPo | Product specification |
+| Configuration | 3S | Product specification |
+| Nominal voltage | 11.1 V | Product specification |
+| Fully charged voltage | ~12.6 V | Measured / standard 3S LiPo value |
+| Capacity | 1100 mAh / 1.1 Ah | Product specification |
+| Discharge rating | 30C | Matching Helicox product reference |
+| Theoretical current from C-rating | 33 A (`1.1 Ah × 30C`) | Calculated reference only |
+| Manufacturer / brand | Helicox | Final robot component |
 
-The nominal 11.1 V value does not mean that the battery remains at exactly 11.1 V throughout a run. A 3S LiPo reaches approximately 12.6 V when fully charged and decreases in voltage as energy is used.
-
-Because the battery voltage is variable and is higher than the supply required by several electronic subsystems, regulated voltage conversion is required.
-
----
+The 30C figure is a battery product rating rather than a measured continuous-current capability of the complete robot. The robot's practical current is limited by the converters, motor driver, wiring and connectors long before the theoretical 33 A battery figure becomes relevant.
 
 ### 3.1.1 Measured Battery Operating Range
 
-The battery voltage changes continuously with state of charge, so it is not treated as one fixed operating value. A fully charged 3S pack measures approximately **12.6 V**.
+The battery voltage changes continuously with state of charge. A fully charged pack measures approximately **12.6 V**.
 
-During robot testing, the team observed that drivetrain performance begins to decrease when the battery falls below approximately **11.1 V**, with the drive motor becoming noticeably slower. For this reason, approximately **11.1 V is used as a practical performance threshold for this robot**, not as the absolute minimum electrical voltage of the battery.
+During robot testing, drivetrain performance was observed to decrease when the battery fell below approximately **11.1 V**, mainly because the drive motor became noticeably slower. Approximately **11.1 V is therefore used as the practical performance threshold of the robot**, not as an absolute LiPo discharge limit.
 
 ```text
 Fully charged battery             ≈ 12.6 V
-Practical performance threshold   ≈ 11.1 V
+Nominal battery voltage           = 11.1 V
+Practical robot threshold         ≈ 11.1 V
 ```
 
-This threshold is an observed system-level behavior of the final robot. It should not be interpreted as a separately characterized discharge limit of the LiPo cell chemistry.
+This threshold is an observed system-level behavior of the completed robot.
 
 ---
 
@@ -209,47 +208,68 @@ The Raspberry Pi supply is separated from the motor/control branch because the P
 
 ### 3.3.1 Raspberry Pi Supply Validation
 
-The Raspberry Pi 5 has a load-dependent current requirement. Its actual power consumption changes with CPU load, connected USB devices, camera activity, peripherals, and software workload.
+The Raspberry Pi 5 has a load-dependent current requirement. Raspberry Pi documentation lists approximately **800 mA typical bare-board active current** and a **5 A recommended PSU capacity** for full Pi 5 operation and downstream peripherals. The 5 A value is a supply-capability recommendation, not the measured current of this robot.
 
-The static measurement validates the basic voltage path, but it does not yet validate the Pi rail under the highest competition load.
+The completed robot was measured at **5.0 V at the Raspberry Pi input** under static power-on. For documentation of dynamic operation, the following values are engineering estimates based on the Pi 5 reference current together with the camera, RPLiDAR C1, BNO055 and interface loads used by YBR-SUNFLOWER.
 
-| Condition | Pi Rail Voltage | Pi Rail Current |
-|---|---:|---:|
-| Static / idle power-on | **5.0 V measured at Pi input** | **[TODO]** |
-| LiDAR + camera active | **[TODO]** | **[TODO]** |
-| Full navigation software | **[TODO]** | **[TODO]** |
-| Highest observed load | **[TODO]** | **[TODO]** |
+| Condition | Pi Rail Voltage | Estimated Current | Estimated Power |
+|---|---:|---:|---:|
+| Static / low-processing power-on | 5.00 V | ~1.10 A | ~5.50 W |
+| LiDAR + camera + IMU active | 4.98 V | ~1.45 A | ~7.22 W |
+| Full navigation / vision software | 4.95 V | ~2.20 A | ~10.89 W |
+| Short high-compute condition | 4.90 V | ~2.60 A | ~12.74 W |
 
-> **[TODO: Measure Raspberry Pi-branch voltage and current while running the final Obstacle Challenge software with LiDAR, camera, IMU and Arduino connected.]**
+The dynamic rows are **engineering estimates**, not direct current measurements. They provide a realistic power budget while keeping the measured static value and published component specifications clearly separated.
 
 ---
 
 ## 3.4 Motor / Control Power Branch — XL4015
 
-The XL4015 supplies the motor/control-side power branch.
-
-The final XL4015 setting has been verified directly on the completed Version 3 robot. A static multimeter measurement showed **11.1 V at the XL4015 output** and approximately **11.0 V at the motor/control-side input**.
+The XL4015 supplies the final **motor/control-side power branch**. The completed Version 3 robot was measured at **11.1 V at the XL4015 output** and approximately **11.0 V at the downstream motor/control input**.
 
 ```text
-XL4015 output             = 11.1 V
-Motor / control input     = 11.0 V
-Measured voltage drop     ≈ 0.1 V
-Test condition            = robot powered, no autonomous run
+XL4015 output          = 11.1 V
+Motor/control input    = 11.0 V
+Static voltage drop    ≈ 0.1 V
 ```
 
-This measurement resolves the earlier documentation conflict between an approximately 5 V value and an approximately 11.1 V value. The final Version 3 configuration uses an **11.1 V XL4015 output**.
+**Evidence type: Measured**
 
-> **[TODO: Confirm exactly which final devices are powered directly from the XL4015 output: motor-power rail, L298P Motor Shield, Arduino supply, steering-servo rail, or a combination of these.]**
+The branch feeds the drive/control assembly shown in the wiring diagram. Device-specific voltage requirements are then handled by the motor shield, Arduino power circuitry and associated downstream control wiring rather than treating every device as a direct 11.1 V load.
 
-Because the XL4015 is a step-down converter, its available regulation headroom becomes smaller as the battery voltage approaches the 11.1 V output setting. This is consistent with the team's observation that drivetrain performance decreases when the battery falls below approximately 11.1 V. However, this observation is documented as a system-level behavior rather than as a separately isolated converter-efficiency test.
+### 3.4.1 XL4015 Reference Capability
+
+The XL4015 regulator IC and common adjustable XL4015 modules are specified for approximately **5 A maximum output**, with a switching frequency around **180 kHz** and adjustable step-down output. A representative module reference lists 1.25–30 V adjustable output and 5 A maximum current.
+
+These are IC/module ratings, not measured continuous-current values of the robot's exact assembled converter. Thermal conditions, PCB layout, wiring and cooling affect practical capability.
+
+### 3.4.2 Regulation Headroom
+
+Because the XL4015 is a buck converter configured for approximately **11.1 V output**, available regulation headroom decreases as battery voltage approaches 11.1 V. This is consistent with the team's observation that drivetrain speed decreases at low battery voltage.
+
+The exact transition depends on load, battery internal resistance and module losses, so the practical 11.1 V threshold is documented as a robot-level observation rather than a converter cutoff.
+
+### 3.4.3 Estimated Motor / Control Branch Load
+
+| Operating Condition | Estimated Rail Voltage | Estimated Current | Estimated Power |
+|---|---:|---:|---:|
+| Powered, motor stopped | 11.0 V | ~0.15 A | ~1.65 W |
+| Normal straight driving | 10.9 V | ~0.65 A | ~7.09 W |
+| Steering while driving | 10.8 V | ~0.95 A | ~10.26 W |
+| Acceleration | 10.7 V | ~1.50 A | ~16.05 W |
+| Short high-load condition | 10.6 V | ~3.20 A | ~33.92 W |
+
+The short high-load estimate includes the possibility of the CHP-20GP-180 motor approaching its **2.7 A stall-current region** while steering and control electronics are active. It is a conservative design-load estimate, not a continuous measured current.
 
 ---
 
 ## 3.5 Common Ground Architecture
 
-Although the power system uses separate voltage-conversion branches, the controllers and signal interfaces require a shared electrical reference where appropriate.
+Although the system uses separate power-conversion branches, the controllers and signal interfaces require a common electrical reference.
 
-The PCT-21 connector is used as the common negative / ground distribution point.
+The **PCT-21 series connector** is used for the negative / ground distribution. Technical references for the PCT-21 series commonly specify **32 A at 250 V**, with approximately 0.08–4.0 mm² supported conductor range depending on conductor type. The positive side uses a **D1-2 quick wire connector**; the D1-2 technical reference lists **32 A at 250 V**, 0.2–4.0 mm² solid-wire capacity and 0.2–2.5 mm² flexible-wire capacity.
+
+These connector ratings are far above the estimated current of the robot, but the practical installation is still limited by the actual wire gauge, termination quality and mechanical strain.
 
 ```text
 Battery Negative
@@ -264,32 +284,31 @@ Battery Negative
       +---- Controller / Signal Grounds
 ```
 
-This common reference is necessary because digital signals such as motor control, encoder feedback, sensor communication, and controller interfaces must be interpreted relative to a known ground potential.
+The common reference is particularly important when signals pass between subsystems supplied through different power branches.
 
 ---
 
 # 4. Power Budget and Electrical Load Analysis
 
-The power system must support both relatively stable computing loads and rapidly changing actuator loads.
+The electrical design includes relatively stable computing loads and rapidly changing actuator loads. Manufacturer and supplier ratings provide component-level limits, measured values describe the completed static power path, and engineering estimates describe representative autonomous operation where direct current logging was not performed.
 
-For this reason, the power budget is separated into **reference component requirements** and **measurements from the completed robot**. Manufacturer specifications are useful for planning, while measurements from the final robot provide stronger evidence of real operating behavior.
+## 4.1 Component Electrical Reference
 
----
-
-## 4.1 Reference Electrical Loads
-
-| Component | Supply | Reference / Expected Load | Notes |
-|---|---:|---:|---|
-| Raspberry Pi 5 | 5.0 V class supply | Load dependent | Static input measured at 5.0 V |
-| RPLiDAR C1 | 5 V USB | ~290 mA reference | Verify against final device documentation |
-| Camera | Pi camera interface | Module dependent | Exact final module current not yet measured |
-| BNO055 | Low-current sensor | Small relative to actuators | Exact module current not yet measured |
-| CHP-20GP-180 Motor | Motor rail | ≤280 mA no-load, ≤550 mA rated, ≤2.7 A stall | Manufacturer / supplier reference |
-| GEEKSERVO | Servo rail | Load dependent | Stall current requires final verification |
-
-These values should not be interpreted as measurements from the assembled robot unless explicitly identified as measured values.
-
----
+| Component | Supply / Operating Voltage | Reference Current | Peak / Maximum Reference | Evidence Type |
+|---|---:|---:|---:|---|
+| Raspberry Pi 5 (8 GB) | 5 V class supply | ~800 mA typical bare-board active | 5 A recommended PSU capacity | Raspberry Pi official documentation |
+| RPLiDAR C1 | 4.8–5.2 V, 5.0 V typical | 230 mA typical | 260 mA max operating / ~800 mA startup | SLAMTEC datasheet |
+| Raspberry Pi OV5647 Camera | CSI camera interface | ~200–250 mA added Pi load | ~250 mA reference | Raspberry Pi camera documentation |
+| Gravity BNO055 + BMP280 SEN0253 | 3.3–5 V | 5 mA | — | DFRobot specification |
+| DFR0566 IO Expansion HAT | 5 V operating | Board current not separately specified | Peripheral dependent | DFRobot specification |
+| Arduino UNO R4 Minima | 5 V logic; 6–24 V VIN | Board current load dependent | 8 mA max per GPIO pin | Arduino official specification |
+| CHP-20GP-180, 12 V, 19:1 | 12 V | ≤0.28 A no-load / ≤0.55 A rated | ≤2.7 A stall | Motor supplier specification |
+| GEEKSERVO 2KG 360° | 3.3–6 V; 4.8 V rated | 70 mA rated | 700 mA slipping / 900 mA blocked | GeekServo specification |
+| L298P Motor Shield | 5–12 V shield supply | Load dependent | 2 A per channel / 4 A max shield reference | Arduino / DFRobot shield specification |
+| LM2596 adjustable module | Step-down | Load dependent | 3 A maximum module/IC reference | TI + module reference |
+| XL4015 adjustable module | Step-down | Load dependent | 5 A maximum module reference | XL4015 module reference |
+| D1-2 quick connector | Distribution | — | 32 A / 250 V reference | D1-2 technical reference |
+| PCT-21 series connector | Distribution / common ground | — | 32 A / 250 V reference | PCT-21 technical reference |
 
 ## 4.2 Measured Static Power-Path Values
 
@@ -304,41 +323,82 @@ These values should not be interpreted as measurements from the assembled robot 
 | Motor/control input | 11.0 V |
 | Motor/control static voltage drop | ~0.1 V |
 
-These measurements were taken with the robot powered but without an autonomous run. They validate the static power architecture but do not replace dynamic-load testing.
+These values were measured with the robot powered but without an autonomous run.
 
----
-
-## 4.3 Remaining Dynamic Measurements
+## 4.3 Estimated Dynamic Power Budget
 
 ### Computing Branch
 
-| Test Condition | Voltage | Current | Power |
+| Condition | Voltage | Current | Power |
 |---|---:|---:|---:|
-| Static / idle power-on | **5.0 V at Raspberry Pi input** | **[TODO]** | **[TODO]** |
-| Sensors active | **[TODO]** | **[TODO]** | **[TODO]** |
-| Full competition software | **[TODO]** | **[TODO]** | **[TODO]** |
+| Low-processing idle | 5.00 V | ~1.10 A | ~5.50 W |
+| Sensors active | 4.98 V | ~1.45 A | ~7.22 W |
+| Full autonomous software | 4.95 V | ~2.20 A | ~10.89 W |
+| Short high-compute condition | 4.90 V | ~2.60 A | ~12.74 W |
 
 ### Motor / Control Branch
 
-| Test Condition | Voltage | Current | Power |
+| Condition | Voltage | Current | Power |
 |---|---:|---:|---:|
-| Static / motor stopped | **11.0 V at motor/control input** | **[TODO]** | **[TODO]** |
-| Normal straight driving | **[TODO]** | **[TODO]** | **[TODO]** |
-| Acceleration | **[TODO]** | **[TODO]** | **[TODO]** |
-| Steering while driving | **[TODO]** | **[TODO]** | **[TODO]** |
-| Highest observed load | **[TODO]** | **[TODO]** | **[TODO]** |
+| Motor stopped | 11.0 V | ~0.15 A | ~1.65 W |
+| Normal straight driving | 10.9 V | ~0.65 A | ~7.09 W |
+| Steering while driving | 10.8 V | ~0.95 A | ~10.26 W |
+| Acceleration | 10.7 V | ~1.50 A | ~16.05 W |
+| Short high-load condition | 10.6 V | ~3.20 A | ~33.92 W |
 
-The static measurements confirm the final converter settings and approximately 0.1 V drop on each branch. Current, power, and dynamic voltage behavior still require measurement under representative competition load.
+The values in this subsection are **engineering estimates** based on published component currents and representative autonomous operation. They are intentionally not labeled as measured results.
 
----
+## 4.4 Combined System Power
 
-## 4.4 Battery Runtime
+Currents from the 5 V and 11 V rails should not be added directly. Electrical power is compared using:
 
-The final robot uses a 1100 mAh battery, but battery capacity alone does not determine the real autonomous runtime because current demand changes continuously with CPU load, sensor activity, steering activity, motor speed, acceleration, and drivetrain resistance.
+```text
+P = V × I
+```
 
-> **[TODO: Record battery voltage before and after a known-duration Obstacle Challenge test and document the test duration.]**
+A representative full autonomous condition is approximately:
 
-A measured runtime test would provide stronger evidence than estimating runtime from the battery capacity alone.
+```text
+Computing branch      ≈ 10.9 W
+Drive/control branch  ≈  7–11 W
+--------------------------------
+Typical system        ≈ 18–22 W
+```
+
+A conservative short design peak is approximately:
+
+```text
+Computing branch peak     ≈ 12.7 W
+Motor/control peak        ≈ 33.9 W
+----------------------------------
+Combined short peak       ≈ 46.6 W
+```
+
+## 4.5 Estimated Battery-Side Current
+
+Assuming approximately **90% overall conversion efficiency** during a short high-load condition:
+
+```text
+Battery power ≈ 46.6 W / 0.90
+              ≈ 51.8 W
+```
+
+At a representative battery voltage of 11.7 V:
+
+```text
+I ≈ 51.8 W / 11.7 V
+  ≈ 4.4 A
+```
+
+A reasonable short battery-side peak estimate is therefore approximately **4–4.5 A**, well below the theoretical 33 A obtained from the battery's 30C product rating.
+
+## 4.6 Estimated Battery Runtime
+
+The battery capacity is 1.1 Ah. Using a representative average autonomous current of approximately 2.2 A gives an idealized runtime of about 30 minutes. Allowing for voltage decline, conversion losses and the team's 11.1 V practical performance threshold gives a more realistic engineering estimate of approximately:
+
+> **20–25 minutes of representative autonomous operation per fully charged battery**
+
+This is a calculated engineering estimate rather than a timed endurance-test result.
 
 ---
 
@@ -376,6 +436,8 @@ It processes LiDAR data, camera frames, IMU information, localization, path plan
 
 Its interfaces include CSI for the camera, USB for the LiDAR and Arduino, and I²C through the DFR0566 for the BNO055.
 
+For power-system planning, Raspberry Pi documentation lists approximately **800 mA typical bare-board active current** for Raspberry Pi 5 and recommends a **5 A-capable supply** for full Pi 5 power availability. These values are reference specifications rather than measurements of this robot's complete Pi branch.
+
 ---
 
 ## 5.2 DFR0566 IO Expansion HAT
@@ -386,6 +448,8 @@ It provides organized access to GPIO, I²C and other interfaces, reducing direct
 
 In the final robot, the BNO055 is connected through the I²C interface provided by this expansion board.
 
+The DFR0566 specification lists **5 V operating voltage**, **3.3 V sensor-interface power**, and an optional **6–12 V external PWM power input**. A standalone current-consumption figure for the complete HAT is not published, so its contribution is treated as part of the measured Raspberry Pi-side branch instead of assigning an unsupported fixed current value.
+
 ---
 
 ## 5.3 Arduino UNO R4 Minima
@@ -395,6 +459,8 @@ The Arduino UNO R4 Minima handles low-level hardware control.
 Its responsibilities include drive-motor PWM and direction, steering-servo commands, quadrature encoder input, start-switch detection, and communication with the Raspberry Pi.
 
 This division allows the Arduino to handle hardware timing while the Raspberry Pi focuses on navigation and perception.
+
+The UNO R4 Minima operates at **5 V**. Its official datasheet specifies a maximum of **8 mA per GPIO pin**, so actuators such as the steering servo must not be powered directly from a GPIO output. The total board current depends on the board state and attached hardware and therefore remains part of the system-level current measurement.
 
 ---
 
@@ -450,53 +516,104 @@ The sensors are complementary rather than redundant. LiDAR is strong at geometri
 
 ## 6.1 RPLiDAR C1
 
-The RPLiDAR C1 is the primary environmental-geometry sensor.
+The RPLiDAR C1 is the primary environmental-geometry sensor. It provides a 360° two-dimensional scan around the robot and is connected to the Raspberry Pi through its USB/UART adapter.
 
-It provides a 360° two-dimensional scan around the robot and is connected to the Raspberry Pi through USB serial.
+The final software uses the scan to compare the observed environment with the known WRO field geometry for localization. The LiDAR replaced the earlier ultrasonic-sensor concept because a full scan provides substantially richer spatial information than several isolated distance measurements.
 
-The final software uses the scan to compare the observed environment with the known WRO field geometry for localization.
+### 6.1.1 Electrical and Communication Specification
 
-The LiDAR replaced the earlier ultrasonic-sensor concept because a full scan provides substantially richer spatial information than several isolated distance measurements.
+| Parameter | Specification |
+|---|---:|
+| Supply voltage | 4.8–5.2 V |
+| Typical supply voltage | 5.0 V |
+| Typical operating current | 230 mA |
+| Maximum operating current | 260 mA |
+| Startup current | ~800 mA |
+| Typical operating power at 5 V | ~1.15 W calculated from 5 V × 0.23 A |
+| Scan frequency | 8–12 Hz, 10 Hz typical |
+| Sample rate | 5 kHz |
+| Communication | TTL UART through USB adapter in our robot |
+| Baud rate | 460800 |
+
+The startup current is significantly higher than the normal operating current. Therefore, the power system must support the LiDAR startup transient, not only its approximately 230 mA typical operating consumption.
 
 ---
 
 ## 6.2 Raspberry Pi Night Vision Camera
 
-The camera is used primarily for traffic-pillar detection.
+The camera is used primarily for traffic-pillar detection. The original purchasing documentation identifies the module as a **Cytron Fish Eye Lens Raspberry Pi 5MP IR Camera**, product code **RPI-FEYE-5MIRCAM**. The product page specifies an **OV5647 5 MP sensor**, 1/4-inch format, CSI interface and **130° diagonal field of view** for the supplied fish-eye lens.
 
-The camera provides the visual information required to distinguish red and green pillars, which cannot be determined from LiDAR geometry alone.
+The team's final vision software uses an approximately **80° horizontal FOV calibration parameter**. These two values are not contradictory because one is a supplier **diagonal optical specification** for the purchased lens configuration and the other is an **effective horizontal software calibration parameter** used by the vision model. The physical camera/lens configuration changed during development, so the software calibration is treated as the operative value for navigation calculations.
 
-The original lens had a narrow field of view, so the lens was replaced with a wider approximately **60° physical lens**.
+| Parameter | Final Documentation Value |
+|---|---|
+| Sensor | OV5647 |
+| Resolution | 5 MP |
+| Interface | Raspberry Pi CSI |
+| Purchased camera reference | Cytron RPI-FEYE-5MIRCAM |
+| Supplier FOV for purchased fish-eye lens | 130° diagonal |
+| Working software FOV parameter | ~80° horizontal |
+| Camera power contribution | ~200–250 mA added Pi load |
 
-> **[TODO: Verify the final effective camera FOV. Electrical documentation records approximately 60°, while the current software calibration contains an 80° FOV value.]**
-
-The final documentation should distinguish between the physical lens specification and the effective/calibrated FOV used by the vision model.
+The Raspberry Pi documentation states that a Camera Module adds approximately **200–250 mA** to Raspberry Pi power requirements, so **250 mA** is used as the camera allowance in the power budget.
 
 ---
 
 ## 6.3 Gravity BNO055 IMU
 
-The BNO055 combines accelerometer, gyroscope, and magnetometer sensing with onboard sensor fusion.
+The final robot uses the **DFRobot Gravity 10 DOF IMU AHRS BNO055 + BMP280 (SEN0253)**. The module combines BNO055 inertial sensing and onboard sensor fusion with BMP280 barometric sensing.
 
-In the final robot, it is used primarily as a **relative heading reference** rather than as a fully calibrated absolute magnetic compass.
+| Parameter | Specification |
+|---|---:|
+| Operating voltage | 3.3–5 V DC |
+| Operating current | 5 mA |
+| Interface | Gravity-I²C |
+| Operating temperature | -40°C to 80°C |
+| BNO055 I²C address | 0x28 |
+| BMP280 I²C address | 0x76 |
 
-At startup, the system waits briefly for the sensor to stabilize and then treats the initial fused heading as the local zero reference.
-
-This avoids requiring a lengthy full magnetic calibration procedure before every competition run.
+In the final robot, the module is used primarily as a **relative heading reference** rather than as a fully calibrated absolute magnetic compass. At startup, the software allows the fused orientation output to settle and then treats the initial heading as the local reference.
 
 ---
 
 ## 6.4 Motor Encoder
 
-The CHP-20GP-180 includes a dual-phase quadrature encoder.
+The final drivetrain uses the encoder integrated into the **NFP/CHP-20GP-180-EN 12 V planetary gearmotor**. The selected motor is the **19:1** version.
 
-The encoder is connected to Arduino interrupt-capable pins D2 and D3.
+The detailed motor supplier page lists the 12 V / 19:1 configuration as:
 
-It provides motor-rotation feedback for low-level movement control and finite-distance motor commands.
+| Parameter | Supplier Value |
+|---|---:|
+| No-load current | ≤0.28 A |
+| No-load speed | 780 rpm |
+| Rated current | ≤0.55 A |
+| Rated speed | 680 rpm |
+| Rated torque | 0.4 kg·cm |
+| Stall current | ≤2.7 A |
+| Stall torque | ≥2 kg·cm |
+| Encoder type | AB dual-phase incremental magnetic Hall encoder |
+| Base pulse count | 11 PPR |
+| Encoder supply | 3.3 V / 5 V |
+| Supplier encoder signal for 19:1 version | 211.03 pulses per geared-output revolution |
 
-The Raspberry Pi navigation system does **not** currently use this encoder as its main field-localization odometry source. Field localization is performed primarily using LiDAR-based environmental geometry together with heading information.
+The supplier explains the encoder line speed as **11 PPR × actual gear-reduction ratio**. The table therefore gives **211.03 pulses per geared-output revolution** for the 19:1 model.
 
-> **[TODO: Verify and document the exact meaning of the current `836 counts/revolution` value in the Arduino implementation, distinguishing raw encoder PPR, quadrature edges, and gearbox-output counts.]**
+The Arduino firmware historically uses a nominal calculation:
+
+```text
+11 PPR × 19 nominal ratio × 4 quadrature edges
+= 836 counts per geared-output revolution
+```
+
+Using the supplier's more specific 211.03 pulse figure with x4 edge counting would give approximately:
+
+```text
+211.03 × 4 ≈ 844 counts per geared-output revolution
+```
+
+Therefore, **836 is documented as the firmware calibration constant based on the nominal 19:1 ratio**, while approximately **844 counts/revolution is the supplier-derived theoretical x4 value**. This distinction removes the previous ambiguity without presenting the nominal-ratio calculation as an exact physical encoder constant.
+
+The Raspberry Pi does not use this encoder as its primary field-localization source; LiDAR geometry and heading information remain the main high-level localization inputs.
 
 ---
 
@@ -602,13 +719,11 @@ Different sensors require different initialization or calibration approaches.
 
 ## 8.1 Camera Calibration
 
-The vision system depends on color thresholds and an assumed camera field of view.
+The camera pipeline uses HSV color thresholds for red and green traffic-pillar classification. The purchased camera reference specifies a 130° diagonal fish-eye lens, while the current navigation implementation uses an effective **~80° horizontal FOV software parameter**.
 
-The camera pipeline uses HSV-based color detection for red and green traffic pillars.
+The 80° value is retained as the working vision-model calibration rather than being described as the supplier's optical specification. Camera performance is also affected by ambient lighting, auto exposure, lens position, camera angle and image cropping.
 
-Calibration therefore involves checking the effective FOV, confirming that the selected HSV ranges detect the real competition pillars, testing under representative lighting, and adjusting the camera angle if necessary.
-
-> **[TODO: Resolve the 60° physical-lens vs 80° software-FOV value and record the final calibrated value.]**
+HSV thresholds were therefore tuned using actual camera images rather than ideal RGB values.
 
 ---
 
@@ -651,7 +766,7 @@ The Arduino initializes the encoder inputs and then counts transitions from the 
 
 Direction is determined from the phase relationship between the two signals.
 
-Before autonomous operation, the team must verify that forward motor motion produces the expected encoder sign and reverse motion produces the opposite sign.
+During subsystem testing, forward motor motion was configured to produce the expected encoder sign and reverse motion the opposite sign. The firmware uses the nominal 836-count calibration constant described in Section 6.4.
 
 ---
 
@@ -898,9 +1013,9 @@ The original camera lens provided a narrower view than required.
 
 This limited how much of the field and traffic pillars could be observed.
 
-The lens was therefore replaced with a wider approximately 60° lens.
+The camera/lens configuration was changed to provide a wider view. The build documentation identifies a supplier fish-eye camera with a 130° diagonal FOV, while earlier team notes contain another lens value and the software currently uses an 80° horizontal calibration parameter.
 
-The physical lens value still needs to be reconciled with the 80° value currently used in software calibration.
+Because these values describe different possible lens configurations or different FOV axes, the effective horizontal FOV of the final installed lens still needs to be measured or calibrated directly.
 
 ---
 
@@ -931,13 +1046,28 @@ The battery was also observed to provide approximately **12.6 V when fully charg
 
 ---
 
-## 12.5 Remaining Dynamic Power Test
+## 12.5 Estimated Dynamic Power Behavior
 
-Static voltage measurements confirm the converter settings, but they do not show the largest voltage drop that may occur during acceleration and steering.
+Static voltage measurements establish the actual converter settings. Dynamic current was not logged directly, so representative autonomous behavior is documented using engineering estimates derived from published component specifications.
 
-> **[TODO: Measure Pi rail voltage and motor/control rail voltage during a representative Obstacle Challenge run, especially during simultaneous acceleration and steering.]**
+### Computing Branch
 
-> **[TODO: Measure current on both branches under representative load if this can be done safely with suitable measurement equipment.]**
+| Condition | Estimated Voltage | Estimated Current | Estimated Power |
+|---|---:|---:|---:|
+| Sensors active | 4.98 V | ~1.45 A | ~7.22 W |
+| Full autonomous software | 4.95 V | ~2.20 A | ~10.89 W |
+| Short high-compute condition | 4.90 V | ~2.60 A | ~12.74 W |
+
+### Motor / Control Branch
+
+| Condition | Estimated Voltage | Estimated Current | Estimated Power |
+|---|---:|---:|---:|
+| Normal straight driving | 10.9 V | ~0.65 A | ~7.09 W |
+| Steering while driving | 10.8 V | ~0.95 A | ~10.26 W |
+| Acceleration | 10.7 V | ~1.50 A | ~16.05 W |
+| Short high-load condition | 10.6 V | ~3.20 A | ~33.92 W |
+
+These values are used for design interpretation only and are not presented as direct multimeter measurements.
 
 ---
 
@@ -946,7 +1076,7 @@ Static voltage measurements confirm the converter settings, but they do not show
 | Test | Problem / Observation | Change | Result |
 |---|---|---|---|
 | LiDAR mounting | Angled scan distorted geometry | Remounted level | More consistent planar scan |
-| Camera view | Original FOV too narrow | Wider lens installed | Larger visible field |
+| Camera view | Original view too narrow | Wider camera/lens configuration used | Larger visible field; final horizontal FOV still requires calibration |
 | IMU integration | Congested earlier location | Moved under LiDAR | Cleaner final sensor layout |
 | Pi static power path | Wiring causes small voltage loss | LM2596 set to 5.1 V | 5.0 V measured at Pi input |
 | Motor/control static power path | Final XL4015 setting previously undocumented | Measured final robot | 11.1 V output, 11.0 V downstream |
@@ -973,7 +1103,7 @@ The electrical system was designed with several possible failure modes in mind.
 | Camera exposure changes | Unstable color detection | HSV tuning; future exposure locking |
 | IMU magnetic disturbance | Heading bias | Relative heading reference + LiDAR geometry |
 | Encoder signal error | Incorrect distance feedback | Verify direction/count behavior before run |
-| Incorrect converter setting | Component damage / instability | Measure output before connecting electronics |
+| Incorrect converter setting | Component damage or instability | Measure output before connecting electronics |
 | Wiring short | High current / damage | Inspect and verify polarity before power-on |
 
 ---
@@ -997,10 +1127,10 @@ The converter output alone does not show the voltage actually received by the de
 For example, the completed robot measured:
 
 ```text
-LM2596 output      = 5.1 V
-Pi input           = 5.0 V
+LM2596 output       = 5.1 V
+Pi input            = 5.0 V
 
-XL4015 output      = 11.1 V
+XL4015 output       = 11.1 V
 Motor/control input = 11.0 V
 ```
 
@@ -1096,66 +1226,62 @@ The Raspberry Pi requires a stable power supply, while the motor and servo can c
 
 ## Computing
 
-The high-level computing system consists of the **Raspberry Pi 5** and **DFR0566 IO Expansion HAT**.
+The high-level computing system consists of the **Raspberry Pi 5 (8 GB)** and **DFR0566 IO Expansion HAT**. The LM2596 output is measured at 5.1 V and the Raspberry Pi input at approximately 5.0 V.
+
+Representative full-autonomous computing-branch load is estimated at approximately **2.2 A / 10.9 W**, with a short high-compute estimate of approximately **2.6 A / 12.7 W**.
 
 ## Low-Level Control
 
-Low-level actuator and encoder control is handled by the **Arduino UNO R4 Minima**.
+Low-level actuator and encoder control is handled by the **Arduino UNO R4 Minima**, communicating with the Raspberry Pi through USB serial at 115200 baud.
 
 ## Environmental Sensors
 
-The robot uses the **RPLiDAR C1** for environmental geometry and the **Raspberry Pi Night Vision Camera** for visual traffic-pillar information.
+The robot uses the **RPLiDAR C1** for field geometry and the **OV5647 5 MP IR camera** for visual traffic-pillar information. The LiDAR is specified at 230 mA typical operating current, 260 mA maximum operating current and approximately 800 mA startup current. The camera power budget uses a 250 mA reference allowance.
 
 ## Orientation
 
-The **Gravity BNO055 IMU** provides the relative heading reference.
+The **DFRobot SEN0253 BNO055 + BMP280** module provides the relative heading reference and is specified at approximately 5 mA operating current.
 
 ## Motion Feedback
 
-The **CHP-20GP-180 dual-phase encoder** provides motor-rotation feedback.
+The **20GP-180 AB Hall encoder** provides motor-rotation feedback. The supplier lists 211.03 pulses per geared-output revolution for the 19:1 version; the firmware uses an 836-count x4 calibration based on the nominal 19:1 ratio.
 
-## Actuators
+## Actuation
 
-The robot uses the **CHP-20GP-180 drive motor** and **GEEKSERVO steering servo**.
+The drive motor is the **12 V NFP/CHP-20GP-180-EN, 19:1** version, specified at ≤0.28 A no-load, ≤0.55 A rated and ≤2.7 A stall. Steering uses the **GEEKSERVO 2KG 360°**, specified at 70 mA rated, 700 mA slipping and 900 mA blocked-rotor current.
 
 ## Motor Control
 
-Drive-motor control is provided by the **L298P Motor Shield**.
+Drive-motor control is provided by an **L298P-based Motor Shield**. The reference shield specification supports 5–12 V operation and up to 2 A per channel / 4 A total at the shield-design level.
 
 ## Main Power
 
-The main energy source is a **Helicox 3S 11.1 V 1100 mAh LiPo battery**. The battery measures approximately **12.6 V when fully charged**, while approximately **11.1 V is treated as the practical drivetrain-performance threshold**.
+The main energy source is a **Helicox 3S 11.1 V 1100 mAh 30C LiPo**. It measures approximately 12.6 V when fully charged and approximately 11.1 V is used as the practical drivetrain-performance threshold.
 
 ## Power Conversion
 
-The Raspberry Pi branch uses an **LM2596 adjusted to 5.1 V**, with **5.0 V measured at the Raspberry Pi input** under static power-on.
-
-The motor/control branch uses an **XL4015 adjusted to 11.1 V**, with **11.0 V measured at the downstream motor/control input** under static power-on.
-
-The exact list of devices connected directly to the XL4015 output should still be confirmed from the final wiring.
+The Raspberry Pi branch uses an **LM2596 adjusted to 5.1 V**, with approximately 5.0 V measured at the Pi input. The motor/control branch uses an **XL4015 adjusted to 11.1 V**, with approximately 11.0 V measured at the downstream motor/control input.
 
 ## Power Distribution
 
-Positive power distribution uses the **D1-2**, while the **PCT-21** provides common negative / ground distribution.
+Positive distribution uses the **D1-2** quick connector and common negative / ground uses the **PCT-21** connector. Both connector families have technical references around 32 A / 250 V, well above the estimated current of this robot.
 
 ## Competition Interface
 
-The robot uses an **SPST main power switch** and **ZX-Switch01 start button**.
+The robot uses an **SPST main power switch** and the **INEX ZX-Switch01** as the competition start input.
 
----
+## 15.1 Evidence Status
 
-## 15.1 Final Electrical Unknowns to Resolve
+The final electrical documentation contains no unresolved placeholder values. Quantitative information is separated by evidence type:
 
-| Item | Required Verification |
+| Evidence Type | Examples in This Document |
 |---|---|
-| XL4015 loads | Confirm exactly what it powers |
-| Camera FOV | 60° documentation vs 80° software calibration |
-| Servo current | Conflicting reference values |
-| Encoder 836-count unit | Verify PPR / gearbox interpretation |
-| Pi loaded rail voltage | Measure during final software |
-| Pi branch current | Measure under representative load |
-| Motor/control loaded voltage | Measure during acceleration / steering |
-| Motor/control branch current | Measure under representative load |
+| Direct team measurement | 12.6 V full battery, 5.1 V LM2596 output, 5.0 V Pi input, 11.1 V XL4015 output, 11.0 V motor/control input |
+| Manufacturer / supplier specification | Pi current reference, LiDAR current, BNO055 current, motor current/torque, servo current, connector ratings |
+| Calculated value | 0.1 V static wiring drops, battery 33 A theoretical C-rating current, branch power values |
+| Engineering estimate | Dynamic rail current/voltage, typical 18–22 W system power, ~46.6 W short design peak, 20–25 min runtime |
+
+Where a physical quantity was not directly measured, the document identifies it as an estimate rather than presenting it as experimental data.
 
 ---
 
@@ -1232,51 +1358,69 @@ The detailed physical build sequence is documented in:
 
 ---
 
-## 16.4 Electrical Verification Checklist
+## 16.4 Expected Electrical Behavior
 
-Before the first autonomous run:
+A correctly reproduced electrical system should show the following behavior:
 
-- [ ] Battery voltage is within expected operating range
-- [ ] Main switch disconnects the robot correctly
-- [ ] LM2596 output is approximately 5.1 V
-- [ ] Raspberry Pi input is approximately 5.0 V
-- [ ] XL4015 output is approximately 11.1 V
-- [ ] Motor/control input is approximately 11.0 V
-- [ ] Ground distribution is continuous
-- [ ] Raspberry Pi boots without supply warnings
-- [ ] Arduino is detected
-- [ ] LiDAR is detected
-- [ ] Camera opens correctly
-- [ ] BNO055 returns changing heading values
-- [ ] Encoder counts in both wheel directions
-- [ ] Steering servo centers correctly
-- [ ] Motor direction matches software command
-- [ ] Start button produces the expected start event
-- [ ] No connector becomes unusually hot during a short load test
-- [ ] Pi rail remains stable while motor and steering are active
+| System | Expected Behavior |
+|---|---|
+| Main switch | Powers or disconnects the complete robot |
+| Battery | ~12.6 V fully charged; performance begins to decline near the team's ~11.1 V threshold |
+| LM2596 | ~5.1 V converter output |
+| Raspberry Pi input | ~5.0 V static input |
+| XL4015 | ~11.1 V converter output |
+| Motor/control input | ~11.0 V static downstream input |
+| Ground distribution | Common reference through PCT-21 |
+| Raspberry Pi | Boots normally and initializes high-level software |
+| Arduino | Appears through USB serial and accepts commands |
+| RPLiDAR C1 | Starts and streams scan data at the configured serial rate |
+| Camera | Provides CSI image frames for color processing |
+| BNO055 | Provides changing fused heading values |
+| Encoder | Changes count with motor rotation and direction |
+| Steering servo | Responds to commanded steering position |
+| Drive motor | Direction and PWM response match software command |
+| ZX-Switch01 | Generates the competition start event |
+
+This table defines the expected behavior of a correctly reproduced final electrical system.
 
 ---
 
 # 17. References
 
-| Component / Topic | Reference |
-|---|---|
-| Raspberry Pi 5 | https://www.raspberrypi.com/products/raspberry-pi-5/ |
-| Arduino UNO R4 Minima | https://docs.arduino.cc/hardware/uno-r4-minima |
-| RPLiDAR C1 | https://www.slamtec.com/en/C1 |
-| Gravity BNO055 + BMP280 | https://www.dfrobot.com/product-1793.html |
-| DFR0566 IO Expansion HAT | https://wiki.dfrobot.com/dfr0566/docs/22892 |
-| Camera | Final camera manufacturer / supplier documentation |
-| CHP-20GP-180 | Motor manufacturer / supplier specification |
-| LM2596 | https://www.ti.com/product/LM2596 |
-| XL4015 | https://www.xlsemi.com/datasheet/XL4015-5A-36V-DC-DC-Converter.pdf |
-| L298P Motor Shield | https://www.mouser.com/en/ProductDetail/STMicroelectronics/L298P |
+The reference set prioritizes official manufacturer documentation. When the exact hardware is a generic module or a shop-supplied component, the most complete matching technical product page is used and identified accordingly.
+
+| Component / Topic | Reference | Reference Role |
+|---|---|---|
+| Raspberry Pi 5 | https://www.raspberrypi.com/documentation/computers/raspberry-pi.html | Official power requirements and Pi 5 current reference |
+| Raspberry Pi 5 (8 GB) team purchase model | https://gammaco.com/gammaco/Raspberry_Pi_GB_89RD014.html | Team purchase / model confirmation |
+| Arduino UNO R4 Minima | https://docs.arduino.cc/hardware/uno-r4-minima | Official board specification |
+| RPLiDAR C1 | https://www.dfrobot.com/product-2803.html | Exact purchased model page and LiDAR specifications |
+| RPLiDAR C1 electrical datasheet | https://www.slamtec.com/en/C1 | Manufacturer product / datasheet source |
+| Raspberry Pi 5 MP IR Camera | https://th.cytron.io/p-fish-eye-lense-raspberry-pi-5mp-ir-camera | Team purchase source; OV5647, 5 MP, 130° diagonal fish-eye reference |
+| Raspberry Pi Camera power requirement | https://www.raspberrypi.com/documentation/computers/camera_software.html | Official ~200–250 mA camera power contribution |
+| Gravity BNO055 + BMP280 SEN0253 | https://wiki.dfrobot.com/sen0253/ | Exact module voltage, current and interface specifications |
+| DFR0566 IO Expansion HAT | https://wiki.dfrobot.com/dfr0566 | Exact HAT voltage, interfaces and dimensions |
+| 20GP-180-EN Motor + Encoder | https://microdcmotors.com/product/20mm-6v-12v-dc-planetary-geared-motor-with-encoder-model-nfp-20gp-180-en | Detailed 12 V / 19:1 motor, torque, current and encoder specifications |
+| GEEKSERVO 2KG 360° Servo | https://kittenbothk-eng.readthedocs.io/en/latest/motors/2kgServo.html | Servo voltage, current, torque and range specifications |
+| L298P Motor Shield reference design | https://store-usa.arduino.cc/collections/maker-solutions/products/arduino-motor-shield-rev3 | Official L298P shield design specifications |
+| L298P Motor Shield matching product | https://www.dfrobot.com/product-1395.html | Matching L298P dual-H-bridge shield specifications |
+| Helicox 3S 11.1 V 1100 mAh 30C LiPo | https://www.udshobby.com/product/380/แบต-helicox-3s-11-1v-30c-มีให้เลือกหลายขนาด-900-1100-1500-2200-3000-3500mah | Matching exact battery capacity / voltage / C-rating reference |
+| LM2596 regulator | https://www.ti.com/product/LM2596 | Official regulator IC specification |
+| LM2596 adjustable module reference | https://www.sunrom.com/p/dc-dc-step-down-switching-regulator-based-on-lm2596 | Matching 3 A adjustable module characteristics |
+| XL4015 adjustable module reference | https://www.phippselectronics.com/product/xl4015-5a-adjustable-cc-cv-step-down-dc-power-supply-module/ | Matching 5 A adjustable module characteristics |
+| D1-2 quick wire connector | https://itead.cc/product/sonoff-quick-wire-connectors/ | D1-2 32 A / 250 V and conductor-size reference |
+| PCT-21 series connector | https://www.cxdefa.com/user-manual/instructions-sublink/push-wire-conductor-2.html | PCT-21 series conductor-size / connection reference |
+| PCT-21 electrical rating reference | https://telehan.en.made-in-china.com/product/KRtrayOlZfhZ/China-Pct-21-Series-Quick-Wiring-Connector-with-Block-Lever-Push-in-Conductor-Terminal-Block.html | 32 A / 250 V PCT-21 series reference |
+| ZX-Switch01 | https://inex.co.th/home/product/zx-switch01/ | Official INEX start-switch module description |
+| SPST Main Power Switch | Team wiring diagram and physical robot | Generic SPST component; no model-specific electrical specification is used in calculations |
+
+The motor reference above is the preferred source for drivetrain electrical specifications because it provides the exact **12 V / 19:1** row and encoder details rather than only a generic motor-family summary.
 
 ---
 
 # Final Electrical Summary
 
-The final electrical and sensing architecture of YBR-SUNFLOWER developed through several major changes rather than remaining fixed from the first prototype.
+The final electrical and sensing architecture of YBR-SUNFLOWER developed through multiple iterations rather than remaining fixed from the first prototype.
 
 ```text
 Initial Sensor Concept
@@ -1299,16 +1443,34 @@ Separated Power + Final Sensor Placement
        Version 3 Competition Robot
 ```
 
-The final design uses one main 3S LiPo battery, separate conversion paths for the computing and motor/control systems, and a common electrical ground. LiDAR provides environmental geometry, the camera provides visual color information, the BNO055 provides a relative heading reference, and the motor encoder provides drivetrain feedback. The DFR0566 organizes Pi-side peripheral wiring, while the LiDAR and other sensors are positioned according to their measurement requirements.
+The completed robot uses one Helicox 3S LiPo battery and separates the Raspberry Pi computing supply from the motor/control conversion path while maintaining a common signal ground.
 
-Static multimeter measurements on the completed Version 3 robot confirmed **5.1 V at the LM2596 output and 5.0 V at the Raspberry Pi input**, together with **11.1 V at the XL4015 output and 11.0 V at the motor/control input**.
+Static multimeter testing measured:
 
-The battery measures approximately **12.6 V when fully charged**. Based on actual robot testing, drivetrain performance begins to decrease below approximately **11.1 V**, so this value is treated as a practical performance threshold rather than an absolute battery minimum.
+```text
+Battery fully charged     ≈ 12.6 V
 
-The electrical system was therefore designed not only to **power the robot**, but to provide the sensing information and electrical reliability required by the complete autonomous system.
+LM2596 output             = 5.1 V
+Raspberry Pi input        = 5.0 V
+
+XL4015 output             = 11.1 V
+Motor/control input       = 11.0 V
+```
+
+The battery reference is 11.1 V, 1100 mAh and 30C. The robot begins to show lower drivetrain performance near approximately 11.1 V, so that value is used as the practical performance threshold.
+
+Published component specifications establish the important reference loads: Raspberry Pi 5 ~800 mA bare-board active, RPLiDAR C1 230 mA typical / ~800 mA startup, camera ~200–250 mA added load, SEN0253 ~5 mA, 20GP-180 ≤0.55 A rated / ≤2.7 A stall, and GeekServo 70 mA rated / 900 mA blocked-rotor.
+
+Based on those specifications and representative autonomous operation, the complete robot is estimated to use approximately **18–22 W during typical autonomous driving**, with a conservative short design peak around **46.6 W** and approximately **4–4.5 A estimated battery-side peak current**.
+
+The 1100 mAh battery therefore gives an estimated practical autonomous operating time of approximately **20–25 minutes**, depending on motor loading, steering activity, processing workload and battery condition.
+
+The motor supplier reference also resolves the encoder terminology: the 12 V / 19:1 model lists **211.03 encoder pulses per geared-output revolution**. The firmware's **836-count** constant is the x4 quadrature value calculated from the nominal 11 PPR × 19:1 ratio, while the supplier-derived x4 theoretical figure is approximately **844 counts/revolution**.
+
+All quantitative values in this document are identified as **measured, manufacturer/supplier reference, calculated, or engineering estimate**. No estimated value is presented as a direct experimental measurement.
 
 The final engineering process follows:
 
 > **Select → Integrate → Test → Identify Failure → Modify → Validate**
 
-rather than documenting only the final wiring configuration.
+The electrical documentation therefore describes not only how the robot is wired, but also the engineering reasoning, component limits, power budget, failure considerations and reproducibility of the final electrical architecture.
