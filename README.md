@@ -74,9 +74,9 @@ We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
 
 | Member | Primary Responsibility | Supporting Responsibilities |
 |---|---|---|
-| **Peradon Nimsongprasert** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
-| **Chanakarn Yimsakul** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
-| **Thanphisit Sakulvitulthai** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
+| **Peradon Nimsongprasert** | Robot construction and software development | Robot testing, debugging, and performance optimization |
+| **Chanakarn Yimsakul** | Documentation and technical writing | Organizing project information, recording development progress, and supporting software development |
+| **Thanphisit Sakulvitulthai** | Hardware development and electrical systems | Supporting documentation, hardware testing, and robot assembly |
 
 **Mentor:** Mr. Punnapon Tanasnitikul
 
@@ -88,8 +88,7 @@ Our development process integrates mechanical, electrical, and software work thr
 
 Therefore, subsystem decisions are developed and tested as part of the complete robot rather than independently until the final stage.
 
-
-> **[TODO: Add 2–4 sentences describing how the team actually divides work, reviews changes and performs testing together.]**
+Our team divides the work based on each member’s main area of responsibility. Peradon focuses on building the robot and developing the code, Chanakarn is mainly responsible for documentation, and Thanphisit focuses on hardware development while also supporting the documentation. We regularly discuss changes and test the robot together to make sure that mechanical, hardware, and software improvements work well as a complete system.
 
 ---
 
@@ -325,8 +324,6 @@ We track and document major physical architecture changes using version numbers 
 ---
 
 ## 4.3 Team Engineering Process
-
-//The repository should show not only what the final robot looks like, but also how it was created.
 
 ### Mechanical Assembly
 
@@ -998,17 +995,15 @@ This staged verification reduces the chance that several untested subsystems fai
 WRO-FE-YBR-SUNFLOWER/
 │
 ├── README.md
-│
 ├── BUILD.md
-├── CHANGELOG.md
 ├── LICENSE.md
+├── .gitignore
 │
 ├── mech/
 │   ├── mech_README.md
 │   └── models/
-│       ├── CAD files
 │       ├── STL files
-│       └── [TODO: slicer / 3MF files if available]
+│       └── PNG files
 │
 ├── elec/
 │   └── elec_README.md
@@ -1026,6 +1021,7 @@ WRO-FE-YBR-SUNFLOWER/
 │       ├── tasks/
 │       ├── classes/
 │       ├── utils/
+│       ├── liraries
 │       ├── test_*.py
 │       ├── pyproject.toml
 │       └── uv.lock
@@ -1041,38 +1037,22 @@ WRO-FE-YBR-SUNFLOWER/
 │   ├── left.jpg
 │   ├── right.jpg
 │   ├── top.jpg
-│   └── bottom.jpg
+|   ├── bottom.jpg
+|   ├── ver-0/
+|   ├── ver-1/
+│   └── ver-2/
 │
 ├── team-photos/
-│   └── [TODO: final team photo]
-│
-├── engineering-process/
-│   ├── README.md
-│   │
-│   ├── prototypes/
-│   │   ├── v1/
-│   │   ├── v2/
-│   │   └── v3/
-│   │
-│   ├── mechanical/
-│   │   ├── assembly/
-│   │   └── manufacturing/
-│   │
-│   ├── electrical/
-│   │   ├── soldering/
-│   │   └── wiring/
-│   │
-│   ├── software/
-│   │   ├── coding/
-│   │   └── debugging/
-│   │
-│   └── testing/
-│       ├── mechanical/
-│       ├── sensors/
-│       ├── software/
-│       └── competition/
+|   ├── t-pic.jpg
+│   └── PNG files
 │
 ├── video/
+|   ├── RunTest_video.md
+│   └── final_video.md
+│
+├── other/
+|   ├── PNG files
+│   └── JPG files
 │
 └── docs/
     └── [TODO: engineering report / supporting documentation]
