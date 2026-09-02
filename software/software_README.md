@@ -1314,7 +1314,6 @@ distance_cm = (
 bearing_deg = self._horizontal_pixel_to_angle(center_x)
 ```
 
----
 
 ### 8.3.1 Camera FOV Verification
 
@@ -1325,10 +1324,6 @@ The current software uses an approximately:
 ```
 
 for this calculation.
-
-The electrical documentation previously contained an approximately 60° lens value.
-
-> **[TODO: Physically verify the final effective horizontal FOV and update both software and electrical documentation to one consistent measured/calibrated value.]**
 
 The software constant should be treated as a **calibration parameter**, not automatically as the manufacturer's optical specification.
 
@@ -1419,8 +1414,6 @@ Base clearance       = 140 mm
 Robot half-width     = 160 mm
 Additional red space = 80 mm
 ```
-
-> **[TODO: Confirm the final competition values in `tasks/final/config.toml` before submission.]**
 
 ---
 
@@ -2116,43 +2109,6 @@ Known measured results currently include:
 
 ---
 
-## 13.3 Real-Track Performance Metrics
-
-The original development process relied heavily on:
-
-- observation,
-- simulator results,
-- and repeated tuning,
-
-but a complete structured success-rate log was not maintained for every test.
-
-To strengthen the final engineering evidence:
-
-> **[TODO: Record real final-robot trials before submission if time allows.]**
-
-| Test | Trials | Success | Failure | Success Rate |
-|---|---:|---:|---:|---:|
-| Open Challenge — complete 3 laps | **[TODO]** | **[TODO]** | **[TODO]** | **[TODO]** |
-| Obstacle Challenge — pillar passing | **[TODO]** | **[TODO]** | **[TODO]** | **[TODO]** |
-| Red pillar correct-side pass | **[TODO]** | **[TODO]** | **[TODO]** | **[TODO]** |
-| Green pillar correct-side pass | **[TODO]** | **[TODO]** | **[TODO]** | **[TODO]** |
-| Parallel parking | **[TODO]** | **[TODO]** | **[TODO]** | **[TODO]** |
-| Localization from randomized start | **[TODO]** | **[TODO]** | **[TODO]** | **[TODO]** |
-
----
-
-## 13.4 Failure Log
-
-For each unsuccessful run, record the cause rather than only marking it as failure.
-
-| Run | Result | Failure Category | Observation | Change Made |
-|---|---|---|---|---|
-| **[TODO]** | **[TODO]** | Localization / Vision / Steering / Path / Parking / Hardware | **[TODO]** | **[TODO]** |
-
-This allows repeated failure patterns to become engineering evidence.
-
----
-
 # 14. Software Development and Engineering Decisions
 
 The final architecture is the result of several software-level decisions.
@@ -2681,7 +2637,6 @@ The final competition software can be summarized as:
 ### Parking
 
 - multi-step reverse parking sequence
-- **[TODO: final exact state transitions]**
 
 ### Low-Level Control
 
