@@ -219,8 +219,6 @@ The completed robot was measured at **5.0 V at the Raspberry Pi input** under st
 | Full navigation / vision software | 4.95 V | ~2.20 A | ~10.89 W |
 | Short high-compute condition | 4.90 V | ~2.60 A | ~12.74 W |
 
-The dynamic rows are **engineering estimates**, not direct current measurements. They provide a realistic power budget while keeping the measured static value and published component specifications clearly separated.
-
 ---
 
 ## 3.4 Motor / Control Power Branch — XL4015
@@ -258,8 +256,6 @@ The exact transition depends on load, battery internal resistance and module los
 | Steering while driving | 10.8 V | ~0.95 A | ~10.26 W |
 | Acceleration | 10.7 V | ~1.50 A | ~16.05 W |
 | Short high-load condition | 10.6 V | ~3.20 A | ~33.92 W |
-
-The short high-load estimate includes the possibility of the CHP-20GP-180 motor approaching its **2.7 A stall-current region** while steering and control electronics are active. It is a conservative design-load estimate, not a continuous measured current.
 
 ---
 
@@ -1077,8 +1073,6 @@ Static voltage measurements establish the actual converter settings. Dynamic cur
 | Acceleration | 10.7 V | ~1.50 A | ~16.05 W |
 | Short high-load condition | 10.6 V | ~3.20 A | ~33.92 W |
 
-These values are used for design interpretation only and are not presented as direct multimeter measurements.
-
 ---
 
 ## 12.6 Test Evidence Table
@@ -1143,10 +1137,6 @@ Pi input            = 5.0 V
 XL4015 output       = 11.1 V
 Motor/control input = 11.0 V
 ```
-
-Measuring both points reveals the approximately **0.1 V static drop** through each downstream wiring path.
-
-This is more informative than documenting only the converter adjustment.
 
 ---
 
@@ -1280,6 +1270,8 @@ Positive distribution uses the **D1-2** quick connector and common negative / gr
 
 The robot uses an **SPST main power switch** and the **INEX ZX-Switch01** as the competition start input.
 
+---
+
 ## 15.1 Evidence Status
 
 The final electrical documentation contains no unresolved placeholder values. Quantitative information is separated by evidence type:
@@ -1290,8 +1282,6 @@ The final electrical documentation contains no unresolved placeholder values. Qu
 | Manufacturer / supplier specification | Pi current reference, LiDAR current, BNO055 current, motor current/torque, servo current, connector ratings |
 | Calculated value | 0.1 V static wiring drops, battery 33 A theoretical C-rating current, branch power values |
 | Engineering estimate | Dynamic rail current/voltage, typical 18–22 W system power, ~46.6 W short design peak, 20–25 min runtime |
-
-Where a physical quantity was not directly measured, the document identifies it as an estimate rather than presenting it as experimental data.
 
 ---
 
@@ -1391,13 +1381,9 @@ A correctly reproduced electrical system should show the following behavior:
 | Drive motor | Direction and PWM response match software command |
 | ZX-Switch01 | Generates the competition start event |
 
-This table defines the expected behavior of a correctly reproduced final electrical system.
-
 ---
 
 # 17. References
-
-The reference set prioritizes official manufacturer documentation. When the exact hardware is a generic module or a shop-supplied component, the most complete matching technical product page is used and identified accordingly.
 
 | Component / Topic | Reference | Reference Role |
 |---|---|---|
@@ -1423,8 +1409,6 @@ The reference set prioritizes official manufacturer documentation. When the exac
 | PCT-21 electrical rating reference | https://telehan.en.made-in-china.com/product/KRtrayOlZfhZ/China-Pct-21-Series-Quick-Wiring-Connector-with-Block-Lever-Push-in-Conductor-Terminal-Block.html | 32 A / 250 V PCT-21 series reference |
 | ZX-Switch01 | https://inex.co.th/home/product/zx-switch01/ | Official INEX start-switch module description |
 | SPST Main Power Switch | Team wiring diagram and physical robot | Generic SPST component; no model-specific electrical specification is used in calculations |
-
-The motor reference above is the preferred source for drivetrain electrical specifications because it provides the exact **12 V / 19:1** row and encoder details rather than only a generic motor-family summary.
 
 ---
 
