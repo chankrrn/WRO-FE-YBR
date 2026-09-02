@@ -18,7 +18,7 @@
 # =============================================================================
 
 [laps]
-goal = 1
+goal = 3
 
 [speed]
 # A speed is the RAW PWM duty the Arduino writes (0-255), not a percentage -
@@ -172,7 +172,7 @@ mm_per_s_at_full = 390.0
 
 # Gap between the robot's BODY and the pillar's near face as it goes past.
 # A request, not a promise - see the header.
-clearance_mm = 440.0
+clearance_mm = 400.0
 
 # Half the robot's own width (centreline to its widest point - wheels,
 # mudguards, whatever sticks out furthest). A MEASUREMENT, not a tuning knob.
@@ -356,7 +356,7 @@ follow_mm = 800.0
 # drops the rear axle 204mm toward the wall: from 300mm out the nose would
 # finish 74mm THROUGH it, where 450mm leaves it 76mm short for nose-in to close.
 wall_distance_mm = 300.0
-wall_gain = 0.3
+wall_gain = 0.1
 wall_max_steer = 30.0
 
 # 2. which lidar sector watches the wall. The sign is applied for you - it
@@ -490,13 +490,7 @@ heading_gain = 1.5
 
 #    How far the NOSE stops off the outer wall - not what the beam reads; the
 #    code subtracts the mount offset for you. This is the one place an error
-#    in everything upstream is absorbed rather than added to,e takes
-# over.
-reverse_mm = 160.0
-steer_command = 46.0
-forward_mm = 330.0
-# Counter-steer for the reverse leg, a MAGNITUDE pointing AWAY from the exit
-# side. Reversing negates yaw rate, so backing up on the opposite  so tune it last
+#    in everything upstream is absorbed rather than added to, so tune it last
 #    and tune it here. The body is 210mm and the bay 200mm deep, so at a 20mm
 #    nose gap about 30mm of tail still sits proud of the bay mouth.
 nose_stop_mm = 20.0
@@ -517,28 +511,11 @@ reverse_speed = 60
 servo_settle_s = 0.4
 timeout_s = 20.0
 
-# WHEN THE APPROACH TAKES THE WHEELS. On the FINAL lap only, the moment the
-# robot enters the section the bay is in - so the follow gets that whole
-# straight to settle onto the wall and arm, instead of the 800mm it used to
-# get, which was not enough and is why the round drove an extra lap. See
-# FinalTask._arm_at_the_bay. start_early_mm only picks WHICH lap now: it is
-# how much of the final lap may still be missing when the bay comes up, and
-# anything short of a lap length picks the final lap correctly.
+# Parking starts THIS far before the last lap would have finished, so the
+# follow gets a run at the wall before the bay turns up in it - it needs about
+# 1.4m to settle onto the wall from a bad handover. Then: how many failed
+# attempts to retry before giving up and driving out the clock.
 start_early_mm = 1200.0
-
-# A FAILED APPROACH COSTS A REVERSE, NOT A LAP. Ran out of road before the bay
-# turned up, or never settled close enough to the wall to recognise it: both
-# are fixed by more road, so the robot backs up - steering toward the wall on
-# the way, so the retry starts at the right distance off it - and looks again.
-# recover_clear_mm of space behind is required first, on the rear lidar
-# sector, and the reverse stops early if anything turns up in it.
-recover_attempts = 2
-recover_mm = 900.0
-recover_clear_mm = 350.0
-rear_sector_deg = 60.0
-
-# Retrying by driving ANOTHER LAP - the fallback below the reverse, for a
-# failure the reverse cannot mend. Zero: there is no lap after the final one.
 retries = 0
 
 [unpark]
@@ -560,7 +537,7 @@ enabled = true
 # over.
 reverse_mm = 160.0
 steer_command = 46.0
-forward_mm = 330.0
+forward_mm = 320.0
 # Counter-steer for the reverse leg, a MAGNITUDE pointing AWAY from the exit
 # side. Reversing negates yaw rate, so backing up on the opposite lock turns
 # the robot the same way the forward leg will - it leaves the bay mouth with

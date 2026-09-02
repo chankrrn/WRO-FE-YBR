@@ -249,20 +249,17 @@ DEFAULTS = {
     # at racing speed one control tick is 8mm, and every millimetre of
     # overshoot there lands on the tightest clearance of the whole manoeuvre.
     # How much further the robot will keep lapping, looking for the bay,
-    # once the laps are done. ZERO: there is no lap after the final one. The
-    # bay's position is known from tick one - the robot was placed in it, see
-    # FinalTask._arm_at_the_bay - so lapping again cannot discover anything
-    # the final lap did not already have, and a failed approach is retried on
-    # the spot by reversing instead (parking.recover_attempts). Raise it only
-    # to go back to hunting for the bay over extra laps.
-    "parking.extra_laps": 0.0,
-    # How many times a FAILED park may be retried BY DRIVING ANOTHER LAP.
-    # Zero: this is the expensive fallback, below parking.recover_attempts,
-    # which mends the same failures on the spot for the price of a reverse. A
-    # lap-long retry is only worth it for a failure the reverse cannot mend -
-    # something parked in the way of the approach - and it costs a lap the
-    # round has already been told it does not get.
-    "parking.retries": 0,
+    # once the laps are done. The fallback is deliberately "keep driving" -
+    # laps already scored are worth more than a blind park - but it cannot be
+    # unbounded, or a round with no bay in front of it never ends at all.
+    "parking.extra_laps": 1.5,
+    # How many times a FAILED park may be retried. An attempt that aborts is
+    # thrown away rather than ending the round - the laps are already scored
+    # and the clock is still running, so driving on beats stopping dead
+    # wherever the guard tripped. Each retry costs most of a lap, because the
+    # approach needs a clean run at the bay rather than a restart from where
+    # the last attempt gave up.
+    "parking.retries": 2,
     # How much of the FINAL lap the manoeuvre may start before the lap counter
     # says the laps are done - i.e. how far short of the starting point to
     # park. Zero means "finish the lap first", which puts the approach right
@@ -280,20 +277,6 @@ DEFAULTS = {
     # follow has a run at the wall before the bay turns up in it - it needs
     # about 1.4m to settle onto the wall from a bad handover.
     "parking.start_early_mm": 1500.0,
-    # ---- a failed approach costs a reverse, not a lap --------------------
-    # How many times the follow may back up and try the approach again before
-    # giving up. The two failures worth retrying are "ran out of road before
-    # the bay turned up" and "never settled close enough to the wall to
-    # recognise it", and both are fixed by more road: the reverse steers
-    # toward the wall on the way back, so the retry starts from the right
-    # distance off it rather than the wrong one. Zero disables it.
-    "parking.recover_attempts": 2,
-    # How far to back up, and how much clear space behind is required before
-    # backing up at all - checked on the rear lidar sector, and re-checked
-    # every tick of the reverse, which stops early if anything turns up.
-    "parking.recover_mm": 900.0,
-    "parking.recover_clear_mm": 350.0,
-    "parking.rear_sector_deg": 60.0,
 
     # ---- the park itself: a script the lidar starts ----------------------
     # See ParkingSequence in classes/parking.py. Drive alongside the outer
@@ -457,6 +440,10 @@ DEFAULTS = {
     "parking.reverse_speed": 25,
     "parking.servo_settle_s": 0.4,
     "parking.timeout_s": 20.0,
+    # How many times a failed park may be retried. An attempt that aborts is
+    # thrown away rather than ending the round - the laps are already scored
+    # and the clock is still running.
+    "parking.retries": 2,
 
     # Final round only - leaving a bay the robot STARTED in. Off by default,
     # because a run that starts on the track and switches this on drives a
