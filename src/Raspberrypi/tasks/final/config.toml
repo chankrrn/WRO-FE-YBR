@@ -18,7 +18,7 @@
 # =============================================================================
 
 [laps]
-goal = 3
+goal = 2
 
 [speed]
 # A speed is the RAW PWM duty the Arduino writes (0-255), not a percentage -
@@ -355,8 +355,15 @@ follow_mm = 800.0
 # straight through them - 230 was 45mm into them. And a 90deg turn at full lock
 # drops the rear axle 204mm toward the wall: from 300mm out the nose would
 # finish 74mm THROUGH it, where 450mm leaves it 76mm short for nose-in to close.
-wall_distance_mm = 300.0
-wall_gain = 0.1
+# 450, NOT 300: this is the number every other one in this section was tuned
+# against - front_stop_mm, trigger_below_mm and the nose-in geometry all say
+# "the follow runs 450mm off the wall". At 300 the turn ends with the nose
+# 74mm THROUGH the outer wall, so the clearance guard aborts partway in and
+# the round drives on without parking; and 300 is BELOW trigger_below_mm, so
+# plain wall reads as a bay wall. 450 is also very nearly the middle of the
+# 1000mm road, which is where the reverse and the turn-in want to start from.
+wall_distance_mm = 450.0
+wall_gain = 0.3
 wall_max_steer = 30.0
 
 # 2. which lidar sector watches the wall. The sign is applied for you - it
@@ -515,8 +522,16 @@ timeout_s = 20.0
 # follow gets a run at the wall before the bay turns up in it - it needs about
 # 1.4m to settle onto the wall from a bad handover. Then: how many failed
 # attempts to retry before giving up and driving out the clock.
-start_early_mm = 1200.0
-retries = 0
+start_early_mm = 2500.0
+# 2, not 0: at 0 the FIRST abort gives up on the bay for the whole round and
+# just drives out the clock, which is a round that settles into the approach,
+# quits, and laps without ever trying again. Each retry costs most of a lap.
+# PARK, NO MATTER WHAT. The laps ending is the end of the driving part of the
+# round - after it the manoeuvre owns the wheels and keeps trying until it
+# closes. No extra laps hunting for the bay, no going round for another run,
+# no giving up and driving out the clock. A failed attempt reverses this far
+# and goes again, as many times as the clock allows.
+retry_back_mm = 900.0
 
 [unpark]
 # Leaving a bay the robot was PLACED in, before the first lap. Off unless the
@@ -537,7 +552,7 @@ enabled = true
 # over.
 reverse_mm = 160.0
 steer_command = 46.0
-forward_mm = 320.0
+forward_mm = 400.0
 # Counter-steer for the reverse leg, a MAGNITUDE pointing AWAY from the exit
 # side. Reversing negates yaw rate, so backing up on the opposite lock turns
 # the robot the same way the forward leg will - it leaves the bay mouth with
@@ -545,7 +560,7 @@ forward_mm = 320.0
 # inside the slot. The tail swings the other way while it does, so 0 (straight
 # back) is the right answer for a bay with no room behind the rear corners.
 reverse_steer_command = 20
-speed = 60
+speed = 65
 reverse_speed = 60
 look_s = 0.6
 servo_settle_s = 0.4

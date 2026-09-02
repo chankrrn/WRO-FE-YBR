@@ -440,6 +440,12 @@ DEFAULTS = {
     "parking.reverse_speed": 25,
     "parking.servo_settle_s": 0.4,
     "parking.timeout_s": 20.0,
+    # How far to reverse between park attempts. The laps are over by then and
+    # parking is the only way the round ends, so a failed attempt is retried on
+    # the spot rather than a lap later - but it has to back up first, because
+    # almost every way the approach fails leaves it out of road, and retrying
+    # from exactly there fails again on the same tick.
+    "parking.retry_back_mm": 900.0,
     # How many times a failed park may be retried. An attempt that aborts is
     # thrown away rather than ending the round - the laps are already scored
     # and the clock is still running.

@@ -1590,6 +1590,8 @@ class ParkingSequence:
                  reverse_speed=25,
                  servo_settle_s=0.4,
                  mm_per_s_at_full=390.0,
+                 nominal_corridor_mm=None,
+                 bay_ahead_mm=None,
                  timeout_s=20.0):
         self.lidar = lidar
         self.compass = compass
@@ -1689,7 +1691,29 @@ class ParkingSequence:
         # Wall to centre block, learned while the wall side can still be
         # trusted. It is what lets the robot keep its place in the road while
         # it is driving past the bay with the wall side blind.
-        self.corridor_mm = None
+        # THE ROAD WIDTH IS A RULE, NOT A MEASUREMENT. It starts at the field's
+        # own number and the follow refines it; it does not start at None.
+        # Learned-only was a silent trap: _learn_corridor is reached through
+        # four early returns inside _learn_wall_heading (a NaN fit, an
+        # unreadable compass, an unclean arc, an unclean line), and if any of
+        # them held for the whole follow the corridor stayed None - at which
+        # point _hold_middle quietly returns zero steering and every straight
+        # leg after the trigger coasts. From outside that is a robot that
+        # stops holding station beside the bay and drifts into it.
+        self.nominal_corridor_mm = (float(nominal_corridor_mm)
+                                    if nominal_corridor_mm else None)
+        self.corridor_mm = self.nominal_corridor_mm
+        self.corridor_measured = False
+        self._warned_corridor = False
+        # HOW FAR THE BAY IS, BY THE LAP COUNTER. The round STARTED in the bay
+        # and the counter was zeroed there, so the bay comes back round at a
+        # whole number of laps - the robot knows where it is without seeing
+        # it. This is that distance, measured from the moment the follow
+        # starts, and it is what lets the manoeuvre go ahead when the lidar
+        # never recognises the bay: see _follow. None disables the fallback
+        # and the lidar is then the only way in.
+        self.bay_ahead_mm = (float(bay_ahead_mm) if bay_ahead_mm else None)
+        self.triggered_blind = False
         self._fit_clean = False
         self._wall_at_turn = float("nan")
         self._blade_at_mm = 0.0
@@ -2105,6 +2129,49 @@ class ParkingSequence:
         forward. So the angle to the wall is measured as well, and corrected,
         on every tick right up to the bay wall.
         """
+        self.driven_mm += self.speed / 100.0 * self.mm_per_s_at_full * dt
+        # THE COUNTER KNOWS WHERE THE BAY IS EVEN WHEN THE LIDAR DOES NOT.
+        # The round started inside the bay and the counter was zeroed there,
+        # so it comes back round at a whole number of laps. When the follow
+        # has driven the distance that says the bay is here and the side beam
+        # still has not recognised it, turn in anyway: the run-up has already
+        # been spent settling onto the wall, so the robot IS beside the bay -
+        # it is only the recognition that failed, and driving past a bay that
+        # is definitely there is the worse of the two mistakes.
+        #
+        # STRAIGHT TO THE TURN, not to the creep. The creep's whole job is to
+        # find the near blade on the narrow beam and measure the turn point
+        # from it; with nothing to see it would roll to creep_max_mm and abort.
+        # The counter gives the same answer directly - and the turn is started
+        # one radius SHORT of the bay's middle, because a 90-degree turn at
+        # full lock carries the axle about that far along the wall as it comes
+        # round.
+        if self.bay_ahead_mm is not None and not self.triggered_blind:
+            radius = self._turn_radius(self._turn_in_lock(max_steer))
+            if self.driven_mm >= max(0.0, self.bay_ahead_mm - radius):
+                self.triggered_blind = True
+                side = self.side_mm if not math.isnan(self.side_mm) else None
+                print(f"Parking: no bay wall recognised in {self.driven_mm:.0f}mm, "
+                      f"but the lap counter puts the bay here - turning in on the "
+                      f"counter (side {self._range_text(self.side_mm)}, wanted under "
+                      f"{self.trigger_below_mm:.0f}"
+                      + ("" if not self.camera_confirms else
+                         f"; pink {'seen' if self.saw_pink else 'never seen'}")
+                      + f"; armed={self._armed}).")
+                # The same clearance guard the creep applies. Turning in from
+                # too close puts the body through a bay wall before it is
+                # halfway round, and that is true however the turn was
+                # triggered.
+                room = self._turn_in_room()
+                if side is not None and side < room:
+                    return self._abort(
+                        f"the counter says the bay is here but the robot is only "
+                        f"{side:.0f}mm off the wall and the turn needs {room:.0f}mm "
+                        f"- follow further out (parking.wall_distance_mm)")
+                self._wall_at_turn = side if side is not None else self.wall_distance_mm
+                self.bay_mm = NOMINAL_BAY_MM
+                self._enter(self.SET_TURN)
+                return (0.0, 0)
         if math.isnan(self.side_mm):
             return (0.0, self.speed)            # blind for a tick; keep rolling
         # ARM ON THE PLAIN WALL, AT THE RIGHT DISTANCE FROM IT. Merely seeing
@@ -2168,6 +2235,18 @@ class ParkingSequence:
             print(f"Parking: bay wall at {self.side_mm:.0f}mm on the "
                   f"{'right' if self.wall_side > 0 else 'left'}"
                   f"{', pink confirmed' if self.saw_pink else ''}")
+            # EVERYTHING FROM HERE HOLDS STATION ON THESE TWO NUMBERS, and
+            # neither is measurable any more once the side beam is on a bay
+            # wall. Say plainly which of them the follow actually got, because
+            # missing either is the difference between holding the middle of
+            # the road and coasting into the bay - and it used to be silent.
+            print(f"  corridor {self.corridor_mm:.0f}mm "
+                  f"({'measured' if self.corridor_measured else 'ASSUMED - the '
+                     'follow never got a clean look at both sides'}); "
+                  f"wall heading "
+                  + ("unknown - THE STRAIGHT LEGS WILL NOT HOLD A HEADING"
+                     if self.wall_heading is None
+                     else f"{self.wall_heading:.0f}deg"))
             self._enter(self.CREEP)
             return (0.0, self.speed)
         return (self._track(self.wall_distance_mm, max_steer), self.speed)
@@ -2255,9 +2334,29 @@ class ParkingSequence:
         if math.isnan(inner) or math.isnan(self.side_mm):
             return
         seen = self.side_mm + inner
+        # IT CANNOT BE WIDER THAN THE ROAD IS. Both terms are the CLOSEST
+        # return over a sector, so a robot that is not square to the wall
+        # inflates each of them by about 1/cos(yaw) - the error only ever goes
+        # one way, and the sum can only ever come out too BIG. Left unclamped
+        # that overestimate is poison, because _hold_middle turns it straight
+        # into a wall distance: a corridor read 124mm wide holds the robot
+        # 124mm CLOSER to the wall than it was told to, which is how the
+        # approach arrives at the bay far too close to square up and aborts
+        # on "ran out of wall". Measured on the robot: 1124mm across a road
+        # that is 1000mm wide, and the settle started 231mm off a wall it was
+        # supposed to be 450mm off.
+        if self.nominal_corridor_mm is not None:
+            if seen > self.nominal_corridor_mm and not self._warned_corridor:
+                self._warned_corridor = True
+                print(f"Parking: the road measured {seen:.0f}mm across but it is "
+                      f"{self.nominal_corridor_mm:.0f}mm - the robot is not square "
+                      f"to the wall, so both ranges read long. Using "
+                      f"{self.nominal_corridor_mm:.0f}.")
+            seen = min(seen, self.nominal_corridor_mm)
         self.corridor_mm = (seen if self.corridor_mm is None
                             else self.corridor_mm
                             + self.wall_heading_blend * (seen - self.corridor_mm))
+        self.corridor_measured = True
 
     def _hold_middle(self, max_steer):
         """
