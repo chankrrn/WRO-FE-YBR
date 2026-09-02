@@ -35,6 +35,10 @@ def build_parser(description):
                              "opening a window, for plain SSH (implies --debug)")
     parser.add_argument("--lidar", action="store_true",
                         help="start the lidar even if the task does not require it")
+    parser.add_argument("--record", action="store_true",
+                        help="record the run to videos/videoN.mp4 - every frame the "
+                             "round saw, with the detection overlay drawn on it. Costs "
+                             "a full-frame copy per frame, so it is off by default")
     parser.add_argument("--no-camera", action="store_true",
                         help="skip the camera even if the task requires it")
     parser.add_argument("--no-drive", action="store_true",
@@ -116,6 +120,7 @@ def run_task(task_class, argv=None):
         lidar_port=args.lidar_port,
         start_pose=args.start_pose,
         no_drive=args.no_drive,
+        record_video=args.record or config.get("camera.record_video", False),
         lidar_ahead_mm=config.get("robot.lidar_ahead_mm", DEFAULTS["robot.lidar_ahead_mm"]),
     )
 

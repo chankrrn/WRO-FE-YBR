@@ -40,7 +40,8 @@ class TaskContext:
 
     def __init__(self, debug=False, ascii_debug=False, use_lidar=False, use_camera=False,
                  laps_goal=3, motor_port=None, lidar_port=None,
-                 start_pose=None, no_drive=False, lidar_ahead_mm=None):
+                 start_pose=None, no_drive=False, lidar_ahead_mm=None,
+                 record_video=False):
         """
         I/O:
             lidar_ahead_mm: how far the lidar sits ahead of the rear axle,
@@ -51,6 +52,7 @@ class TaskContext:
         """
         self.debug = debug
         self.ascii_debug = ascii_debug
+        self.record_video = bool(record_video)
         self.use_lidar = use_lidar
         self.use_camera = use_camera
         self.start_pose = start_pose
@@ -214,7 +216,12 @@ class TaskContext:
         from classes.object_solver import ObjectSolver
 
         try:
-            self.camera = CameraManager()
+            # The recorder's frame rate is the VISION thread's, not the
+            # camera's - that loop is what feeds it - so it comes from the same
+            # constant the loop paces itself with.
+            from classes.vision_manager import DEFAULT_MIN_PERIOD_S
+            self.camera = CameraManager(record_video=self.record_video,
+                                        record_fps=1.0 / DEFAULT_MIN_PERIOD_S)
             self.camera.start_camera()
             self.object_solver = ObjectSolver(debug=self.debug)
         except Exception as e:
@@ -237,7 +244,8 @@ class TaskContext:
             return
         try:
             self.vision = VisionManager(self.camera, self.object_solver, self.nav,
-                                        debug=self.debug).start()
+                                        debug=self.debug,
+                                        record=self.record_video).start()
         except Exception as e:
             self.vision = None
             print(f"  WARNING: vision thread unavailable ({e!r}) - the round will "
