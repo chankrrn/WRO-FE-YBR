@@ -183,6 +183,7 @@ class FinalTask(PathDrivingTask):
         if self.setting("parking.enabled") and self._start_section is not None:
             self._bay_finder = BayFinder(
                 self.context.nav.map, self._start_section,
+                lidar_offset_mm=self.context.nav.lidar_offset_mm,
                 min_depth_mm=float(self.setting("parking.detect_min_depth_mm")),
                 min_gap_mm=float(self.setting("parking.detect_min_gap_mm")),
                 max_gap_mm=float(self.setting("parking.detect_max_gap_mm")),
@@ -204,6 +205,17 @@ class FinalTask(PathDrivingTask):
         """
         return (self.pursuit.min_turn_radius_mm
                 * float(self.setting("blocks.turn_radius_margin")))
+
+    def _lidar_ahead_mm(self):
+        """
+        How far the lidar sits ahead of the rear axle, for the park's beam
+        geometry. The localizer's own offset unless parking.lidar_ahead_mm
+        overrides it - one measurement, used by both.
+        """
+        override = self.setting("parking.lidar_ahead_mm")
+        if override is not None:
+            return float(override)
+        return float(self.context.nav.lidar_offset_mm[0])
 
     def _warn_if_the_corridor_is_too_narrow(self):
         """
@@ -771,7 +783,7 @@ class FinalTask(PathDrivingTask):
             trigger_below_mm=self.setting("parking.trigger_below_mm"),
             mouth_sector_deg=float(self.setting("parking.mouth_sector_deg")),
             blade_below_mm=self.setting("parking.blade_below_mm"),
-            lidar_ahead_mm=float(self.setting("parking.lidar_ahead_mm")),
+            lidar_ahead_mm=self._lidar_ahead_mm(),
             turn_after_mm=self.setting("parking.turn_after_mm"),
             measure_bay=bool(self.setting("parking.measure_bay")),
             mouth_clear_mm=float(self.setting("parking.mouth_clear_mm")),

@@ -40,6 +40,7 @@ clearance guard every tick rather than a scripted sequence of arcs.
 """
 import math
 
+from classes.robot_geometry import DEFAULT_LIDAR_OFFSET_MM, LIDAR_AHEAD_MM, to_field
 from utils.angle_utils import angle_difference, clamp, normalize_angle
 
 # ============================================================================
@@ -289,9 +290,19 @@ class BayFinder:
 
     def __init__(self, field_map, section, min_depth_mm=120.0,
                  min_gap_mm=250.0, max_gap_mm=400.0, min_scans=3,
-                 single_scans=6):
+                 single_scans=6, lidar_offset_mm=DEFAULT_LIDAR_OFFSET_MM):
+        """
+        I/O:
+            lidar_offset_mm: (forward, right) of the lidar from the rear axle,
+                             which is the point `observe`'s pose describes.
+                             The returns are projected from the LIDAR, so
+                             pass NavigationManager's own offset here or the
+                             blades land 15cm along the wall from where they
+                             are.
+        """
         self.map = field_map
         self.section = section
+        self.lidar_offset_mm = tuple(float(v) for v in lidar_offset_mm)
         self.min_depth_mm = float(min_depth_mm)
         self.min_gap_mm = float(min_gap_mm)
         self.max_gap_mm = float(max_gap_mm)
@@ -353,10 +364,12 @@ class BayFinder:
         if not np.any(good):
             return None, None
 
+        # The beam starts at the lidar, not at the pose point (the rear axle).
+        origin_x, origin_y = to_field(pose.x, pose.y, pose.heading, self.lidar_offset_mm)
         angles = np.radians(pose.heading + bearings[good])
         ranges = scan[good]
-        x = pose.x + ranges * np.sin(angles)
-        y = pose.y + ranges * np.cos(angles)
+        x = origin_x + ranges * np.sin(angles)
+        y = origin_y + ranges * np.cos(angles)
 
         wall_axis, sign = _SECTIONS[self.section]
         coord = (x, y)
@@ -488,8 +501,9 @@ class BayFinder:
 # Driving into the bay
 # ============================================================================
 # Where the robot's own body sits relative to the point that tracks the path.
-# The pose point is treated as the rear axle throughout the control stack
-# (pursuit.rear_axle_offset_mm is 0), so these are measured from there.
+# The pose point IS the rear axle (NavigationManager localizes the axle, with
+# the lidar at its lidar_offset_mm ahead of it, and pursuit.rear_axle_offset_mm
+# is 0), so these are measured from there.
 # MEASURED on the robot, not nominal. Every clearance in this file is decided
 # by these three, so a guess here is a guess about whether the park fits.
 BODY_FRONT_MM = 170.0       # rear axle to front bumper
@@ -1564,7 +1578,7 @@ class ParkingSequence:
                  trigger_below_mm=None,
                  mouth_sector_deg=6.0,
                  blade_below_mm=None,
-                 lidar_ahead_mm=130.0,
+                 lidar_ahead_mm=LIDAR_AHEAD_MM,
                  turn_after_mm=None,
                  measure_bay=True,
                  mouth_clear_mm=60.0,
@@ -1630,6 +1644,9 @@ class ParkingSequence:
         # the rear axle, which moves both ends of this sequence: the beam goes
         # level with a bay wall while the axle is still that far short of it,
         # and it reads the outer wall from that much closer than the nose is.
+        # The same number NavigationManager casts its rays from - FinalTask
+        # hands it the filter's own lidar_offset_mm unless the config says
+        # otherwise, so the two can only disagree on purpose.
         self.lidar_ahead_mm = float(lidar_ahead_mm)
         self.turn_after_mm = _maybe(turn_after_mm)
         self.measure_bay = bool(measure_bay)
@@ -2095,8 +2112,8 @@ class ParkingSequence:
         of three lengths and no tuning: half the bay, plus how far the lidar
         leads the axle (the beam went level with the wall while the axle was
         still short of it), minus the radius the turn carries the axle
-        through. At 170 + 130 - 204 that is about 96mm - and at zero the robot
-        lands 96mm off centre, which is enough to graze the far wall.
+        through. At 170 + 150 - 204 that is about 116mm - and at zero the robot
+        lands 116mm off centre, which is enough to graze the far wall.
         """
         if self.turn_after_mm is not None:
             return self.turn_after_mm

@@ -57,6 +57,13 @@ where the robot actually is. It is started for every round and answers:
     if pose.is_reliable:               # x/y in mm from the middle of the field,
         steer_toward(pose.x, pose.y)   # heading in degrees clockwise from +Y
 
+The pose is the middle of the REAR (driving) AXLE, not the lidar. The lidar
+stands on a mast at the front, robot.lidar_ahead_mm (15cm) ahead of the axle,
+and the filter casts its rays from there while the particles it localizes are
+axle positions. That is the point the bicycle model, pure pursuit, the
+odometry and the planner's body sweep are all written from; see
+classes/robot_geometry.py.
+
 Without the lidar (--lidar, or a round that requires it) every pose comes back
 with confidence 0, so is_reliable is the only check a task needs. Pass
 --start-pose X Y HEADING when you know where the robot is placed: it saves the
@@ -73,11 +80,11 @@ stays there after the camera looks away:
     for block in context.nav.blocks.confirmed():
         print(block.color, block.x, block.y)
 
-The lens is assumed to sit 12cm straight back from the lidar (block_map.py's
-CAMERA_BEHIND_LIDAR_MM), so moving the mast with NavigationManager's
-lidar_offset_mm moves both sensors together. Override
-context.nav.blocks.camera_offset_mm - (forward, right) from the robot's
-center - only if the camera is mounted somewhere else entirely.
+The lens is assumed to sit 17cm straight back from the lidar
+(robot_geometry.py's CAMERA_BEHIND_LIDAR_MM), so moving the mast with
+robot.lidar_ahead_mm moves both sensors together. Override
+context.nav.blocks.camera_offset_mm - (forward, right) from the rear axle -
+only if the camera is mounted somewhere else entirely.
 
 Run `uv run python test_navigation.py` to watch the whole thing localize
 against a simulated field, with no hardware plugged in at all, or
