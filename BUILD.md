@@ -125,8 +125,7 @@ rather than powering the complete robot immediately after wiring.
 | Arduino firmware | [`src/Arduino/Main.ino`](src/Arduino/Main.ino) |
 | Software architecture | [`software/software_README.md`](software/software_README.md) |
 | Testing workflow | Section 14 |
-| Competition version | `CHANGELOG.md` + GitHub Release / tag |
-| Development evidence | [`engineering-process/`](engineering-process/) |
+| Competition version | GitHub Release / tag |
 
 ---
 
@@ -294,8 +293,6 @@ Recommended tools:
 - computer for Raspberry Pi / Arduino setup
 - microSD card reader
 - USB data cables
-
-> **[TODO: Add exact screwdriver / hex sizes required by the final fasteners.]**
 
 ---
 
@@ -863,7 +860,7 @@ Do **not** connect the Raspberry Pi or other sensitive loads until converter vol
 
 ---
 
-# 8.1 Power Verification Sequence
+## 8.1 Power Verification Sequence
 
 ```text
 Complete Power Wiring
@@ -1221,7 +1218,7 @@ Do not immediately run the full autonomous challenge. Instead, test the system s
 
 ---
 
-# 12.1 Stage 1 — Electrical Verification
+## 12.1 Stage 1 — Electrical Verification
 
 - [ ] main switch works
 - [ ] Raspberry Pi supply measured correctly
@@ -1233,7 +1230,7 @@ Do not immediately run the full autonomous challenge. Instead, test the system s
 
 ---
 
-# 12.2 Stage 2 — Controller Communication
+## 12.2 Stage 2 — Controller Communication
 
 Verify:
 
@@ -1251,7 +1248,7 @@ READY
 
 ---
 
-# 12.3 Stage 3 — Steering Test
+## 12.3 Stage 3 — Steering Test
 
 With drive wheels off the ground:
 
@@ -1265,7 +1262,7 @@ After centering, connect / adjust the steering linkage mechanically if required.
 
 ---
 
-# 12.4 Stage 4 — Drive Motor Test
+## 12.4 Stage 4 — Drive Motor Test
 
 With wheels lifted:
 
@@ -1277,7 +1274,7 @@ With wheels lifted:
 
 ---
 
-# 12.5 Stage 5 — Encoder Test
+## 12.5 Stage 5 — Encoder Test
 
 Rotate / drive the drivetrain slowly.
 
@@ -1289,11 +1286,9 @@ Verify:
 - [ ] reversing changes direction correctly
 - [ ] count is repeatable over several rotations
 
-> **[TODO: Add the exact encoder-test command or script used by the final repository.]**
-
 ---
 
-# 12.6 Stage 6 — IMU Test
+## 12.6 Stage 6 — IMU Test
 
 Run the IMU/software initialization, then rotate the robot by hand.
 
@@ -1306,7 +1301,7 @@ Verify:
 
 ---
 
-# 12.7 Stage 7 — LiDAR Test
+## 12.7 Stage 7 — LiDAR Test
 
 Verify that the LiDAR:
 
@@ -1340,7 +1335,7 @@ if color thresholds require validation.
 
 ---
 
-# 12.9 Stage 9 — Start Button
+## 12.9 Stage 9 — Start Button
 
 Verify:
 
@@ -1357,7 +1352,7 @@ The first autonomous test should be performed at reduced risk.
 
 ---
 
-# 13.1 Pre-Run Inspection
+## 13.1 Pre-Run Inspection
 
 Before placing the robot on the track:
 
@@ -1373,7 +1368,7 @@ Before placing the robot on the track:
 
 ---
 
-# 13.2 Localization Test
+## 13.2 Localization Test
 
 Before completing full laps:
 
@@ -1385,7 +1380,7 @@ Verify that localization particles converge toward a reasonable robot pose. Do n
 
 ---
 
-# 13.3 Low-Speed Driving Test
+## 13.3 Low-Speed Driving Test
 
 Perform:
 
@@ -1404,7 +1399,7 @@ Confirm:
 
 ---
 
-# 13.4 Qualification / Open Challenge
+## 13.4 Qualification / Open Challenge
 
 Run:
 
@@ -1424,7 +1419,7 @@ The robot should:
 
 ---
 
-# 13.5 Obstacle Challenge
+## 13.5 Obstacle Challenge
 
 Run:
 
@@ -1454,7 +1449,7 @@ Testing is an important part of the reproducible engineering workflow. The repos
 
 ---
 
-# 14.1 Recommended Development Workflow
+## 14.1 Recommended Development Workflow
 
 ```text
 Change Code / Config
@@ -1840,29 +1835,7 @@ A reproducible robot requires more than the latest `main` branch. The exact comp
 
 ---
 
-# 17.1 Final Competition Tag
-
-> **[TODO: Create a Git tag / GitHub Release for the exact competition submission.]**
-
-Record:
-
-```text
-Release:
-[TODO]
-
-Git Tag:
-[TODO]
-
-Commit SHA:
-[TODO]
-
-Date:
-[TODO]
-```
-
----
-
-# 17.2 Reproduce the Exact Competition Version
+## 17.1 Reproduce the Exact Competition Version
 
 After cloning:
 
@@ -1883,42 +1856,6 @@ git rev-parse HEAD
 ```
 
 The returned commit should match the final documented competition SHA.
-
----
-
-# 17.3 CHANGELOG
-
-Major engineering versions should be recorded in:
-
-[`CHANGELOG.md`](CHANGELOG.md)
-
-Suggested content:
-
-```text
-V1
-Initial prototype
-
-V2
-LiDAR architecture / drivetrain development
-
-V3
-Final physical robot
-
-Competition Release
-Exact submitted mechanical + electrical + software configuration
-```
-
----
-
-# 17.4 Meaningful Commit Evidence
-
-| Engineering Milestone | Commit |
-|---|---|
-| Major mechanical prototype / redesign | **[TODO: Actual commit]** |
-| Major electrical / sensor architecture change | **[TODO: Actual commit]** |
-| Major software / navigation architecture change | **[TODO: Actual commit]** |
-| Final competition configuration | **[TODO: Actual commit]** |
-| Final documentation release | **[TODO: Actual commit]** |
 
 ---
 
@@ -2045,14 +1982,6 @@ For design reasoning, use:
 ### Source Code
 
 [`src/`](src/)
-
-### Development / Testing Evidence
-
-[`engineering-process/`](engineering-process/)
-
-### Version History
-
-[`CHANGELOG.md`](CHANGELOG.md)
 
 ---
 
