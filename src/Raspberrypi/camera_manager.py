@@ -24,7 +24,20 @@ from classes.context_manager import ContextManager
 
 class CameraManager:
 
-    def __init__(self):
+    def __init__(self, record_video=False, record_fps=15.0):
+        """
+        I/O:
+            record_video: write every frame the round sees to videos/videoN.mp4.
+                          Off by default because it costs a full-frame copy per
+                          frame - the display image the writer needs is
+                          otherwise only taken when something is going to draw
+                          on it.
+            record_fps:   the rate frames will actually ARRIVE at, which is the
+                          vision thread's, not the camera's.
+        """
+        self.record_video = bool(record_video)
+        self.record_fps = float(record_fps)
+        self.video_output = None
         self.previous_time = 0
 
         self.picam2 = Picamera2()
@@ -86,8 +99,9 @@ class CameraManager:
         buffer_count=4))
         self.picam2.configure(config)
         
-        self.configure_video_output()
-        
+        if self.record_video:
+            self.configure_video_output()
+
     def configure_video_output(self):
         output_folder = os.path.join(os.path.dirname(__file__), "../videos")
         os.makedirs(output_folder, exist_ok=True)
@@ -95,7 +109,20 @@ class CameraManager:
         output_path = os.path.join(output_folder, f"video{VideoCounter.get_video_counter()}.mp4")
         
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        self.video_output = cv2.VideoWriter(output_path, fourcc,25.0, (ImageTransformUtils.PIC_WIDTH, ImageTransformUtils.PIC_HEIGHT))
+        # THE FPS HAS TO MATCH THE LOOP THAT FEEDS IT. Frames arrive at the
+        # vision thread's rate, not at 25/s, and a writer told the wrong
+        # number does not drop or duplicate anything - it just stamps the
+        # frames with the wrong timebase, so the whole round plays back at the
+        # wrong speed. 15 in, 25 declared, is a video that runs 1.7x fast.
+        self.video_output = cv2.VideoWriter(
+            output_path, fourcc, float(self.record_fps),
+            (ImageTransformUtils.PIC_WIDTH, ImageTransformUtils.PIC_HEIGHT))
+        if not self.video_output.isOpened():
+            print(f"WARNING: could not open {output_path} for writing - the run "
+                  f"will not be recorded")
+            self.video_output = None
+            return
+        print(f"Recording to {output_path} at {self.record_fps:.0f}fps")
         VideoCounter.increment_video_counter()
         
     def start_camera(self):

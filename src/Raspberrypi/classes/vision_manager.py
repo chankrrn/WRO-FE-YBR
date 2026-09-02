@@ -62,11 +62,14 @@ class VisionManager:
     """
 
     def __init__(self, camera, object_solver, nav, debug=False,
-                 min_period_s=DEFAULT_MIN_PERIOD_S):
+                 min_period_s=DEFAULT_MIN_PERIOD_S, record=False):
         self.camera = camera
         self.solver = object_solver
         self.nav = nav
         self.debug = debug
+        # Write every frame to the run's video. Costs a display copy per frame
+        # that the round would not otherwise take - see _capture_and_map.
+        self.record = bool(record)
         self.min_period_s = float(min_period_s)
 
         self._thread = None
@@ -203,12 +206,20 @@ class VisionManager:
 
     def _capture_and_map(self):
         started_at = time.monotonic()
-        # The display copy is only worth taking when the solver will draw on it.
-        hsv = self.camera.capture_for_blocks(with_display=self.solver.debug)
+        # The display copy is only worth taking when something will look at it -
+        # the solver drawing its overlay, or the recorder writing it out.
+        hsv = self.camera.capture_for_blocks(
+            with_display=self.solver.debug or self.record)
         if hsv is None:
             return
         detections = self.solver.detect(hsv, display_image=self.camera.display_image)
         self.nav.observe_blocks(detections)
+        # AFTER detect(), so the frame carries the overlay it drew. A recording
+        # of what the camera saw is useful; a recording of what the round MADE
+        # of what it saw is what you actually want when a pillar was passed on
+        # the wrong side.
+        if self.record:
+            self.camera.add_frame_to_video()
         if self.watch_parking:
             # Only while parking. A third colour mask on every frame is a third
             # more work in the camera loop, and for the whole lap there is

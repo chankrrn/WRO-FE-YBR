@@ -507,12 +507,18 @@ class FinalTask(PathDrivingTask):
             # capture_for_blocks(), not capture_image() + transform_image():
             # this round reads the HSV frame and nothing else, and the full
             # pipeline costs ~19ms a frame to produce ~1.6ms of answer.
+            record = context.camera.record_video
             hsv = context.camera.capture_for_blocks(
-                with_display=context.object_solver.debug)
+                with_display=context.object_solver.debug or record)
             if hsv is None:
                 return
             context.nav.observe_blocks(context.object_solver.detect(
                 hsv, display_image=context.camera.display_image))
+            # The vision thread records its own frames; this is the fallback
+            # path, so it has to record its own too or a run that lost the
+            # thread silently records nothing.
+            if record:
+                context.camera.add_frame_to_video()
         except Exception as e:
             print(f"WARNING: detection failed: {e!r}")
 

@@ -41,6 +41,11 @@ from utils.angle_utils import clamp
 # these are the values used when a key is missing from the file.
 # ============================================================================
 DEFAULTS = {
+    # Record the run to videos/videoN.mp4 - every frame the round saw, with the
+    # detection overlay on it. --record turns it on for one run; this turns it
+    # on for every run. It costs a full-frame copy per frame, which the round
+    # otherwise only pays in debug.
+    "camera.record_video": False,
     "laps.goal": 3,
 
     "speed.base": 70,              # straights

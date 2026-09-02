@@ -38,7 +38,7 @@
 # mast at the front, almost over the steering wheels, this far ahead of it -
 # measured from the rear axle's centreline to the middle of the lidar. The
 # localizer casts its rays from here and reports the axle.
-lidar_ahead_mm = 150.0
+lidar_ahead_mm = 120.0
 
 [laps]
 goal = 3

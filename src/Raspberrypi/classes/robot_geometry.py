@@ -21,7 +21,7 @@ import numpy as np
 
 # The lidar beam's origin, forward of the rear axle. 15cm: the mast stands
 # almost on top of the front wheels and the wheelbase is 165mm.
-LIDAR_AHEAD_MM = 150.0
+LIDAR_AHEAD_MM = 120.0
 DEFAULT_LIDAR_OFFSET_MM = (LIDAR_AHEAD_MM, 0.0)
 
 # The lens sits this far straight back from the lidar on the same mast, so the

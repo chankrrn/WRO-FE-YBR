@@ -23,7 +23,7 @@
 # measured from the rear axle's centreline to the middle of the lidar. The
 # localizer casts its rays from here and reports the axle, so this is the one
 # number that turns "where the lidar is" into "where the robot is".
-lidar_ahead_mm = 150.0
+lidar_ahead_mm = 120.0
 
 [laps]
 goal = 2
@@ -33,8 +33,8 @@ goal = 2
 # the value goes to analogWrite unchanged. These are the figures measured
 # AFTER the 16:28 reduction was fitted (see startup.mm_per_s_at_full): 60 is
 # about 24% duty and around 234mm/s.
-base = 65
-corner = 60
+base = 75
+corner = 65
 lost = 55
 minimum = 55
 # While the planner reports a pass it could not give full clearance to. Every
@@ -180,7 +180,7 @@ mm_per_s_at_full = 390.0
 
 # Gap between the robot's BODY and the pillar's near face as it goes past.
 # A request, not a promise - see the header.
-clearance_mm = 400.0
+clearance_mm = 325.0
 
 # Half the robot's own width (centreline to its widest point - wheels,
 # mudguards, whatever sticks out furthest). A MEASUREMENT, not a tuning knob.
@@ -203,7 +203,7 @@ memory_s = 1.5
 # detection uncertainty, so this can run tighter than clearance_mm - but not
 # to 0; pose tracking still has noise, and a plan is checked against half this
 # before it is called clear.
-wall_clearance_mm = 130.0
+wall_clearance_mm = 150.0
 
 # How much of the robot's turning circle to keep in hand. The plan is drawn
 # with arcs no tighter than turning_circle x this, because a path at exactly
@@ -237,7 +237,7 @@ min_clearance_mm = 45.0
 # robot drives off the end of its own plan between replans; setup warns if it
 # is under 3x. Reaching much further is wasted work - it is replanned before
 # the far end is reached.
-horizon_mm = 3000.0
+horizon_mm = 2200.0
 
 # Goal spacing along an empty stretch. These exist to hold the plan near the
 # racing line: a single Dubins segment spanning a whole side of the field is
@@ -352,7 +352,7 @@ front_sector_deg = 25.0
 # it is right.
 # =============================================================================
 [parking]
-enabled = true
+enabled = false
 
 # 1. how far off the outer wall to run while looking for the bay, and how
 #    hard to hold it there. Far enough out that the bay wall is a clear step
@@ -427,7 +427,7 @@ creep_max_mm = 700.0
 #    that much closer than the nose is. Left unset it takes robot.lidar_ahead_mm,
 #    the same number the localizer uses - set it only to make the park
 #    disagree with the localizer on purpose.
-# lidar_ahead_mm = 150.0
+# lidar_ahead_mm = 120.0
 
 #    MEASURE THE BAY, then back up to its middle. Instead of turning a fixed
 #    distance after the first bay wall, drive past BOTH walls - so the bay's
@@ -532,7 +532,7 @@ timeout_s = 20.0
 # follow gets a run at the wall before the bay turns up in it - it needs about
 # 1.4m to settle onto the wall from a bad handover. Then: how many failed
 # attempts to retry before giving up and driving out the clock.
-start_early_mm = 800.0
+start_early_mm = 2300.0
 # 2, not 0: at 0 the FIRST abort gives up on the bay for the whole round and
 # just drives out the clock, which is a round that settles into the approach,
 # quits, and laps without ever trying again. Each retry costs most of a lap.
