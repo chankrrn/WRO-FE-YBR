@@ -1567,56 +1567,6 @@ A final steering correction is performed while reversing so that the robot ends 
 
 ---
 
-## 9.2 Parking Control Table
-
-| Phase | Main Action | Entry Condition | Exit Condition |
-|---|---|---|---|
-| Position | Approach parking alignment point | **[TODO: Confirm final code condition]** | **[TODO]** |
-| Reverse Turn | Reverse with steering | **[TODO]** | **[TODO]** |
-| Reverse Straight | Reverse with reduced / centered steering | **[TODO]** | **[TODO]** |
-| Final Turn | Reverse and align with wall | **[TODO]** | **[TODO]** |
-| Stop | Motor command = 0 | Final parking condition | Run complete |
-
-> **[TODO: Replace the table above with the exact variables / thresholds used by the final parking code once that implementation is locked.]**
-
----
-
-## 9.3 Parking State Diagram
-
-> **[TODO: Add rendered parking state-machine diagram after verifying the final implementation.]**
-
-Recommended file:
-
-```text
-software/assets/parking_state_machine.png
-```
-
-The diagram should show:
-
-- state name,
-- sensor / distance condition,
-- steering action,
-- drive direction,
-- transition condition,
-- final stop condition.
-
----
-
-## 9.4 Parking Validation
-
-The parking section should eventually contain measurable evidence, not only the maneuver description.
-
-> **[TODO: Record parking success rate from repeated real-track trials.]**
-
-Suggested table:
-
-| Test | Trials | Successful | Success Rate |
-|---|---:|---:|---:|
-| Parallel parking | **[TODO]** | **[TODO]** | **[TODO]** |
-
-If different parking positions are tested, record them separately.
-
----
 
 # 10. Sensor Fusion and Information Arbitration
 
@@ -1782,15 +1732,11 @@ Drop       Store
 
 The current final-round configuration performs a startup feasibility check. The existing documentation notes that, under one configuration, a pillar placed directly on the racing line could require an offset greater than the available corridor. This condition is intentionally detected rather than being silently ignored.
 
-> **[TODO: Re-run the final configuration feasibility check and resolve any warning before final submission.]**
-
 ---
 
 ## 11.7 IMU Unavailable
 
 The navigation architecture is not intended to depend on one sensor alone.
-
-> **[TODO: Confirm and document the exact current final-code behavior when `compass_manager` cannot return a heading. Previous implementation allowed reduced compass contribution rather than immediately crashing.]**
 
 
 ---
@@ -1801,7 +1747,6 @@ LiDAR is central to the localization architecture.
 
 If LiDAR initialization fails, the robot cannot provide normal field localization.
 
-> **[TODO: Confirm whether the final competition task stops safely at initialization or enters another explicit behavior when LiDAR is unavailable.]**
 
 ---
 
@@ -1810,8 +1755,6 @@ If LiDAR initialization fails, the robot cannot provide normal field localizatio
 The Open Challenge does not require traffic-pillar color recognition in the same way as the Obstacle Challenge.
 
 The final Obstacle Challenge behavior, however, depends on camera detection.
-
-> **[TODO: Confirm final-task behavior if camera initialization fails.]**
 
 ---
 
