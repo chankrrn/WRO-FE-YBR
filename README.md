@@ -124,7 +124,7 @@ The competition contains two major driving challenges.
 
 The vehicle must autonomously complete three laps while responding to the randomized track configuration and driving direction.
 
-**Open Challenge Performance Video:**  `[TODO: OPEN CHALLENGE VIDEO]`
+**Performance Video:** [Open Challenge Performance Video](https://youtu.be/PEgQhpqOltk?si=T_KtnxKnviS_btky)
 
 
 ### Obstacle Challenge
@@ -142,9 +142,9 @@ The starting position, driving direction and field configuration may change betw
 
 For this reason, our final software does not depend on one fixed prerecorded path from one fixed starting point.
 
-**Obstacle Challenge Performance Video:**  `[TODO: OBSTACLE CHALLENGE VIDEO]`
+**Performance Video:** [Obstacle Challenge Performance Video](add link)
 
-> **All the videos including additional testing videos can be found in:** [`video/`]([https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/video/RunTest_video.md](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/tree/9c902b7dc6547fd7a7561fb0905a66bc63c72761/video))
+> **All the videos including additional testing videos can be found in:** [`video/`](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/tree/17945a607ef416fb5d24ce5c4f617b4a04b09428/video)
 
 ---
 
