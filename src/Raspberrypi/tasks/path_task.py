@@ -30,6 +30,7 @@ from dataclasses import replace
 
 from classes.debug_view import DebugView
 from classes.pure_pursuit import PurePursuit
+from classes.robot_geometry import LIDAR_AHEAD_MM
 from classes.steering_calibrator import SteeringCalibrator
 from classes.racing_line import RacingLine
 from tasks.base_task import Task
@@ -47,6 +48,16 @@ DEFAULTS = {
     "speed.lost": 50,              # pose not trustworthy
     "speed.minimum": 40,           # never crawl slower than this while driving
 
+    # WHERE THE LIDAR IS. The pose every part of the round reads - the point
+    # pure pursuit, the odometry, the planner's body sweep and the park are
+    # all measured from - is the middle of the REAR (driving) AXLE. The lidar
+    # is not there: it stands on a mast at the front, almost over the
+    # steering wheels, this far ahead of the axle. The localizer casts its
+    # rays from there and reports the axle. Measure it with a ruler from the
+    # rear axle's centreline to the middle of the lidar. Get it wrong and the
+    # pose is wrong by the same amount, along the body, in every turn.
+    "robot.lidar_ahead_mm": LIDAR_AHEAD_MM,
+
     "path.wall_margin_mm": None,   # None = centre the loop in the corridor
     "path.corner_radius_mm": None,  # None = biggest that clears the block
     "path.resolution_mm": 20.0,
@@ -58,6 +69,7 @@ DEFAULTS = {
     "pursuit.lookahead_max_mm": 700.0,
     "pursuit.max_road_wheel_deg": 30.0,
     "pursuit.max_steer_command": 80.0,
+    # The pose IS the rear axle (see robot.lidar_ahead_mm), so nothing to shift.
     "pursuit.rear_axle_offset_mm": 0.0,
 
     # How fast the steering command is allowed to move, in command units per
@@ -112,7 +124,8 @@ DEFAULTS = {
     "goals.replan_interval_s": 0.1,      # cadence when nothing has changed
     "goals.replan_cross_track_mm": 120.0,  # drift that forces a new plan
     # The robot's own extent forward of and behind THE POINT THE POSE
-    # DESCRIBES, which with pursuit.rear_axle_offset_mm at 0 is the rear axle -
+    # DESCRIBES, which is the rear axle (the localizer puts the lidar
+    # robot.lidar_ahead_mm ahead of the pose, and rear_axle_offset_mm is 0) -
     # so robot_front_mm is nearly the whole length of the car, not half of it.
     # Getting that wrong is not a rounding error: the front overhang is the
     # part that swings widest through a corner and the part that reaches a
@@ -368,14 +381,16 @@ DEFAULTS = {
     "parking.inner_slack_mm": 250.0,
     "parking.mouth_sector_deg": 6.0,       # the NARROW beam's width
     "parking.blade_below_mm": None,        # unset = the same as the trigger
-    # THE LIDAR IS NOT AT THE AXLE - it sits this far forward of it, which
-    # moves both ends of the sequence: the beam goes level with a bay wall
-    # while the axle is still that far short of it, and it reads the outer
-    # wall from that much closer than the nose is.
-    "parking.lidar_ahead_mm": 130.0,
+    # THE LIDAR IS NOT AT THE AXLE - it sits robot.lidar_ahead_mm forward of
+    # it, which moves both ends of the sequence: the beam goes level with a
+    # bay wall while the axle is still that far short of it, and it reads the
+    # outer wall from that much closer than the nose is. Unset takes the
+    # localizer's own number; set it only to make the park disagree with the
+    # localizer on purpose.
+    "parking.lidar_ahead_mm": None,
     # Unset means "land in the middle of the bay": half the bay, plus how far
     # the lidar leads the axle, minus the radius the turn carries the axle
-    # through - 170 + 130 - 204, about 96mm. At zero it lands 96mm off centre,
+    # through - 170 + 150 - 204, about 116mm. At zero it lands 116mm off centre,
     # which is enough to graze the far wall.
     "parking.turn_after_mm": None,
     # Drive past BOTH bay walls to measure the bay, then reverse to its

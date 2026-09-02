@@ -31,6 +31,17 @@ drifting BNO055 can - see `scan_orientation`. We take the precise angle from
 the lidar and only the quadrant from the IMU, which means IMU drift has to
 exceed 45 degrees before it can hurt us.
 
+Which point the pose describes
+------------------------------
+The pose is the middle of the REAR (driving) AXLE, not the lidar. The lidar
+sits on a mast at the front of the car, `lidar_offset_mm` ahead of the axle
+(see classes/robot_geometry.py), and every ray the filter casts starts from
+there - but the particles themselves ARE axle positions. That is the point the
+bicycle model, pure pursuit, the odometry and the body sweep are all defined
+from: the rear axle moves along the heading, while a point 15cm ahead of it
+also swings sideways through every turn. Localizing the lidar and calling it
+the robot put that swing into everything downstream.
+
 Usage:
     nav = NavigationManager(context.lidar, context.compass, debug=True)
     nav.start()                      # or nav.start(x, y, heading) if known
@@ -48,8 +59,10 @@ import cv2
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
-from classes.block_map import BLOCK_SIZE_MM, BlockMap, camera_offset_behind_lidar
+from classes.block_map import BLOCK_SIZE_MM, BlockMap
 from classes.field_map import FieldMap
+from classes.robot_geometry import (DEFAULT_LIDAR_OFFSET_MM, camera_offset_behind_lidar,
+                                    to_field)
 from utils.angle_utils import angle_difference, clamp, normalize_angle
 from utils.image_drawing_utils import ImageDrawingUtils
 
@@ -148,8 +161,9 @@ AUTO_UPDATE_AFTER_S = 0.08
 @dataclass(frozen=True)
 class Pose:
     """
-    Robot pose on the field. x/y are millimeters from the center of the field,
-    heading is degrees clockwise from +Y (so 0 = facing +Y, 90 = facing +X).
+    Robot pose on the field. x/y are millimeters from the center of the field
+    to the middle of the REAR AXLE, heading is degrees clockwise from +Y (so
+    0 = facing +Y, 90 = facing +X).
 
     `confidence` answers "does this pose explain what the lidar sees", which is
     not quite the same as "is this pose correct". The field is 90-degree
@@ -202,15 +216,16 @@ class NavigationManager:
 
     def __init__(self, lidar=None, compass=None, field_map=None, debug=False,
                  particle_count=PARTICLE_COUNT, beam_count=BEAM_COUNT,
-                 lidar_offset_mm=(0.0, 0.0), compass_sign=1.0,
+                 lidar_offset_mm=DEFAULT_LIDAR_OFFSET_MM, compass_sign=1.0,
                  use_lidar_heading=True, sensor_sigma_mm=SENSOR_SIGMA_MM,
                  fov_deg=DEFAULT_FOV_DEG, block_map=None, seed=None):
         """
         I/O:
             lidar: LidarManager (or anything exposing get_scan())
             compass: CompassManager, or None to run heading-blind
-            lidar_offset_mm: (forward, right) of the sensor from the robot's
-                             center, in the robot's own frame
+            lidar_offset_mm: (forward, right) of the sensor from the REAR
+                             AXLE, in the robot's own frame. The pose this
+                             filter reports is the axle; the rays start here.
             compass_sign: +1 if the compass counts up clockwise, -1 if it
                           counts up counter-clockwise. Get this wrong and the
                           pose will spin the wrong way - test_navigation.py
@@ -676,10 +691,7 @@ class NavigationManager:
         The sensor sits at `lidar_offset_mm` in the robot frame, so the rays
         start there and not at the particle itself.
         """
-        forward, right = self.lidar_offset_mm
-        radians = np.radians(headings)
-        sensor_x = xy[:, 0] + forward * np.sin(radians) + right * np.cos(radians)
-        sensor_y = xy[:, 1] + forward * np.cos(radians) - right * np.sin(radians)
+        sensor_x, sensor_y = self.lidar_position(xy[:, 0], xy[:, 1], headings)
 
         world_angles = np.radians(headings[:, None] + bearings[None, :])
         return self.map.raycast(sensor_x[:, None], sensor_y[:, None], world_angles)
@@ -922,6 +934,15 @@ class NavigationManager:
         return self.blocks.observe(
             self.get_pose(max_age_s=None, extrapolate=False), detections)
 
+    def lidar_position(self, x, y, heading_deg):
+        """
+        Where the lidar beam starts, in field mm, for a pose (or arrays of
+        poses) whose point is the rear axle. Anything that projects a raw scan
+        through the pose - the filter, the debug overlay, the bay finder -
+        has to start its rays here, not at the pose itself.
+        """
+        return to_field(x, y, heading_deg, self.lidar_offset_mm)
+
     def get_position_m(self):
         """(x, y) in meters from the field center - the short form of get_pose()."""
         pose = self.get_pose()
@@ -1016,6 +1037,9 @@ class NavigationManager:
             self._draw_scan(canvas, to_px, pose)
             self.blocks.draw_camera_cone(canvas, to_px, pose)
             self._draw_robot(canvas, to_px, scale, pose, COLOR_ROBOT)
+            # The pose is the rear axle; mark where the scan actually starts.
+            lidar_x, lidar_y = self.lidar_position(pose.x, pose.y, pose.heading)
+            cv2.circle(canvas, to_px(float(lidar_x), float(lidar_y)), 3, COLOR_SCAN, -1)
         # Blocks go on top of the scan: they are 5cm squares and the scan dots
         # are 2px, so drawn underneath they would be all but invisible.
         self.blocks.draw(canvas, to_px, scale)
@@ -1066,10 +1090,7 @@ class NavigationManager:
         if indices.size == 0:
             return
 
-        forward, right = self.lidar_offset_mm
-        heading = math.radians(pose.heading)
-        origin_x = pose.x + forward * math.sin(heading) + right * math.cos(heading)
-        origin_y = pose.y + forward * math.cos(heading) - right * math.sin(heading)
+        origin_x, origin_y = self.lidar_position(pose.x, pose.y, pose.heading)
 
         world = np.radians(pose.heading + indices.astype(float))
         xs = origin_x + scan[indices] * np.sin(world)
@@ -1081,6 +1102,7 @@ class NavigationManager:
 
     @staticmethod
     def _draw_robot(canvas, to_px, scale, pose, color):
+        """A disc on the rear axle (the pose point) with an arrow up the body."""
         body_px = max(5, int(90 * scale))
         cv2.circle(canvas, to_px(pose.x, pose.y), body_px, color, 2)
         radians = math.radians(pose.heading)

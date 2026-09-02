@@ -33,6 +33,13 @@
 #     python test_steering.py --sweep speed.corner 40,50,60,70
 # =============================================================================
 
+[robot]
+# The pose is the middle of the REAR (driving) AXLE. The lidar stands on the
+# mast at the front, almost over the steering wheels, this far ahead of it -
+# measured from the rear axle's centreline to the middle of the lidar. The
+# localizer casts its rays from here and reports the axle.
+lidar_ahead_mm = 150.0
+
 [laps]
 goal = 3
 
@@ -51,7 +58,28 @@ minimum = 30
 # How far the straights sit off the outer wall. Leave unset to centre the loop
 # in the corridor, which leaves equal room either side and is the most
 # forgiving line. Set it smaller to hug the outside, larger to hug the block.
-wall_margin_mm = 130.0
+#
+# THIS IS WHERE THE REAR AXLE RUNS, not the lidar. The pose is the axle now
+# (see [robot]); it used to be the lidar, and 130mm here was tuned with the
+# lidar itself hugging the wall at 130mm. With the axle on the line the nose
+# is what swings: every correction back onto the line points the nose at the
+# wall first, and a nose 150mm further forward, 130mm off a wall, pointed
+# 11deg into it puts that wall inside the safety backstop's +/-25deg cone at
+# under front_stop_mm - so the robot stops, backs out, and does it again at
+# the next corner exit. Measured over 6 simulated placements, 3 laps each
+# (test_driving.py --round qualification --trials 6), pose on the axle:
+#
+#     130   0/6 finished   107s per lap   15 backstop stops in 1.8 laps
+#     160   2/6             61s
+#     180   6/6             54s
+#     200   6/6             31s            worst wall gap +7.4cm
+#     230   6/6             24s            worst wall gap +9.7cm   <- this
+#     260   6/6             22s
+#
+# 230: comfortably past the cliff, and the straights still run 770mm from the
+# centre block. Push it back toward 200 to hug the wall again, but not below
+# 180.
+wall_margin_mm = 230.0
 #
 # Corner radius. Leave unset for the biggest that still clears the centre
 # block, and keep it above the robot's turning circle (setup warns if not).
@@ -106,9 +134,8 @@ servo_lag_s = 0.35
 max_road_wheel_deg = 30.0
 max_steer_command = 35.0
 
-# Distance from the pose reference (robot centre) back to the rear axle -
-# negative because the axle is behind it. Zero works; a real value takes a
-# little understeer out of the tight corners.
+# Distance from the pose reference back to the rear axle. The pose IS the
+# rear axle (see [robot]), so this stays at 0.
 rear_axle_offset_mm = 0.0
 
 [steer]
