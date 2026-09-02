@@ -34,9 +34,7 @@
 | [Schematics](schemes/) | Electrical schematic and physical wiring diagrams |
 | [Mechanical Models](mech/models/) | CAD and 3D-printable mechanical parts |
 | [Robot Photos](robot-photos/) | Final robot photographs |
-| [Engineering Process](engineering-process/) | Development, assembly, soldering, coding, testing and prototype evidence |
 | [Videos](video/) | Test and competition demonstration videos |
-| [Version History](CHANGELOG.md) | Major engineering versions and repository release notes |
 
 ---
 
@@ -146,7 +144,7 @@ For this reason, our final software does not depend on one fixed prerecorded pat
 
 **Obstacle Challenge Performance Video:**  `[TODO: OBSTACLE CHALLENGE VIDEO]`
 
-> **All the videos including additional testing videos can be found in:** [`video/RunTest_video.md`](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/video/RunTest_video.md)
+> **All the videos including additional testing videos can be found in:** [`video/`]([https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/video/RunTest_video.md](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/tree/9c902b7dc6547fd7a7561fb0905a66bc63c72761/video))
 
 ---
 
@@ -275,8 +273,6 @@ We track and document major physical architecture changes using version numbers 
 
 > V1 did not have a complete Raspberry Pi autonomous competition run. We therefore do not claim autonomous performance results for that version. The rear ultrasonic sensor described above was part of the V1 design plan for parking-distance feedback and was not part of the final LiDAR-based architecture.
 
-> **[TODO: Add a compact V1 → V2 → V3 evolution diagram showing the major changes in drivetrain, sensing, power architecture and physical rebuild. Use the real prototype photographs rather than a generic engineering-cycle illustration.]**
-
 ---
 
 ## 4.2 Prototype Comparison
@@ -309,15 +305,7 @@ Version 2 did **not** use the final XL4015 motor/control power branch.
 
 ### Mechanical Assembly
 
-> **[TODO: Add photograph of the team assembling the chassis / drivetrain / steering system]**
-
-Recommended evidence:
-
-- drivetrain assembly,
-- bearing installation,
-- steering assembly,
-- 3D-printed part fitting,
-- mechanical revision.
+<img width="400" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/9967be3fdbd0a5c43892f5859c197e7491e7dbca/team-photos/image.png">
 
 ### Electronics Assembly and Soldering
 
@@ -334,21 +322,6 @@ Recommended evidence:
 ### Robot Testing
 
 [`video/RunTest_video.md`](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/video/RunTest_video.md)
-
-> **[TODO: Add photograph of the team performing track testing]**
-
-Recommended evidence:
-
-- Open Challenge testing,
-- obstacle testing,
-- sensor calibration,
-- steering testing,
-- parking testing,
-- debugging after a failed run.
-
-Additional development evidence is stored in:
-
-[`engineering-process/`](engineering-process/)
 
 ---
 
@@ -458,8 +431,6 @@ Each step increased the external reduction. This reduced maximum drivetrain spee
 
 Detailed torque calculations, motor selection, drivetrain iterations and CAD files are documented in the mechanical README.
 
-> **[TODO: Consider adding one compact mechanical overview diagram in the main README showing Motor → 19:1 gearbox → 16T → 28T differential → rear wheels together with the servo-driven Ackermann steering linkage. Keep detailed mechanical diagrams in `mech/mech_README.md`.]**
-
 ---
 
 ## 6.2 Steering
@@ -512,8 +483,6 @@ The actuator and control side uses a separate XL4015-based power path together w
 
 The separation is intended to reduce direct interaction between rapidly changing actuator loads and the Raspberry Pi power path.
 
-> **[TODO: Add a compact power-architecture diagram to the main README showing the 3S LiPo → D1-2 distribution → LM2596 / XL4015 branches, including the measured 5.1 V → 5.0 V and 11.1 V → 11.0 V values. Keep the complete schematic and wiring diagram in `elec/elec_README.md`.]**
-
 ---
 
 ## 7.2 Final Sensor Architecture
@@ -561,8 +530,6 @@ Two important physical sensing problems were identified during development.
 **Change:** the camera/lens configuration was changed to provide a wider view.
 
 The purchased OV5647 fish-eye camera reference lists approximately **130° diagonal FOV**, while the current vision software uses approximately **80° horizontal FOV** as its working calibration parameter. These values describe different FOV axes and the camera configuration changed during development, so the software parameter is treated separately from the supplier optical specification.
-
-> **[TODO: Before final submission, verify the exact lens physically installed on Version 3 and make the camera-FOV wording identical in `README.md`, `elec/elec_README.md`, and `software/software_README.md`.]**
 
 ### LiDAR Orientation
 
@@ -626,7 +593,6 @@ Arduino
      └── Steering Servo
 ```
 
-> **[TODO: Add a polished autonomous navigation data-flow diagram to the main README. It should show LiDAR + IMU → particle-filter localization → base racing line, Camera → pillar detection → field coordinates → persistent block map → path offset, then Final Path → Lookahead → Pure Pursuit → steering/speed → Arduino. Keep algorithm details in `software/software_README.md`.]**
 
 ---
 
@@ -720,10 +686,8 @@ Current high-level parking sequence:
 3. reverse in a straighter trajectory,
 4. apply the final steering correction to become parallel with the outer wall,
 5. stop.
-
-> **[TODO: Add a parking control-flow / state diagram after the final parking implementation is locked. The diagram must match the real code and should not introduce states that are not implemented.]**
-
-> **[TODO: Add parking success-rate / repeatability result from real track testing.]**
+   
+<img width="400" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/9c902b7dc6547fd7a7561fb0905a66bc63c72761/other/R.jpg">
 
 ---
 
@@ -785,8 +749,6 @@ Moving from ultrasonic + light sensing to LiDAR changed the software from local 
 Software testing revealed real steering behavior that differed from assumed steering geometry.
 
 This required the control model to represent the actual physical steering response rather than only the CAD geometry.
-
-> **[TODO: Add a subsystem-interaction diagram showing Mechanical ↔ Electrical ↔ Software dependencies. Suggested labeled examples: gear ratio → software speed profile; sensor placement → data quality; LiDAR architecture → localization; steering tests → mechanical/control-model calibration.]**
 
 ---
 
@@ -852,43 +814,6 @@ These measurements are important because the real mechanical response affects Pu
 
 ---
 
-## 10.4 Final Physical Test Results
-
-This section should contain only results that were actually measured by the team.
-
-| Test | Trials | Success / Measurement | Evidence |
-|---|---:|---|---|
-| Open Challenge complete run | **[TODO]** | **[TODO]** | **[TODO: video / log]** |
-| Obstacle pillar passing | **[TODO]** | **[TODO]** | **[TODO: video / log]** |
-| Parallel parking | **[TODO]** | **[TODO]** | **[TODO: video / log]** |
-| Wall-contact test | **[TODO]** | **[TODO]** | **[TODO]** |
-| Localization convergence | **[TODO]** | **[TODO]** | Software debug logs |
-| Steering calibration | **[TODO]** | ~21% difference from original assumption | Steering test |
-| Steering response | **[TODO]** | ~0.35 s to 63% response | Steering-lag test |
-| Power stability under driving load | **[TODO]** | **[TODO: measured voltages]** | **[TODO]** |
-
-> **Do not replace TODO values with estimated numbers. Only include measurements that were actually recorded.**
-
-> **[TODO: After the final measured trial counts are entered, generate one testing-results chart for the main README (for example Open Challenge completion, pillar-pass success, parking success and wall-contact rate). Use only logged team data.]**
-
----
-
-## 10.5 Engineering Testing Evidence
-
-> **[TODO: Add testing photo 1 — steering / drivetrain]**
-
-> **[TODO: Add testing photo 2 — LiDAR / localization debug]**
-
-> **[TODO: Add testing photo 3 — obstacle detection]**
-
-> **[TODO: Add testing photo 4 — parking / final track run]**
-
-Additional evidence:
-
-[`engineering-process/testing/`](engineering-process/testing/)
-
----
-
 # 11. Build and Reproducibility
 
 The complete reproduction procedure is documented in:
@@ -934,7 +859,6 @@ It contains:
 | Electrical schematic | [`schemes/Schematic Diagram.png`](schemes/Schematic%20Diagram.png) |
 | Wiring diagram | [`schemes/Wiring Diagram.png`](schemes/Wiring%20Diagram.png) |
 | Final robot photographs | [`robot-photos/`](robot-photos/) |
-| Development evidence | [`engineering-process/`](engineering-process/) |
 
 ---
 
@@ -1019,12 +943,10 @@ WRO-FE-YBR-SUNFLOWER/
 |   ├── RunTest_video.md
 │   └── final_video.md
 │
-├── other/
-|   ├── PNG files
-│   └── JPG files
-│
-└── docs/
-    └── [TODO: engineering report / supporting documentation]
+└──  other/
+    ├── PNG files
+    └── JPG files
+
 ```
 
 ---
@@ -1040,25 +962,6 @@ The Git history is part of the engineering documentation because it shows that t
 | V1 | Initial chassis, 28:28 external drivetrain; front ultrasonic + light-sensor sensing plan, with rear ultrasonic planned for parking-distance feedback | Archived prototype |
 | V2 | Ackermann steering, bearings, 21:28 drivetrain and LiDAR architecture; ultrasonic removed; light sensors still physically present in some photos but no longer active; no XL4015 branch | Functional prototype |
 | V3 | Completely rebuilt robot, 16:28 drivetrain, improved motor performance, green reprinted mechanical parts, final electrical layout and added XL4015 motor/control power branch | Current robot |
-
----
-
-## 13.2 Repository Milestones
-
-| Milestone | Date | Commit / Release | Description |
-|---|---|---|---|
-| Initial development | **[TODO]** | **[TODO: commit link]** | Early mechanical / software development |
-| Prototype integration | **[TODO]** | **[TODO: commit link]** | Major subsystem integration |
-| LiDAR architecture | **[TODO]** | **[TODO: commit link]** | Navigation architecture change |
-| Final mechanical rebuild | **[TODO]** | **[TODO: commit link]** | Version 3 robot |
-| Competition software | **[TODO]** | **[TODO: commit link]** | Final qualification / obstacle architecture |
-| Documentation release | **[TODO]** | **[TODO: release link]** | Competition documentation version |
-
-Detailed release information:
-
-[`CHANGELOG.md`](CHANGELOG.md)
-
-> **[TODO: Create GitHub Release for the submitted competition version and tag the exact commit used for judging.]**
 
 ---
 
@@ -1100,10 +1003,8 @@ This prevents unmeasured estimates from being presented as experimental results.
 - [`elec/elec_README.md`](elec/elec_README.md) — Electrical and sensing
 - [`software/software_README.md`](software/software_README.md) — Software and autonomy
 - [`BUILD.md`](BUILD.md) — Complete reproduction guide
-- [`CHANGELOG.md`](CHANGELOG.md) — Version and release history
 - [`schemes/`](schemes/) — Electrical diagrams
 - [`src/`](src/) — Competition source code
-- [`engineering-process/`](engineering-process/) — Development evidence
 
 ## External References
 
