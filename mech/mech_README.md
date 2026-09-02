@@ -64,29 +64,7 @@ This principle influenced the motor, drivetrain reduction, wheel choice, steerin
 
 ---
 
-## 1.2 Mechanical Animation
-
-This section provides a quick visual explanation of the final mechanical system before the individual subsystems are examined in detail.
-
-> **[TODO: Add 360° rotating CAD animation / GIF of the complete Version 3 robot]**
-
-Recommended file:
-
-```text
-models/animations/final_robot_360.gif
-```
-
-A drivetrain animation showing the motor, 16T drive gear, differential and rear wheels would also make the transmission easier to understand.
-
-> **[TODO: Add drivetrain animation showing motor → 16T gear → differential → wheels]**
-
-A separate steering animation could demonstrate the different inner and outer wheel motion produced by the Ackermann-style mechanism.
-
-> **[TODO: Add Ackermann steering animation showing left/right wheel motion]**
-
----
-
-## 1.3 Criterion 1 Evidence Map
+## 1.2 Criterion 1 Evidence Map
 
 | Level 6 Requirement | Evidence in This Document |
 |---|---|
@@ -897,8 +875,6 @@ The gear mechanism can slip under excessive blocking load rather than remaining 
 | Stall Current | 700 mA |
 | Sliding Current | 450 mA |
 
-> **[TODO: Verify the exact final servo model and its current specification against the purchased unit / original product documentation, because electrical documentation has contained different stall-current values.]**
-
 ---
 
 ## 6.6 Servo Bracket
@@ -1258,8 +1234,6 @@ The large build volume was also sufficient for the major chassis plates and stru
 
 The custom robot uses both **ABS** and **ABS-GF**, which is glass-fiber-reinforced ABS.
 
-These materials are not treated as interchangeable. Each one is selected according to the mechanical requirement of the component being printed.
-
 ---
 
 ### ABS
@@ -1361,8 +1335,6 @@ Dedicated steering-calibration tools later showed that the real robot did not tu
 
 This is important because the physical steering geometry directly affects the Pure Pursuit model used by the software. Measuring the assembled robot therefore provides more useful information than assuming the printed mechanism behaves exactly like the ideal CAD design.
 
-> **[TODO: Add link to steering test evidence / log.]**
-
 ---
 
 ## 10.4 Additional Mechanical Measurements
@@ -1380,24 +1352,6 @@ The following values should be measured directly from the completed Version 3 ro
 | Rear track width | **[TODO]** |
 | Minimum turning radius | **[TODO]** |
 | Maximum steering angle | **[TODO]** |
-
-Measured values should be distinguished from nominal CAD dimensions wherever the physical assembly can differ.
-
----
-
-## 10.5 Optional Mechanical Repeatability Test
-
-If enough testing time is available, repeated mechanical tests can provide stronger evidence than a single successful run.
-
-| Test | Trials | Result |
-|---|---:|---|
-| Smooth start from rest | **[TODO]** | **[TODO]** |
-| Full steering left / right | **[TODO]** | **[TODO]** |
-| Corner completion | **[TODO]** | **[TODO]** |
-| Parking approach | **[TODO]** | **[TODO]** |
-| Mechanical failure | **[TODO]** | **[TODO]** |
-
-Only actual recorded results should be entered. Estimated success rates should not be presented as measured data.
 
 ---
 
@@ -1500,31 +1454,6 @@ This README explains the design reasoning, while `BUILD.md` explains the order i
 | LiDAR / IMU Mount | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/LiDARMount.PNG"> | [`LiDARMount.stl`](models/LiDARMount.stl) |
 | Rear Wing | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/RearWing.PNG"> | [`RearWing.stl`](models/RearWing.stl) |
 | Step-Down Tray | <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/2efd8f71d81b2efc41b4d7d9089afbab23a6b3ee/mech/models/StepdownTray.PNG"> | [`StepdownTray.stl`](models/StepdownTray.stl) |
-
----
-
-## 13.2 Manufacturing Files
-
-> **[TODO: Add `.3mf` / Bambu Studio project files if they are still available.]**
-
-Recommended structure:
-
-```text
-mech/
-├── mech_README.md
-│
-├── models/
-│   ├── CAD/
-│   ├── STL/
-│   ├── renders/
-│   └── animations/
-│
-└── slicer/
-    ├── ABS/
-    └── ABS-GF/
-```
-
-Including slicer project files would improve mechanical reproducibility because another builder could reproduce not only the STL geometry but also the intended print orientation, support configuration and manufacturing parameters.
 
 ---
 
