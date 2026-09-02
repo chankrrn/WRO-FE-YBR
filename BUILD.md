@@ -729,7 +729,7 @@ Mount the L298P Motor Shield onto the Arduino UNO R4 Minima according to the fin
 
 Current documented encoder wiring:
 
-<img height=300 scr=other/DrivingMotor3.jpg /> 
+<img height=300 src=other/DrivingMotor3.jpg /> 
 
 Arduino pins:
 
