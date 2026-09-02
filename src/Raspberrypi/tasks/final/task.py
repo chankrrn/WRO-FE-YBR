@@ -127,11 +127,12 @@ class FinalTask(PathDrivingTask):
         self._bay_progress = None
         self._bay_finder = None
         self._parking = None
-        # Failed park attempts, and the lap distance at which the next one may
-        # start - see _abandon_the_park.
+        # Failed park attempts - see _retry_the_park. There is no cap and no
+        # giving up: the round ends parked or on the time limit.
         self._park_attempts = 0
-        self._park_retry_at = None
-        self._park_given_up = False
+        # Millimetres still to reverse before the next attempt - see
+        # _retry_the_park.
+        self._park_backing_mm = 0.0
         # The exit from the bay the robot was placed in - see
         # _setup_manoeuvres.
         self._unparking = None
@@ -794,6 +795,11 @@ class FinalTask(PathDrivingTask):
             reverse_speed=int(self.setting("parking.reverse_speed")),
             servo_settle_s=float(self.setting("parking.servo_settle_s")),
             mm_per_s_at_full=float(self.setting("startup.mm_per_s_at_full")),
+            # The road's nominal width, so station-keeping beside the bay has
+            # a number to work with even if the follow never measured one.
+            nominal_corridor_mm=(self.context.nav.map.outer
+                                 - self.context.nav.map.inner),
+            bay_ahead_mm=self._bay_ahead_mm(),
             timeout_s=float(self.setting("parking.timeout_s")))
         # The camera does nothing about the bay for the whole lap - a third
         # colour mask per frame that nothing reads. Switch it on now.
@@ -803,43 +809,32 @@ class FinalTask(PathDrivingTask):
         print(f"Laps done - parking. Outer wall on the {side}.")
         print(f"  {self._parking.summary()}")
 
-    def _abandon_the_park(self):
+    def _bay_ahead_mm(self):
         """
-        Throws away a failed attempt instead of the whole round.
+        How far the bay is from here, by the lap counter alone.
 
-        An abort used to end the round, because is_finished asks the
-        controller whether it is `finished` and an aborted one says yes. So
-        the robot stopped dead wherever the guard happened to trip - a
-        different place every run, since where it trips depends on where it
-        committed. Three symptoms, one line: stopping in the wrong section,
-        stopping beside the bay without parking, stopping for no visible
-        reason.
+        THE ROBOT KNOWS THE SPOT WITHOUT SEEING IT. The round started inside
+        the bay and _rejoin_the_line zeroed distance_driven there, so the bay
+        sits at every whole multiple of the lap length - and the approach
+        arms parking.start_early_mm short of one of them. That distance is
+        the answer, and it needs no lidar, no camera and no map.
 
-        None of those is worth a round. The laps are already scored and the
-        clock is still running, so the right answer is the one this round
-        already applies when the bay is never found: keep driving. The retry
-        waits almost a full lap, because an attempt restarted on the spot
-        would begin from wherever the last one gave up - past the staging
-        point, off the line, pointing the wrong way - which is how a bad
-        attempt becomes a worse one.
+        It is a FALLBACK, not the plan: the lidar's own trigger fires first
+        whenever it recognises the bay, because a measured position beats a
+        dead-reckoned one. This is what stops the round driving past a bay it
+        simply failed to recognise - see ParkingSequence._follow.
+
+        I/O:
+            return: millimetres to the bay, or None when the counter cannot
+                    say (no bay start, so nothing was ever zeroed there)
         """
-        reason = self._parking.reason or "aborted"
-        self._parking = None
-        self._park_attempts += 1
-        allowed = int(self.setting("parking.retries"))
-        if self._park_attempts > allowed:
-            self._park_retry_at = None
-            self._park_given_up = True
-            print(f"Parking failed {self._park_attempts} times ({reason}). Giving up on "
-                  f"the bay and driving on - the laps already count for more than a "
-                  f"park that will not close.")
-            return
-        # Nearly a lap: far enough back that the approach gets a full run at
-        # the bay rather than starting from the wreck of the last attempt.
-        self._park_retry_at = (self.distance_driven + self.path.length
-                               - 1.5 * float(self.setting("parking.follow_mm")))
-        print(f"Parking attempt {self._park_attempts} failed ({reason}) - going round "
-              f"for another run at it ({allowed - self._park_attempts} left).")
+        if self._start_point is None or self.path is None:
+            return None
+        remaining = self.laps_goal * self.path.length - self.distance_driven
+        # Wrap into the lap: an attempt that starts after the counter has
+        # passed the goal is measuring to the NEXT time the bay comes round.
+        remaining %= self.path.length
+        return remaining
 
     def parking_caps(self):
         """Step 0: slow down and shorten the lookahead as the bay comes up."""
@@ -849,25 +844,45 @@ class FinalTask(PathDrivingTask):
 
     def parking_command(self, dt):
         """
-        The manoeuvre's steering and speed for this tick, or None to let the
-        racing line keep driving - see PathDrivingTask._drive_parking.
-        """
-        if self._park_given_up:
-            return None
+        The manoeuvre's steering and speed - and once the laps are done, it
+        does not give them back.
 
+        PARK, NO MATTER WHAT. There is no lapping to look for the bay, no
+        going round for another run and no giving up and driving out the
+        clock. The laps ending is the end of the driving part of the round;
+        everything after it is parking, and the only ways out are DONE or the
+        runner's own time limit.
+
+        A failed attempt is retried ON THE SPOT, and the retry costs a short
+        reverse rather than a lap. That reverse is not optional: nearly every
+        way the approach fails leaves the robot out of road - hard against a
+        corner, or too close to the wall to square up - and restarting from
+        exactly there just fails again on the same tick. Backing up is what
+        turns a retry into a different attempt instead of the same one.
+        """
         if not self.setting("parking.enabled"):
             return None
-        if self._parking is not None and self._parking.phase == ParkingSequence.ABORTED:
-            self._abandon_the_park()
-            return None
         if self.distance_driven < self._park_after_mm():
-            return None
-        if self._park_retry_at is not None and self.distance_driven < self._park_retry_at:
-            return None                      # coming round for another attempt
+            return None                      # laps not done - keep driving
+
+        # ---- backing up between attempts ---------------------------------
+        if self._park_backing_mm > 0.0:
+            speed = int(self.setting("parking.reverse_speed"))
+            self._park_backing_mm -= self.speed_mm_per_s(speed) * dt
+            if self._park_backing_mm > 0.0:
+                return (0.0, -speed)
+            self._park_backing_mm = 0.0
+            self._parking = None             # rebuilt below, from here
+
         if self._parking is None:
             self._start_parking()
+
+        if self._parking.phase == ParkingSequence.ABORTED:
+            return self._retry_the_park()
+
         if self._parking.finished:
-            return None
+            return (0.0, 0)                  # DONE - hold still, is_finished ends it
+
         pose = self.context.nav.get_pose()
         # ONCE IT IS DRIVING, IT KEEPS THE WHEELS. Everything from the pull
         # onward is an open sequence measured from one pose; handing the
@@ -875,6 +890,23 @@ class FinalTask(PathDrivingTask):
         # abandons it - and leaves a controller that is neither finished nor
         # driving, so the round cannot end either.
         return self._parking.update(pose, dt, max_steer=self.pursuit.max_steer_command)
+
+    def _retry_the_park(self):
+        """
+        Back up and go again, however many times it takes.
+
+        No cap. A cap is a decision to stop trying to park, and the round has
+        already been told that parking is the only way it ends - the time
+        limit is the bound, not an attempt count. What IS bounded is how far
+        each retry reverses, so a robot wedged against something cannot back
+        itself down the track.
+        """
+        reason = self._parking.reason or "aborted"
+        self._park_attempts += 1
+        self._park_backing_mm = float(self.setting("parking.retry_back_mm"))
+        print(f"Parking attempt {self._park_attempts} failed ({reason}) - backing up "
+              f"{self._park_backing_mm:.0f}mm and going again.")
+        return (0.0, -int(self.setting("parking.reverse_speed")))
 
     def _park_after_mm(self):
         """
@@ -932,29 +964,21 @@ class FinalTask(PathDrivingTask):
 
     def is_finished(self):
         """
-        The round is over when the robot is PARKED, not when the laps are.
+        The round ends when the robot is PARKED. That is the only ending.
 
-        With parking on, running out of laps is not a reason to stop - it is
-        the cue to start looking for somewhere to stop. If the bay is never
-        found the robot keeps lapping and the runner's own time limit ends the
-        round, which scores the laps rather than throwing them away.
+        No extra laps and no giving up: once the laps are done the manoeuvre
+        owns the wheels and keeps retrying until it closes - see
+        parking_command. The runner's own time limit is the backstop, and it
+        scores the laps already driven rather than throwing them away.
         """
         if self._stop_reason:
             print(f"Stopping: {self._stop_reason}")
             return True
         if not self.setting("parking.enabled"):
             return self.laps_done >= self.laps_goal
-        # DONE only. An aborted attempt is not a reason to stop the round -
-        # see _abandon_the_park, which clears it and comes round again.
-        if self._parking is not None:
-            return self._parking.phase == ParkingSequence.DONE
-        if self._park_retry_at is not None and self.distance_driven < self._park_retry_at:
-            return False
-        # Laps done, no bay found yet: keep going round and keep looking. Not
-        # forever, though - without this bound a round with no bay in front of
-        # it (a bench test, a practice mat without the walls) never ends at
-        # all and just burns the clock.
-        return self.laps_done >= self.laps_goal + float(self.setting("parking.extra_laps"))
+        return (self._parking is not None
+                and self._parking.phase == ParkingSequence.DONE)
+
     # ========================================================================
     # REPORTING
     # ========================================================================
@@ -997,10 +1021,32 @@ class FinalTask(PathDrivingTask):
             # whether it triggered on the bay wall or on the outer one.
             return f"{super().status()}  {self._parking.status_line()}"
         line = (f"{super().status()}  {self.context.nav.blocks.summary()}"
-                f"  {self._plan_status()}")
+                f"  {self._park_gate_status()}  {self._plan_status()}")
         if self.context.vision is not None:
             line = f"{line}  {self.context.vision.status_line()}"
         return line
+
+    def _park_gate_status(self):
+        """
+        Why parking has not started yet, on every status line.
+
+        A round that never parks and never says why is the hardest thing here
+        to work on: the gate has four separate ways of staying shut and all of
+        them used to be silent, so "it just keeps going" could be any of them.
+        This puts the live answer in the trace instead.
+        """
+        if not self.setting("parking.enabled"):
+            return "park=off"
+        if self._park_backing_mm > 0.0:
+            return f"park=backing {self._park_backing_mm:.0f}mm (try {self._park_attempts + 1})"
+        if self._parking is not None:
+            tries = "" if self._park_attempts == 0 else f" try {self._park_attempts + 1}"
+            return f"park={self._parking.phase}{tries}"
+        togo = self._park_after_mm() - self.distance_driven
+        if togo > 0.0:
+            held = " (pillar)" if self._pillar_before_the_bay() else ""
+            return f"park=in {togo:.0f}mm{held}"
+        return "park=starting"
 
     def _draw_overlay(self, canvas, to_px):
         """
