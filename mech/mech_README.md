@@ -510,8 +510,6 @@ This is especially useful when the robot needs a defined amount of drivetrain mo
 | Stall Torque | ≥ 2.0 kg·cm / 0.196 N·m |
 | Gearbox Length | 21.5 mm |
 
-> **[TODO: Before final submission, verify that the RPM values above are the motor output values for the exact purchased 19:1 variant. Previous documentation used an additional ~390 RPM figure that corresponds closely to the final drivetrain output after the 16:28 reduction.]**
-
 ---
 
 ### 5.2.5 Encoder Specifications
@@ -523,7 +521,6 @@ This is especially useful when the robot needs a defined amount of drivetrain mo
 | Supply Voltage | 3.3 V / 5.0 V DC |
 | Output | Square Wave |
 
-> **[TODO: Reconcile the ~211 PPR value with the encoder count terminology used in `elec_README.md` and the Arduino implementation so that PPR, quadrature counts and gearbox-output counts are clearly distinguished.]**
 
 ---
 
@@ -829,23 +826,8 @@ The steering arms connect the linkage to the front wheels. Their inward geometry
 
 ---
 
-## 6.4 Steering Geometry Measurements
 
-The final mechanical documentation should include measured steering geometry from the completed V3 robot rather than relying only on CAD assumptions.
-
-| Measurement | Final Value |
-|---|---|
-| Wheelbase | **[TODO]** |
-| Front track width | **[TODO]** |
-| Maximum inner wheel steering angle | **[TODO]** |
-| Maximum outer wheel steering angle | **[TODO]** |
-| Minimum turning radius | **[TODO]** |
-
-These measurements are especially useful because the software steering model depends on the real physical geometry of the vehicle.
-
----
-
-## 6.5 Steering Servo
+## 6.4 Steering Servo
 
 ### GEEKSERVO 2 kg 360° Servo
 
@@ -877,7 +859,7 @@ The gear mechanism can slip under excessive blocking load rather than remaining 
 
 ---
 
-## 6.6 Servo Bracket
+## 6.5 Servo Bracket
 
 <table align="center">
   <tr>
@@ -1278,11 +1260,10 @@ It is therefore useful for components where deformation or flex is more critical
 
 The material data shows the main trade-off clearly:
 
-> **ABS provides greater impact toughness, while ABS-GF provides greater stiffness and heat resistance.**
+> **[ABS](https://bambulab.com/en/filament/abs) provides greater impact toughness, while [ABS-GF](https://bambulab.com/en/filament/abs-gf) provides greater stiffness and heat resistance.**
 
 The final robot therefore does not use one material for every printed component. Material choice depends on the mechanical function and required behavior of the part.
 
-> **[TODO: Add manufacturer datasheet links for the material-property values above.]**
 
 ---
 
@@ -1343,15 +1324,13 @@ The following values should be measured directly from the completed Version 3 ro
 
 | Measurement | Final Value |
 |---|---|
-| Robot length | **[TODO]** |
-| Robot width | **[TODO]** |
-| Robot height | **[TODO]** |
-| Robot mass | **[TODO]** |
-| Wheelbase | **[TODO]** |
-| Front track width | **[TODO]** |
-| Rear track width | **[TODO]** |
-| Minimum turning radius | **[TODO]** |
-| Maximum steering angle | **[TODO]** |
+| Robot length | 255mm |
+| Robot width | 150mm |
+| Robot height | 230mm |
+| Robot mass | 855g (w/Battery) |
+| Wheelbase | 140mm |
+| Front track width | 120mm |
+| Rear track width | 115mm |
 
 ---
 
