@@ -74,9 +74,9 @@ We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
 
 | Member | Primary Responsibility | Supporting Responsibilities |
 |---|---|---|
-| **Peradon Nimsongprasert** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
-| **Chanakarn Yimsakul** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
-| **Thanphisit Sakulvitulthai** | **[TODO: Add primary role]** | **[TODO: Add supporting contributions]** |
+| **Peradon Nimsongprasert** | Robot construction and software development | Robot testing, debugging, and performance optimization |
+| **Chanakarn Yimsakul** | Documentation and technical writing | Organizing project information, recording development progress, and supporting software development |
+| **Thanphisit Sakulvitulthai** | Hardware development and electrical systems | Supporting documentation, hardware testing, and robot assembly |
 
 **Mentor:** Mr. Punnapon Tanasnitikul
 
@@ -88,8 +88,7 @@ Our development process integrates mechanical, electrical, and software work thr
 
 Therefore, subsystem decisions are developed and tested as part of the complete robot rather than independently until the final stage.
 
-
-> **[TODO: Add 2–4 sentences describing how the team actually divides work, reviews changes and performs testing together.]**
+Our team divides the work based on each member’s main area of responsibility. Peradon focuses on building the robot and developing the code, Chanakarn is mainly responsible for documentation, and Thanphisit focuses on hardware development while also supporting the documentation. We regularly discuss changes and test the robot together to make sure that mechanical, hardware, and software improvements work well as a complete system.
 
 ---
 
@@ -229,35 +228,13 @@ The following photographs document the final competition robot from all required
 
 ## 3.3 Annotated Final Robot Layout
 
-This section should will allow you to understand the physical system without first reading every subsystem document.
-
 ### Overall Component Layout
 
 <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/8fcf201d1934eadb0b708aad52bb1ed08f38afb4/robot-photos/Layout1.png">
 
 <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/8fcf201d1934eadb0b708aad52bb1ed08f38afb4/robot-photos/Layout2.png">
 
-### Mechanical Layout
-
-> **[TODO: Add annotated mechanical layout / drivetrain image]**
-
-Recommended labels:
-
-- front steering assembly,
-- Ackermann linkage,
-- servo,
-- front axle,
-- drive motor,
-- 16T drive gear,
-- differential,
-- rear axle,
-- bearings,
-- wheelbase,
-- track width.
-
-### Internal Electronics Layout
-
-> **[TODO: Add photograph of the robot with covers / upper structure removed so that wiring and controllers are visible.]**
+<br>
 
 Detailed mechanical and electrical layout documentation is available in:
 
@@ -325,8 +302,6 @@ We track and document major physical architecture changes using version numbers 
 ---
 
 ## 4.3 Team Engineering Process
-
-//The repository should show not only what the final robot looks like, but also how it was created.
 
 ### Mechanical Assembly
 
@@ -476,7 +451,7 @@ The complete mechanical documentation is available in:
 
 The mechanical system was developed around the same design philosophy used throughout the project:
 
-> **Predictable controllability is more valuable than maximum speed.**
+> **"Predictable controllability is more valuable than maximum speed."**
 
 ---
 
@@ -484,13 +459,13 @@ The mechanical system was developed around the same design philosophy used throu
 
 The final drivetrain combines:
 
-- CHP-20GP-180 motor,
-- internal 19:1 gearbox,
-- custom 16-tooth motor drive gear,
-- 28-tooth LEGO differential gear,
-- rear differential,
-- bearing-supported axle,
-- and LEGO-compatible wheels.
+- CHP-20GP-180 motor
+- internal 19:1 gearbox
+- custom 16-tooth motor drive gear
+- 28-tooth LEGO differential gear
+- rear differential
+- bearing-supported axle
+- LEGO-compatible wheels
 
 The final drivetrain uses a CHP-20GP-180 motor with a 19:1 internal gearbox to power a rear differential through a custom 16-tooth motor drive gear meshed with a 28-tooth LEGO differential gear. Ball bearings support the rear axle and reduce direct shaft contact with the printed structure, driving the LEGO-compatible wheels efficiently.
 The external drivetrain was developed through several iterations:
@@ -940,18 +915,25 @@ The complete reproduction procedure is documented in:
 
 It contains:
 
-1. bill of materials,
-2. mechanical manufacturing,
-3. mechanical assembly,
-4. electrical wiring,
-5. Raspberry Pi setup,
-6. Arduino setup,
-7. compile and upload instructions,
-8. first-power verification,
-9. sensor verification,
-10. actuator verification,
-11. first autonomous run,
-12. troubleshooting.
+1. Reproduction Overview
+2. Before You Start
+3. Bill of Materials
+4. Tools and Manufacturing Equipment
+5. 3D Printing and Mechanical Preparation
+6. Mechanical Assembly
+7. Electrical Assembly and Wiring
+8. Electrical Pre-Power Verification
+9. Raspberry Pi Software Setup
+10. Arduino Setup and Firmware Upload
+11. Final Software Configuration
+12. Subsystem Verification
+13. First Autonomous Run
+14. Testing Workflow
+15. Troubleshooting
+16. Competition Startup Procedure
+17. Version Lock and Competition Release
+18. Reproducibility Checklist
+19. Related Documentation
 
 ---
 
@@ -964,7 +946,7 @@ It contains:
 | Software design reasoning | [`software/software_README.md`](software/software_README.md) |
 | Build procedure | [`BUILD.md`](BUILD.md) |
 | Source code | [`src/`](src/) |
-| CAD / 3D files | [`mech/models/`](mech/models/) |
+| 3D files | [`mech/models/`](mech/models/) |
 | Electrical schematic | [`schemes/Schematic Diagram.png`](schemes/Schematic%20Diagram.png) |
 | Wiring diagram | [`schemes/Wiring Diagram.png`](schemes/Wiring%20Diagram.png) |
 | Final robot photographs | [`robot-photos/`](robot-photos/) |
@@ -998,17 +980,15 @@ This staged verification reduces the chance that several untested subsystems fai
 WRO-FE-YBR-SUNFLOWER/
 │
 ├── README.md
-│
 ├── BUILD.md
-├── CHANGELOG.md
 ├── LICENSE.md
+├── .gitignore
 │
 ├── mech/
 │   ├── mech_README.md
 │   └── models/
-│       ├── CAD files
 │       ├── STL files
-│       └── [TODO: slicer / 3MF files if available]
+│       └── PNG files
 │
 ├── elec/
 │   └── elec_README.md
@@ -1026,6 +1006,7 @@ WRO-FE-YBR-SUNFLOWER/
 │       ├── tasks/
 │       ├── classes/
 │       ├── utils/
+│       ├── liraries
 │       ├── test_*.py
 │       ├── pyproject.toml
 │       └── uv.lock
@@ -1041,38 +1022,22 @@ WRO-FE-YBR-SUNFLOWER/
 │   ├── left.jpg
 │   ├── right.jpg
 │   ├── top.jpg
-│   └── bottom.jpg
+|   ├── bottom.jpg
+|   ├── ver-0/
+|   ├── ver-1/
+│   └── ver-2/
 │
 ├── team-photos/
-│   └── [TODO: final team photo]
-│
-├── engineering-process/
-│   ├── README.md
-│   │
-│   ├── prototypes/
-│   │   ├── v1/
-│   │   ├── v2/
-│   │   └── v3/
-│   │
-│   ├── mechanical/
-│   │   ├── assembly/
-│   │   └── manufacturing/
-│   │
-│   ├── electrical/
-│   │   ├── soldering/
-│   │   └── wiring/
-│   │
-│   ├── software/
-│   │   ├── coding/
-│   │   └── debugging/
-│   │
-│   └── testing/
-│       ├── mechanical/
-│       ├── sensors/
-│       ├── software/
-│       └── competition/
+|   ├── t-pic.jpg
+│   └── PNG files
 │
 ├── video/
+|   ├── RunTest_video.md
+│   └── final_video.md
+│
+├── other/
+|   ├── PNG files
+│   └── JPG files
 │
 └── docs/
     └── [TODO: engineering report / supporting documentation]
@@ -1158,7 +1123,7 @@ This prevents unmeasured estimates from being presented as experimental results.
 
 ## External References
 
-> **[TODO: Add official WRO 2026 Future Engineers rules link]**
+> **[Official WRO 2026 Future Engineers rules link](https://gammaco.co.th/wro/wp-content/uploads/2026/03/TH-WRO-2026-Future-Engineers-General-Rules.pdf)**
 
 Component datasheets and manufacturer references are maintained in the subsystem documentation where they are directly relevant to the engineering decisions.
 
