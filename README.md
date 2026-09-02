@@ -234,27 +234,7 @@ The following photographs document the final competition robot from all required
 
 <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/8fcf201d1934eadb0b708aad52bb1ed08f38afb4/robot-photos/Layout2.png">
 
-### Mechanical Layout
-
-> **[TODO: Add annotated mechanical layout / drivetrain image]**
-
-Recommended labels:
-
-- front steering assembly,
-- Ackermann linkage,
-- servo,
-- front axle,
-- drive motor,
-- 16T drive gear,
-- differential,
-- rear axle,
-- bearings,
-- wheelbase,
-- track width.
-
-### Internal Electronics Layout
-
-> **[TODO: Add photograph of the robot with covers / upper structure removed so that wiring and controllers are visible.]**
+<br>
 
 Detailed mechanical and electrical layout documentation is available in:
 
