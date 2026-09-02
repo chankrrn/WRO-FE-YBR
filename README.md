@@ -228,8 +228,6 @@ The following photographs document the final competition robot from all required
 
 ## 3.3 Annotated Final Robot Layout
 
-This section should will allow you to understand the physical system without first reading every subsystem document.
-
 ### Overall Component Layout
 
 <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/8fcf201d1934eadb0b708aad52bb1ed08f38afb4/robot-photos/Layout1.png">
@@ -473,7 +471,7 @@ The complete mechanical documentation is available in:
 
 The mechanical system was developed around the same design philosophy used throughout the project:
 
-> **Predictable controllability is more valuable than maximum speed.**
+> **"Predictable controllability is more valuable than maximum speed."**
 
 ---
 
@@ -481,13 +479,13 @@ The mechanical system was developed around the same design philosophy used throu
 
 The final drivetrain combines:
 
-- CHP-20GP-180 motor,
-- internal 19:1 gearbox,
-- custom 16-tooth motor drive gear,
-- 28-tooth LEGO differential gear,
-- rear differential,
-- bearing-supported axle,
-- and LEGO-compatible wheels.
+- CHP-20GP-180 motor
+- internal 19:1 gearbox
+- custom 16-tooth motor drive gear
+- 28-tooth LEGO differential gear
+- rear differential
+- bearing-supported axle
+- LEGO-compatible wheels
 
 The final drivetrain uses a CHP-20GP-180 motor with a 19:1 internal gearbox to power a rear differential through a custom 16-tooth motor drive gear meshed with a 28-tooth LEGO differential gear. Ball bearings support the rear axle and reduce direct shaft contact with the printed structure, driving the LEGO-compatible wheels efficiently.
 The external drivetrain was developed through several iterations:
@@ -937,18 +935,25 @@ The complete reproduction procedure is documented in:
 
 It contains:
 
-1. bill of materials,
-2. mechanical manufacturing,
-3. mechanical assembly,
-4. electrical wiring,
-5. Raspberry Pi setup,
-6. Arduino setup,
-7. compile and upload instructions,
-8. first-power verification,
-9. sensor verification,
-10. actuator verification,
-11. first autonomous run,
-12. troubleshooting.
+1. Reproduction Overview
+2. Before You Start
+3. Bill of Materials
+4. Tools and Manufacturing Equipment
+5. 3D Printing and Mechanical Preparation
+6. Mechanical Assembly
+7. Electrical Assembly and Wiring
+8. Electrical Pre-Power Verification
+9. Raspberry Pi Software Setup
+10. Arduino Setup and Firmware Upload
+11. Final Software Configuration
+12. Subsystem Verification
+13. First Autonomous Run
+14. Testing Workflow
+15. Troubleshooting
+16. Competition Startup Procedure
+17. Version Lock and Competition Release
+18. Reproducibility Checklist
+19. Related Documentation
 
 ---
 
@@ -961,7 +966,7 @@ It contains:
 | Software design reasoning | [`software/software_README.md`](software/software_README.md) |
 | Build procedure | [`BUILD.md`](BUILD.md) |
 | Source code | [`src/`](src/) |
-| CAD / 3D files | [`mech/models/`](mech/models/) |
+| 3D files | [`mech/models/`](mech/models/) |
 | Electrical schematic | [`schemes/Schematic Diagram.png`](schemes/Schematic%20Diagram.png) |
 | Wiring diagram | [`schemes/Wiring Diagram.png`](schemes/Wiring%20Diagram.png) |
 | Final robot photographs | [`robot-photos/`](robot-photos/) |
@@ -1138,7 +1143,7 @@ This prevents unmeasured estimates from being presented as experimental results.
 
 ## External References
 
-> **[TODO: Add official WRO 2026 Future Engineers rules link]**
+> **[Official WRO 2026 Future Engineers rules link](https://gammaco.co.th/wro/wp-content/uploads/2026/03/TH-WRO-2026-Future-Engineers-General-Rules.pdf)**
 
 Component datasheets and manufacturer references are maintained in the subsystem documentation where they are directly relevant to the engineering decisions.
 
