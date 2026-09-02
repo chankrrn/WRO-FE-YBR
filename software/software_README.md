@@ -88,13 +88,7 @@ How do I get there?
 → Pure Pursuit
 ```
 
-The camera has a more specialized role.
-
-It identifies red and green traffic pillars and estimates their position.
-
-Instead of switching the robot into a completely different obstacle controller, the software modifies the existing racing line around the detected pillar.
-
-The same Pure Pursuit controller then follows the modified path.
+The camera has a more specialized role. It identifies red and green traffic pillars and estimates their position. Instead of switching the robot into a completely different obstacle controller, the software modifies the existing racing line around the detected pillar. The same Pure Pursuit controller then follows the modified path.
 
 ---
 
@@ -225,9 +219,7 @@ The main software principles are:
 
 ### 1. Separate hardware access from competition behavior
 
-Tasks should not directly construct hardware interfaces.
-
-Managers and context objects isolate hardware-specific behavior.
+Tasks should not directly construct hardware interfaces. Instead, managers and context objects isolate hardware-specific behavior.
 
 ### 2. Represent the robot in field coordinates
 
@@ -266,13 +258,11 @@ The competition software is divided between:
 - **Arduino UNO R4 Minima**
 - **Raspberry Pi 5**
 
-The Arduino performs low-level actuator and encoder operations.
-
-The Raspberry Pi performs the higher-level autonomous logic.
+The Arduino performs low-level actuator and encoder operations, while the Raspberry Pi performs the higher-level autonomous logic.
 
 ---
 
-# 3.1 Controller Responsibility
+## 3.1 Controller Responsibility
 
 ```text
 Raspberry Pi 5
@@ -299,7 +289,7 @@ Distance-Based Motor Move
 
 ---
 
-# 3.2 Arduino Program
+## 3.2 Arduino Program
 
 The Arduino competition firmware is stored in:
 
@@ -316,13 +306,11 @@ Its responsibilities include:
 - receiving commands from the Raspberry Pi,
 - and returning status responses.
 
-The Arduino intentionally does not contain the high-level competition strategy.
-
-This keeps the low-level controller focused on deterministic hardware operations.
+The Arduino intentionally does not handle the high-level competition strategy. This keeps the low-level controller focused on reliable and deterministic hardware operations.
 
 ---
 
-# 3.3 Raspberry Pi Program Structure
+## 3.3 Raspberry Pi Program Structure
 
 The Raspberry Pi software is stored in:
 
@@ -374,7 +362,7 @@ src/Raspberrypi/
 
 ---
 
-## 3.3.1 Main Entry Point
+### 3.3.1 Main Entry Point
 
 ### `main.py`
 
@@ -394,7 +382,7 @@ uv run python main.py final
 
 ---
 
-## 3.3.2 Task Layer
+### 3.3.2 Task Layer
 
 ### `tasks/base_task.py`
 
@@ -447,7 +435,7 @@ on top of the common path-driving system.
 
 ---
 
-## 3.3.3 Configuration Files
+### 3.3.3 Configuration Files
 
 Each competition task uses a configuration file:
 
@@ -468,7 +456,7 @@ This means competition tuning can normally be performed without editing the Pyth
 
 ---
 
-# 3.4 Core Software Classes
+## 3.4 Core Software Classes
 
 | File | Responsibility |
 |---|---|
@@ -487,7 +475,7 @@ This means competition tuning can normally be performed without editing the Pyth
 
 ---
 
-# 3.5 Software-Layer Architecture
+## 3.5 Software-Layer Architecture
 
 ```text
                    COMPETITION TASK
@@ -517,11 +505,7 @@ This means competition tuning can normally be performed without editing the Pyth
 
 ---
 
-# 3.6 Active Competition Code vs Legacy / Experimental Code
-
-The competition repository may contain older or experimental modules from previous navigation approaches.
-
-The final documentation should make it immediately clear which code path is used in competition.
+## 3.6 Active Competition Code vs Legacy / Experimental Code
 
 ### Active competition paths
 
@@ -533,22 +517,15 @@ utils/
 tasks/qualification/
 tasks/final/
 ```
-
-> **[TODO: Before final submission, confirm whether every file outside the active path should be deleted or moved into a clearly named `legacy/` or `experimental/` directory.]**
-
-Older code should not be mixed with the final architecture without explanation because that can make the actual competition behavior difficult to identify.
-
 ---
 
 # 4. Competition Runtime and Control Flow
 
-The robot does not use one large function containing all competition logic.
-
-Instead, every competition round uses the same lifecycle.
+The robot does not use one large function containing all competition logic. Instead, every competition round uses the same lifecycle.
 
 ---
 
-# 4.1 Main Competition State Flow
+## 4.1 Main Competition State Flow
 
 ```text
 POWER ON
@@ -585,7 +562,7 @@ This state flow is implemented through the task architecture rather than through
 
 ---
 
-# 4.2 Base Task Runtime
+## 4.2 Base Task Runtime
 
 The common runtime is implemented in `tasks/base_task.py`.
 
@@ -633,7 +610,7 @@ Actual iteration time can be lower depending on sensor and processing workload.
 
 ---
 
-## 4.2.1 Why the `finally` Block Matters
+### 4.2.1 Why the `finally` Block Matters
 
 The `finally` block is an important safety feature.
 
@@ -646,13 +623,11 @@ Whether the run finishes because of:
 
 the cleanup code is still executed.
 
-The final cleanup stops the drivetrain and returns the steering system to its safe state.
-
-This prevents a software exception from intentionally leaving the previous drive command active.
+The final cleanup stops the drivetrain and returns the steering system to its safe state. This prevents a software exception from intentionally leaving the previous drive command active.
 
 ---
 
-# 4.3 One Path-Following Tick
+## 4.3 One Path-Following Tick
 
 The normal path-driving loop performs the following sequence:
 
@@ -707,13 +682,9 @@ Arduino Command
 
 ---
 
-# 4.4 Obstacle-Round Processing Cadence
+## 4.4 Obstacle-Round Processing Cadence
 
-Camera processing is significantly more expensive than a simple steering-control tick.
-
-For this reason, traffic-pillar detection does not need to execute on every loop iteration.
-
-The final task runs camera detection on a slower cadence and stores the result in the block map.
+Camera processing is significantly more computationally expensive than a simple steering-control loop. Therefore, traffic-pillar detection does not need to run on every loop iteration. The final task runs camera detection at a slower rate and stores the detected results in the block map for use by the navigation system.
 
 Example structure:
 
@@ -741,7 +712,7 @@ The block map persists between camera frames, so the steering system does not lo
 
 ---
 
-# 4.5 Competition Timeout
+## 4.5 Competition Timeout
 
 The software enforces the WRO run time limit through:
 
@@ -749,19 +720,13 @@ The software enforces the WRO run time limit through:
 max_runtime_s = 180 s
 ```
 
-If the software reaches this limit, the control loop exits and the final cleanup is performed.
-
-This provides an explicit upper limit on autonomous execution.
+If the software reaches this limit, the control loop exits and the final cleanup is performed. This provides an explicit upper limit on autonomous execution.
 
 ---
 
 # 5. Raspberry Pi ↔ Arduino Communication
 
-The Raspberry Pi and Arduino run separate programs.
-
-They communicate through **USB Serial at 115200 baud**.
-
-The protocol is intentionally small and human-readable.
+The Raspberry Pi and Arduino run separate programs and communicate through USB Serial at 115200 baud. The communication protocol is intentionally kept small and human-readable, making it easier to understand, test, and debug.
 
 ---
 
@@ -833,9 +798,7 @@ Advantages include:
 - simple Arduino parser,
 - low implementation complexity.
 
-The trade-off is that text serialization is less compact than a binary protocol.
-
-For the relatively small amount of control data exchanged between the boards, simplicity was prioritized.
+The trade-off is that text serialization is less compact than a binary protocol. For the relatively small amount of control data exchanged between the boards, simplicity was prioritized.
 
 Detailed pin and electrical information is documented in:
 
@@ -845,9 +808,7 @@ Detailed pin and electrical information is documented in:
 
 # 6. Localization — Knowing Where We Are
 
-The WRO field has known geometry.
-
-Rather than detecting only immediate wall position, the robot estimates its pose on this known field.
+The WRO field has known geometry. Rather than detecting only immediate wall position, the robot estimates its pose on this known field.
 
 The pose is represented as:
 
@@ -861,7 +822,7 @@ Pose
 
 ---
 
-# 6.1 Localization Principle
+## 6.1 Localization Principle
 
 For a given robot position and orientation, the surrounding field geometry produces a characteristic LiDAR distance pattern.
 
@@ -873,7 +834,7 @@ The final implementation uses a **particle filter**.
 
 ---
 
-# 6.2 Particle Filter
+## 6.2 Particle Filter
 
 The localization system begins with multiple possible robot poses.
 
@@ -921,7 +882,7 @@ The particle cloud normally converges around the real position after the system 
 
 ---
 
-## 6.2.1 Localization Visualization
+### 6.2.1 Localization Visualization
 
 | Particles Scattered | Particles Converged |
 |:---:|:---:|
@@ -929,7 +890,7 @@ The particle cloud normally converges around the real position after the system 
 
 ---
 
-# 6.3 Field Map
+## 6.3 Field Map
 
 `field_map.py` represents the known WRO geometry mathematically.
 
@@ -944,13 +905,9 @@ The localizer can therefore evaluate whether a hypothetical pose agrees with the
 
 ---
 
-# 6.4 Heading Fusion
+## 6.4 Heading Fusion
 
-The IMU provides a coarse orientation reference.
-
-LiDAR wall geometry provides a more precise orientation modulo the repeated 90° field geometry.
-
-The two are combined.
+The IMU provides a coarse orientation reference. LiDAR wall geometry provides a more precise orientation modulo the repeated 90° field geometry. The two sources are therefore combined to improve the robot’s overall orientation estimate.
 
 The current implementation follows this concept:
 
@@ -981,7 +938,7 @@ Neither source alone provides exactly the same information.
 
 ---
 
-# 6.5 Why the IMU Is Not Used as the Only Heading Source
+## 6.5 Why the IMU Is Not Used as the Only Heading Source
 
 The BNO055 is initialized relative to the robot's starting direction rather than relying on a fully calibrated geographic heading.
 
@@ -995,7 +952,7 @@ The field geometry visible in the LiDAR therefore provides an additional heading
 
 ---
 
-# 6.6 Pose Confidence
+## 6.6 Pose Confidence
 
 Localization produces a confidence value between:
 
@@ -1017,7 +974,7 @@ This is important because:
 
 ---
 
-# 6.7 Motion Model
+## 6.7 Motion Model
 
 During the normal racing loop, the Raspberry Pi reports estimated movement to the localizer.
 
@@ -1025,15 +982,11 @@ An important current limitation is:
 
 > **The high-level Raspberry Pi localization does not yet use returned encoder counts as its primary odometry input.**
 
-The Arduino already reads the encoder and can use it for finite distance-based movements.
-
-However, the Raspberry Pi path-following motion model currently estimates movement from commanded driving behavior.
-
-Integrating encoder telemetry directly into localization remains a future improvement.
+The Arduino already reads the encoder and can use it for finite distance-based movements. However, the Raspberry Pi path-following motion model currently estimates movement from commanded driving behavior. Integrating encoder telemetry directly into localization remains a future improvement.
 
 ---
 
-# 6.8 Localization Pipeline
+## 6.8 Localization Pipeline
 
 > **[TODO: Add dedicated localization pipeline diagram if a cleaner rendered diagram is available.]**
 
@@ -1073,24 +1026,17 @@ LiDAR Scan             Field Map
 
 # 7. Path Generation and Track Following
 
-Once the robot knows approximately where it is, it needs a target path.
-
-The final system generates a complete loop before driving.
-
-This path is called the **racing line**.
+Once the robot knows approximately where it is, it needs a target path. The final system generates a complete loop before driving. This path is called the **racing line**.
 
 ---
 
-# 7.1 Racing Line
+## 7.1 Racing Line
 
-The racing line is a rounded closed path positioned between:
-
-- the outer field wall,
-- and the central block.
+The racing line is a rounded closed path positioned between the outer field wall, and the central block.
 
 It is stored in two useful forms:
 
-### Mathematical geometry
+### 7.1.1 Mathematical geometry
 
 Allows the software to evaluate properties such as:
 
@@ -1098,7 +1044,7 @@ Allows the software to evaluate properties such as:
 - distance along the path,
 - and future path direction.
 
-### Sampled points
+### 7.1.2 Sampled points
 
 The path is also sampled approximately every:
 
@@ -1112,13 +1058,9 @@ This allows efficient calculations such as:
 
 ---
 
-# 7.2 Starting Direction
+## 7.2 Starting Direction
 
-The robot does not require the blue or orange track line to determine its driving direction.
-
-During setup, the navigation system can select the path direction requiring the smaller initial rotation.
-
-This limits the required initial path alignment.
+The robot does not require the blue or orange track line to determine its driving direction. During setup, the navigation system can select the path direction requiring the smaller initial rotation. This limits the required initial path alignment.
 
 The intended result is that the initial heading difference is no greater than approximately:
 
@@ -1128,11 +1070,9 @@ The intended result is that the initial heading difference is no greater than ap
 
 ---
 
-# 7.3 Why Pure Pursuit?
+## 7.3 Why Pure Pursuit?
 
-The final path follower uses **Pure Pursuit** rather than a steering PID based only on wall offset.
-
-Pure Pursuit is a geometric path-tracking algorithm.
+The final path-following system uses Pure Pursuit instead of a steering PID based only on the robot’s offset from the wall. Pure Pursuit is a geometric path-tracking algorithm.
 
 It asks:
 
@@ -1165,7 +1105,7 @@ Where:
 
 ---
 
-# 7.4 Why Not Use Only a Wall-Offset PID?
+## 7.4 Why Not Use Only a Wall-Offset PID?
 
 A wall-following PID can be effective when the goal is simply to maintain a fixed distance from one wall.
 
@@ -1176,11 +1116,7 @@ Our final software already contains a geometric representation of:
 - desired path,
 - obstacle positions.
 
-Pure Pursuit allows these components to operate in the same coordinate system.
-
-The controller therefore follows an explicit path rather than only reacting to the most recent side-distance error.
-
-We do **not** claim that Pure Pursuit was experimentally proven superior to every possible PID controller.
+Pure Pursuit allows these components to work together within the same coordinate system. The controller therefore follows an explicit planned path instead of only reacting to the latest side-distance error. However, we do not claim that Pure Pursuit was experimentally proven to be better than every possible PID controller.
 
 The choice was primarily architectural:
 
@@ -1188,7 +1124,7 @@ The choice was primarily architectural:
 
 ---
 
-# 7.5 Lookahead Distance
+## 7.5 Lookahead Distance
 
 Pure Pursuit depends heavily on the **lookahead distance**.
 
@@ -1222,13 +1158,9 @@ The software therefore scales lookahead with driving speed.
 
 ---
 
-# 7.6 Steering Rate Limiting
+## 7.6 Steering Rate Limiting
 
-Even if a calculated steering target changes instantly, the physical servo cannot.
-
-The control system therefore limits how quickly the steering command can change.
-
-This is important because the measured steering actuator has non-zero response time.
+Even if a calculated steering target changes instantly, the physical servo cannot. The control system therefore limits how quickly the steering command can change. This is important because the measured steering actuator has non-zero response time.
 
 A software controller that assumes instantaneous steering can produce:
 
@@ -1238,7 +1170,7 @@ A software controller that assumes instantaneous steering can produce:
 
 ---
 
-# 7.7 Speed Selection
+## 7.7 Speed Selection
 
 The path controller does not always use one fixed motor command.
 
@@ -1283,7 +1215,7 @@ The final software uses the camera to identify pillar color and estimate its phy
 
 ---
 
-# 8.1 Obstacle-Handling Pipeline
+## 8.1 Obstacle-Handling Pipeline
 
 ```text
 Camera Frame
@@ -1330,13 +1262,9 @@ Bounding Rectangle
 
 ---
 
-# 8.2 Why HSV Instead of Raw RGB Thresholding?
+## 8.2 Why HSV Instead of Raw RGB Thresholding?
 
-Lighting intensity changes RGB values strongly.
-
-Hue provides a more useful representation for separating color from brightness.
-
-The final code therefore converts visual information to HSV and uses tuned color ranges.
+Lighting intensity changes RGB values strongly. Hue provides a more useful representation for separating color from brightness. The final code therefore converts visual information to HSV and uses tuned color ranges.
 
 Current configuration:
 
@@ -1358,7 +1286,7 @@ rather than selecting thresholds only from theoretical colors.
 
 ---
 
-# 8.3 Distance from Apparent Pillar Height
+## 8.3 Distance from Apparent Pillar Height
 
 The traffic pillars have a known physical height.
 
@@ -1392,7 +1320,7 @@ bearing_deg = self._horizontal_pixel_to_angle(center_x)
 
 ---
 
-## 8.3.1 Camera FOV Verification
+### 8.3.1 Camera FOV Verification
 
 The current software uses an approximately:
 
@@ -1410,7 +1338,7 @@ The software constant should be treated as a **calibration parameter**, not auto
 
 ---
 
-# 8.4 Converting a Detection to Field Coordinates
+## 8.4 Converting a Detection to Field Coordinates
 
 A camera detection by itself is temporary.
 
@@ -1440,7 +1368,7 @@ into:
 
 ---
 
-# 8.5 Passing Side
+## 8.5 Passing Side
 
 The current side-selection logic is:
 
@@ -1465,7 +1393,7 @@ RED
 
 ---
 
-# 8.6 Required Clearance
+## 8.6 Required Clearance
 
 The target path is not shifted by one arbitrary constant from the center line.
 
@@ -1500,13 +1428,9 @@ Additional red space = 80 mm
 
 ---
 
-# 8.7 Smooth Path Deformation
+## 8.7 Smooth Path Deformation
 
-The racing line does not jump instantly sideways around a detected obstacle.
-
-A sudden path discontinuity would create a large steering request.
-
-The obstacle offset therefore fades in and out smoothly.
+The racing line does not jump instantly sideways around a detected obstacle. A sudden path discontinuity would create a large steering request. The obstacle offset therefore fades in and out smoothly.
 
 Conceptually:
 
@@ -1535,7 +1459,7 @@ The modified path is also clamped so that avoiding a traffic pillar cannot inten
 
 ---
 
-# 8.8 Why Bend the Existing Racing Line?
+## 8.8 Why Bend the Existing Racing Line?
 
 An alternative architecture would be:
 
@@ -1572,7 +1496,7 @@ The trade-off is that obstacle position must be estimated accurately enough to m
 
 ---
 
-# 8.9 Obstacle Edge Cases
+## 8.9 Obstacle Edge Cases
 
 The software includes explicit checks for unreliable detections.
 
@@ -1605,13 +1529,11 @@ Camera absence is not proof that physical space is clear.
 
 # 9. Parking Strategy
 
-The current parking strategy uses a fixed multi-step maneuver.
-
-The original software documentation identifies **four main parking steps**.
+The current parking strategy uses a fixed, multi-step maneuver. The original software documentation identifies **four main parking steps**.
 
 ---
 
-# 9.1 High-Level Parking Sequence
+## 9.1 High-Level Parking Sequence
 
 ```text
 PHASE 1
@@ -1638,27 +1560,25 @@ STOP
 
 ---
 
-## Phase 1 — Initial Positioning
+### Phase 1 — Initial Positioning
 
 The robot moves to a position where the rear section is appropriately aligned with the parking area.
 
-## Phase 2 — Reverse Entry
+### Phase 2 — Reverse Entry
 
 The steering is turned and the vehicle reverses into the parking space.
 
-## Phase 3 — Straight Reverse
+### Phase 3 — Straight Reverse
 
 The steering is adjusted and the robot continues backwards.
 
-## Phase 4 — Final Alignment
+### Phase 4 — Final Alignment
 
 A final steering correction is performed while reversing so that the robot ends approximately parallel with the outer field wall.
 
 ---
 
-# 9.2 Parking Control Table
-
-The exact triggering conditions must match the final implementation rather than being invented for documentation.
+## 9.2 Parking Control Table
 
 | Phase | Main Action | Entry Condition | Exit Condition |
 |---|---|---|---|
@@ -1672,7 +1592,7 @@ The exact triggering conditions must match the final implementation rather than 
 
 ---
 
-# 9.3 Parking State Diagram
+## 9.3 Parking State Diagram
 
 > **[TODO: Add rendered parking state-machine diagram after verifying the final implementation.]**
 
@@ -1693,7 +1613,7 @@ The diagram should show:
 
 ---
 
-# 9.4 Parking Validation
+## 9.4 Parking Validation
 
 The parking section should eventually contain measurable evidence, not only the maneuver description.
 
@@ -1727,7 +1647,7 @@ The robot uses several sensors, but it does not treat all measurements as equall
 
 ---
 
-# 10.2 Fused Heading
+## 10.2 Fused Heading
 
 Heading is one genuinely fused quantity.
 
@@ -1743,13 +1663,11 @@ Heading Fusion
 LiDAR
 ```
 
-The IMU provides the large-scale orientation reference.
-
-LiDAR geometry refines it relative to the rectangular field.
+The IMU provides the large-scale orientation reference, while LiDAR geometry refines it relative to the rectangular field.
 
 ---
 
-# 10.3 Fused Traffic-Pillar Position
+## 10.3 Fused Traffic-Pillar Position
 
 The other major fused result is the persistent block map.
 
@@ -1764,13 +1682,11 @@ Combined
 → Pillar field coordinate
 ```
 
-Without the current robot pose, a camera detection is only a location relative to the camera.
-
-Combining the detection with localization allows the obstacle to become part of the field model.
+Without the current robot pose, a camera detection is only a location relative to the camera. Combining the detection with localization allows the obstacle to become part of the field model.
 
 ---
 
-# 10.4 When Sensors Disagree
+## 10.4 When Sensors Disagree
 
 The software uses explicit arbitration rules.
 
@@ -1804,13 +1720,7 @@ The detection is discarded.
 
 # 11. Edge Cases, Safety and Failure Handling
 
-A competition program must define what happens when inputs are imperfect.
-
-The final system therefore considers more than the ideal navigation path.
-
----
-
-# 11.1 Software Failure / Exception
+## 11.1 Software Failure / Exception
 
 ```text
 Unexpected Python Error
@@ -1828,7 +1738,7 @@ This prevents an exception from intentionally leaving the vehicle driving with t
 
 ---
 
-# 11.2 Competition Timeout
+## 11.2 Competition Timeout
 
 If the task exceeds the configured:
 
@@ -1840,17 +1750,13 @@ the loop exits and performs normal cleanup.
 
 ---
 
-# 11.3 Low Localization Confidence
+## 11.3 Low Localization Confidence
 
-When localization confidence decreases, the path-driving system can enter a more conservative behavior.
-
-The software tracks whether the robot is effectively "lost" rather than assuming every pose estimate is valid.
-
-The exact speed response is configuration-dependent.
+When localization confidence decreases, the path-driving system can switch to more conservative behavior. The software monitors whether the robot is effectively “lost” instead of assuming that every pose estimate is reliable. The exact speed response depends on the system configuration.
 
 ---
 
-# 11.4 Invalid Pillar Position
+## 11.4 Invalid Pillar Position
 
 If a pillar is detected while the robot's own position is unreliable:
 
@@ -1866,7 +1772,7 @@ This avoids contaminating the persistent map with incorrect world coordinates.
 
 ---
 
-# 11.5 Pillar Position Inside Wall
+## 11.5 Pillar Position Inside Wall
 
 ```text
 Detected Pillar
@@ -1883,29 +1789,24 @@ Drop       Store
 
 ---
 
-# 11.6 Insufficient Obstacle Corridor
+## 11.6 Insufficient Obstacle Corridor
 
-The current final-round configuration performs a startup feasibility check.
-
-The existing documentation notes that with one current configuration, a pillar exactly on the racing line could request an offset greater than the available corridor.
-
-This is intentionally detected instead of being silently ignored.
+The current final-round configuration performs a startup feasibility check. The existing documentation notes that, under one configuration, a pillar placed directly on the racing line could require an offset greater than the available corridor. This condition is intentionally detected rather than being silently ignored.
 
 > **[TODO: Re-run the final configuration feasibility check and resolve any warning before final submission.]**
 
 ---
 
-# 11.7 IMU Unavailable
+## 11.7 IMU Unavailable
 
 The navigation architecture is not intended to depend on one sensor alone.
 
 > **[TODO: Confirm and document the exact current final-code behavior when `compass_manager` cannot return a heading. Previous implementation allowed reduced compass contribution rather than immediately crashing.]**
 
-The final documentation should describe the actual code path rather than a desired fallback that has not been verified.
 
 ---
 
-# 11.8 LiDAR Unavailable
+## 11.8 LiDAR Unavailable
 
 LiDAR is central to the localization architecture.
 
@@ -1915,7 +1816,7 @@ If LiDAR initialization fails, the robot cannot provide normal field localizatio
 
 ---
 
-# 11.9 Camera Unavailable
+## 11.9 Camera Unavailable
 
 The Open Challenge does not require traffic-pillar color recognition in the same way as the Obstacle Challenge.
 
@@ -1935,7 +1836,7 @@ The most important development tool this season is not physically mounted on the
 
 ---
 
-# 12.1 Testing Without the Robot
+## 12.1 Testing Without the Robot
 
 Several scripts execute the real navigation modules against a simulated robot.
 
@@ -1978,7 +1879,7 @@ Purpose:
 
 ---
 
-# 12.2 Why Use Simulation?
+## 12.2 Why Use Simulation?
 
 Physical WRO track testing requires:
 
@@ -2009,11 +1910,9 @@ Therefore:
 
 ---
 
-# 12.3 Simulated Steering Lag
+## 12.3 Simulated Steering Lag
 
-A simulator with instantaneous steering would make the controller appear unrealistically stable.
-
-The simulator therefore includes steering lag.
+A simulator with instantaneous steering would make the controller appear unrealistically stable. The simulator therefore includes steering lag.
 
 This helps reproduce the weaving behavior that can occur when:
 
@@ -2025,13 +1924,11 @@ Physical Servo Response
 
 ---
 
-# 12.4 Steering Calibration
+## 12.4 Steering Calibration
 
 Two steering characteristics cannot be reliably obtained only from the nominal servo command.
 
 They must be measured on the real vehicle.
-
----
 
 ## 12.4.1 Maximum Steering Geometry
 
@@ -2041,25 +1938,20 @@ Testing found that the actual robot turned approximately:
 
 > **21% more than the original 40° full-lock assumption.**
 
-This is important because Pure Pursuit converts required curvature into a physical steering model.
+This is important because Pure Pursuit converts required curvature into a physical steering model. An incorrect maximum steering assumption produces an incorrect command scale.
 
-An incorrect maximum steering assumption produces an incorrect command scale.
 
----
-
-## 12.4.2 Steering Response Time
+### 12.4.2 Steering Response Time
 
 The steering-response tool measured approximately:
 
 > **0.35 s to reach 63% of the steering response.**
 
-This demonstrates that the actuator cannot be modeled as instantaneous.
-
-The software therefore accounts for physical steering behavior rather than treating the servo as an ideal mathematical device.
+This demonstrates that the actuator cannot be modeled as instantaneous. The software therefore accounts for physical steering behavior rather than treating the servo as an ideal mathematical device.
 
 ---
 
-# 12.5 Why Integrate Steering Measurements Over a Run?
+## 12.5 Why Integrate Steering Measurements Over a Run?
 
 The `SteeringCalibrator` can estimate steering geometry during a normal lap.
 
@@ -2073,13 +1965,11 @@ Wheel behavior at time t
 
 because the steering mechanism has delay.
 
-The physical response belongs to an earlier command.
-
-Integrating the motion over a longer interval avoids directly comparing a cause with an effect that has not yet occurred.
+The physical response belongs to an earlier command. Integrating the motion over a longer interval avoids directly comparing a cause with an effect that has not yet occurred.
 
 ---
 
-# 12.6 Debug Visualization
+## 12.6 Debug Visualization
 
 The robot exposes several debugging tools.
 
@@ -2087,14 +1977,14 @@ The robot exposes several debugging tools.
 
 A status line can include:
 
-- elapsed time,
-- lap progress,
-- position,
-- path offset,
-- steering,
-- wheel angle,
-- speed,
-- localization confidence.
+- elapsed time
+- lap progress
+- position
+- path offset
+- steering
+- wheel angle
+- speed
+- localization confidence
 
 Example:
 
@@ -2107,41 +1997,35 @@ speed=70
 conf=0.78
 ```
 
----
-
-## 12.6.1 `--debug`
+### 12.6.1 `--debug`
 
 Displays a live top-down visualization containing:
 
-- field,
-- particle cloud,
-- LiDAR points,
-- racing line,
-- obstacle-modified path,
-- robot pose,
-- Pure Pursuit target point.
+- field
+- particle cloud
+- LiDAR points
+- racing line
+- obstacle-modified path
+- robot pose
+- Pure Pursuit target point
 
----
 
-## 12.6.2 `--ascii`
+### 12.6.2 `--ascii`
 
 Provides debugging information in a terminal-only environment such as SSH.
 
----
 
-## 12.6.3 Object-Detection Debugging
+### 12.6.3 Object-Detection Debugging
 
 The object solver provides visual debugging for:
 
-- camera frame,
-- traffic-pillar bounding boxes,
-- detected color,
-- estimated position,
-- top-down radar visualization.
+- camera frame
+- traffic-pillar bounding boxes
+- detected color
+- estimated position
+- top-down radar visualization
 
----
-
-## 12.6.4 Color Picker
+### 12.6.4 Color Picker
 
 ```text
 test_color_picker.py
@@ -2154,23 +2038,21 @@ allows a team member to select a real camera pixel and inspect its:
 
 This makes threshold tuning traceable to real competition images.
 
----
 
-## 12.6.5 Run Recording
+### 12.6.5 Run Recording
 
 The camera system can record processed video for later review.
 
 Recording may be disabled during final competition execution when reducing processing overhead is more important.
 
----
 
-## 12.6.6 Existing Debug View
+### 12.6.6 Existing Debug View
 
 <img width="1120" height="560" alt="Debug View" src="https://github.com/user-attachments/assets/64f29e14-323e-4c5f-b2cd-3190da0c62e1" />
 
 ---
 
-# 12.7 Testing Workflow
+## 12.7 Testing Workflow
 
 ```text
 Code / Config Change
@@ -2201,19 +2083,15 @@ Adjust Config / Algorithm
         └------ Repeat <---+
 ```
 
-This allows software changes to be evaluated incrementally instead of waiting until a complete competition run fails.
-
 ---
 
 # 13. Performance Metrics and Validation
 
-Testing must produce measurements that can be compared.
-
-The simulator and debugging tools already expose several useful metrics.
+Testing should produce measurable results that can be compared. The simulator and debugging tools already provide several useful metrics.
 
 ---
 
-# 13.1 Existing Software Metrics
+## 13.1 Existing Software Metrics
 
 | Metric | Purpose |
 |---|---|
@@ -2229,7 +2107,7 @@ The simulator and debugging tools already expose several useful metrics.
 
 ---
 
-# 13.2 Structured Software Test Results
+## 13.2 Structured Software Test Results
 
 Known measured results currently include:
 
@@ -2242,9 +2120,7 @@ Known measured results currently include:
 
 ---
 
-# 13.3 Real-Track Performance Metrics
-
-The largest remaining documentation gap is disciplined real-track statistics.
+## 13.3 Real-Track Performance Metrics
 
 The original development process relied heavily on:
 
@@ -2258,8 +2134,6 @@ To strengthen the final engineering evidence:
 
 > **[TODO: Record real final-robot trials before submission if time allows.]**
 
-Recommended minimum table:
-
 | Test | Trials | Success | Failure | Success Rate |
 |---|---:|---:|---:|---:|
 | Open Challenge — complete 3 laps | **[TODO]** | **[TODO]** | **[TODO]** | **[TODO]** |
@@ -2269,13 +2143,9 @@ Recommended minimum table:
 | Parallel parking | **[TODO]** | **[TODO]** | **[TODO]** | **[TODO]** |
 | Localization from randomized start | **[TODO]** | **[TODO]** | **[TODO]** | **[TODO]** |
 
-Do not replace these values with estimates.
-
-Only actual recorded trials should be reported as measured performance.
-
 ---
 
-# 13.4 Recommended Failure Log
+## 13.4 Recommended Failure Log
 
 For each unsuccessful run, record the cause rather than only marking it as failure.
 
@@ -2293,7 +2163,7 @@ The final architecture is the result of several software-level decisions.
 
 ---
 
-# 14.1 Camera-Reactive Concept → Localization-Based Navigation
+## 14.1 Camera-Reactive Concept → Localization-Based Navigation
 
 ### Earlier Concept
 
@@ -2344,109 +2214,69 @@ than a simple reactive controller.
 
 ---
 
-# 14.2 LiDAR + IMU Heading Fusion
+## 14.2 LiDAR + IMU Heading Fusion
 
-### Alternative
+**Alternative:** Use only IMU heading.
 
-Use only IMU heading.
+**Final Decision:** Use IMU for coarse orientation and LiDAR geometry for precise field-relative orientation.
 
-### Final Decision
+**Reason:** The field itself provides strong geometric information.
 
-Use IMU for coarse orientation and LiDAR geometry for precise field-relative orientation.
-
-### Reason
-
-The field itself provides strong geometric information.
-
-### Trade-off
-
-LiDAR-based heading depends on sufficient visible wall geometry and correct scan alignment.
+**Trade-off:** LiDAR-based heading depends on sufficient visible wall geometry and correct scan alignment.
 
 ---
 
-# 14.3 Persistent Block Map
+## 14.3 Persistent Block Map
 
-### Alternative
+**Alternative:** React only while a pillar is currently visible.
 
-React only while a pillar is currently visible.
+**Final Decision:** Transform detections into field coordinates and retain them.
 
-### Final Decision
+**Reason:** The robot continues to know about a pillar after the camera turns away.
 
-Transform detections into field coordinates and retain them.
+**Trade-off:** A bad robot pose can place the obstacle incorrectly.
 
-### Reason
-
-The robot continues to know about a pillar after the camera turns away.
-
-### Trade-off
-
-A bad robot pose can place the obstacle incorrectly.
-
-### Mitigation
-
-Do not store detections when localization confidence is insufficient.
+**Mitigation:** Do not store detections when localization confidence is insufficient.
 
 ---
 
-# 14.4 One Controller for Normal Driving and Obstacle Passing
+## 14.4 One Controller for Normal Driving and Obstacle Passing
 
-### Alternative
+**Alternative:** Separate obstacle-steering controller.
 
-Separate obstacle-steering controller.
+**Final Decision:** Modify the path and retain Pure Pursuit.
 
-### Final Decision
+**Reason:** This avoids duplicated steering logic and provides smoother transitions.
 
-Modify the path and retain Pure Pursuit.
-
-### Reason
-
-This avoids duplicated steering logic and provides smoother transitions.
-
-### Trade-off
-
-Obstacle mapping must be accurate.
+**Trade-off:** Obstacle mapping must be accurate.
 
 ---
 
-# 14.5 Slower Camera Cadence
+## 14.5 Slower Camera Cadence
 
-### Alternative
+**Alternative:** Run computer vision every path-control tick.
 
-Run computer vision every path-control tick.
+**Final Decision:** Run camera processing less frequently.
 
-### Final Decision
+**Reason:** Image processing is significantly more expensive than one steering-control update.
 
-Run camera processing less frequently.
+**Trade-off:** Visual information updates less frequently.
 
-### Reason
-
-Image processing is significantly more expensive than one steering-control update.
-
-### Trade-off
-
-Visual information updates less frequently.
-
-### Mitigation
-
-The persistent block map retains detected obstacles between frames.
+**Mitigation:** The persistent block map retains detected obstacles between frames.
 
 ---
 
-# 14.6 Configuration Files Instead of Hard-Coded Tuning
+## 14.6 Configuration Files Instead of Hard-Coded Tuning
 
-### Alternative
+**Alternative:** Edit Python source at the field.
 
-Edit Python source at the field.
-
-### Final Decision
-
-Keep tuning values in:
+**Final Decision:** Keep tuning values in:
 
 ```text
 config.toml
 ```
 
-### Reason
+**Reason:** 
 
 - faster adjustment,
 - reduced chance of damaging algorithm logic,
@@ -2455,39 +2285,25 @@ config.toml
 
 ---
 
-# 14.7 Simulation Before Track Testing
+## 14.7 Simulation Before Track Testing
 
-### Alternative
+**Alternative:** Test every parameter change physically.
 
-Test every parameter change physically.
+**Final Decision:** Use simulator / test scripts first.
 
-### Final Decision
+**Reason:** Reduces time spent on configurations that are already clearly unstable.
 
-Use simulator / test scripts first.
-
-### Reason
-
-Reduces time spent on configurations that are already clearly unstable.
-
-### Trade-off
-
-Simulation cannot perfectly reproduce the real robot.
+**Trade-off:** Simulation cannot perfectly reproduce the real robot.
 
 ---
 
-# 14.8 Commanded-Motion Odometry vs Encoder Odometry
+## 14.8 Commanded-Motion Odometry vs Encoder Odometry
 
-### Current Architecture
+**Current Architecture:** The high-level motion model estimates distance primarily from commanded driving behavior.
 
-The high-level motion model estimates distance primarily from commanded driving behavior.
+**Available Hardware:** The motor already includes an encoder.
 
-### Available Hardware
-
-The motor already includes an encoder.
-
-### Trade-off
-
-Command-based odometry is simpler but does not directly measure:
+**Trade-off:** Command-based odometry is simpler but does not directly measure:
 
 - wheel slip,
 - load variation,
@@ -2497,7 +2313,7 @@ Encoder odometry should provide a more direct motion estimate once integrated in
 
 ---
 
-# 14.9 Software Decision Summary
+## 14.9 Software Decision Summary
 
 | Decision | Alternative | Main Benefit | Trade-off |
 |---|---|---|---|
@@ -2516,15 +2332,7 @@ Encoder odometry should provide a more direct motion estimate once integrated in
 
 # 15. Known Limitations and Future Improvements
 
-Engineering documentation should distinguish between:
-
-- completed architecture,
-- known limitation,
-- and future improvement.
-
----
-
-# 15.1 Real-Track Statistics
+## 15.1 Real-Track Statistics
 
 ### Current Limitation
 
@@ -2534,16 +2342,16 @@ The team performed repeated track tuning but did not maintain a complete discipl
 
 Record:
 
-- number of trials,
-- number of successful laps,
-- wall contacts,
-- pillar pass success,
-- parking success,
-- localization failures.
+- number of trials
+- number of successful laps
+- wall contacts
+- pillar pass success
+- parking success
+- localization failures
 
 ---
 
-# 15.2 Encoder Odometry
+## 15.2 Encoder Odometry
 
 ### Current Limitation
 
@@ -2561,7 +2369,7 @@ This could improve movement estimation under:
 
 ---
 
-# 15.3 Camera Exposure
+## 15.3 Camera Exposure
 
 ### Current Limitation
 
@@ -2569,13 +2377,11 @@ Automatic exposure can change the apparent color of traffic pillars during a run
 
 ### Improvement
 
-Lock or control camera exposure so that the same physical pillar produces more consistent image values.
-
-This may improve color-detection repeatability without simply widening HSV thresholds.
+Lock or control camera exposure so that the same physical pillar produces more consistent image values. This may improve color-detection repeatability without simply widening HSV thresholds.
 
 ---
 
-# 15.4 Camera FOV Calibration
+## 15.4 Camera FOV Calibration
 
 ### Current Limitation
 
@@ -2587,7 +2393,7 @@ Measure the final camera's effective horizontal field of view and use that calib
 
 ---
 
-# 15.5 Parking Validation
+## 15.5 Parking Validation
 
 ### Current Limitation
 
@@ -2597,45 +2403,23 @@ The parking documentation currently contains the maneuver sequence but does not 
 
 Document:
 
-- exact state conditions,
-- exact exit conditions,
-- distance values,
-- steering commands,
-- parking success rate.
+- exact state conditions
+- exact exit conditions
+- distance values
+- steering commands
+- parking success rate
 
 ---
 
-# 15.6 Final-Round Corridor Feasibility
+## 15.6 Final-Round Corridor Feasibility
 
-The current software contains a validation check that can warn if the requested traffic-pillar clearance is physically larger than the available corridor.
-
-This is useful because it identifies an impossible configuration before the robot attempts it.
-
-> **[TODO: Resolve any remaining warning in the final competition configuration and document the final selected clearances.]**
-
----
-
-# 15.7 Repository Cleanup
-
-The original software documentation identified several cleanup tasks.
-
-Before final submission:
-
-- remove or clearly archive unused legacy code,
-- remove unused old enums,
-- correct outdated comments / docstrings,
-- remove misleading configuration values,
-- verify final competition constants.
-
-> **[TODO: Perform this cleanup and remove this TODO after the final competition code is tagged.]**
-
-The goal is that a judge should be able to identify the active competition architecture without reading unused historical modules.
+The current software contains a validation check that can warn if the requested traffic-pillar clearance is physically larger than the available corridor. This is useful because it identifies an impossible configuration before the robot attempts it.
 
 ---
 
 # 16. Running and Reproducing the Software
 
-# 16.1 Raspberry Pi Requirements
+## 16.1 Raspberry Pi Requirements
 
 The current software targets:
 
@@ -2652,7 +2436,7 @@ uv
 
 ---
 
-# 16.2 Install Dependencies
+## 16.2 Install Dependencies
 
 From the Raspberry Pi software directory:
 
@@ -2672,7 +2456,7 @@ so that package versions can be reproduced.
 
 ---
 
-# 16.3 Run Open Challenge
+## 16.3 Run Open Challenge
 
 ```bash
 uv run python main.py qualification
@@ -2680,7 +2464,7 @@ uv run python main.py qualification
 
 ---
 
-# 16.4 Run Obstacle Challenge
+## 16.4 Run Obstacle Challenge
 
 ```bash
 uv run python main.py final
@@ -2694,7 +2478,7 @@ uv run python main.py final --debug
 
 ---
 
-# 16.5 Dry Run
+## 16.5 Dry Run
 
 A dry run can inspect the planned task without accessing the hardware.
 
@@ -2706,7 +2490,7 @@ This is useful for checking configuration and task initialization before operati
 
 ---
 
-# 16.6 Arduino Setup
+## 16.6 Arduino Setup
 
 Open:
 
@@ -2731,11 +2515,9 @@ PID_v2
 
 The repository currently contains copies / versions of the required libraries.
 
-> **[TODO: Ensure `BUILD.md` and this file specify one canonical library-installation method so the instructions do not conflict.]**
-
 ---
 
-# 16.7 Software Verification Sequence
+## 16.7 Software Verification Sequence
 
 Before a complete autonomous test:
 
@@ -2782,7 +2564,7 @@ Detailed hardware setup is documented in:
 
 ---
 
-# 16.8 Test Commands
+## 16.8 Test Commands
 
 Examples:
 
@@ -2806,7 +2588,7 @@ These tools are part of the engineering workflow rather than unrelated example p
 
 ---
 
-# 16.9 Code Documentation Philosophy
+## 16.9 Code Documentation Philosophy
 
 Every important module should explain **why it exists**, not only what functions it contains.
 
@@ -2821,10 +2603,6 @@ Example:
 # true range.
 BOX_HEIGHT_CM = 10.0
 ```
-
-This documentation style helps future developers determine whether a value can safely be modified.
-
-Configuration files also include tuning guidance so that field adjustments can be performed without first understanding every line of the navigation implementation.
 
 ---
 
@@ -2887,16 +2665,16 @@ The final competition software can be summarized as:
 
 ---
 
-# 17.1 Final Competition Software Components
+## 17.1 Final Competition Software Components
 
-## High-Level Competition Control
+### High-Level Competition Control
 
 - `BaseTask`
 - `PathTask`
 - Qualification task
 - Final / obstacle task
 
-## Localization
+### Localization
 
 - `NavigationManager`
 - `FieldMap`
@@ -2905,14 +2683,14 @@ The final competition software can be summarized as:
 - IMU heading fusion
 - pose confidence
 
-## Path Following
+### Path Following
 
 - `RacingLine`
 - `PurePursuit`
 - steering-rate limiting
 - adaptive speed selection
 
-## Obstacle Management
+### Obstacle Management
 
 - camera image processing
 - HSV traffic-pillar detection
@@ -2923,12 +2701,12 @@ The final competition software can be summarized as:
 - racing-line deformation
 - correct red / green passing side
 
-## Parking
+### Parking
 
 - multi-step reverse parking sequence
 - **[TODO: final exact state transitions]**
 
-## Low-Level Control
+### Low-Level Control
 
 - Arduino serial protocol
 - motor control
@@ -2936,7 +2714,7 @@ The final competition software can be summarized as:
 - encoder
 - start button
 
-## Development Tools
+### Development Tools
 
 - navigation simulator
 - driving trials
