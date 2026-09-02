@@ -142,7 +142,7 @@ The starting position, driving direction and field configuration may change betw
 
 For this reason, our final software does not depend on one fixed prerecorded path from one fixed starting point.
 
-**Performance Video:** [Obstacle Challenge Performance Video](add link)
+**Performance Video:** [Obstacle Challenge Performance Video](https://youtu.be/pB4Do4b9KFg?si=JDbvOoWnJ5U209h_)
 
 > **All the videos including additional testing videos can be found in:** [`video/`](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/tree/17945a607ef416fb5d24ce5c4f617b4a04b09428/video)
 
