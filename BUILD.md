@@ -663,10 +663,6 @@ Approximately 5.1 V
 
 Connect the XL4015 input to the positive power distribution and common ground. Its output supplies the motor and control-side power system.
 
-> **[TODO: Measure and document the exact final XL4015 output voltage before final submission.]**
-
-> **[TODO: Confirm every device connected to the XL4015 output.]**
-
 Do not assume the previous draft value is correct without measuring the physical final robot.
 
 ---
@@ -733,14 +729,7 @@ Mount the L298P Motor Shield onto the Arduino UNO R4 Minima according to the fin
 
 Current documented encoder wiring:
 
-| Connection | Wire |
-|---|---|
-| Motor Positive | Red |
-| Hall Sensor GND | Black |
-| Encoder B — D3 | Yellow |
-| Encoder A — D2 | Green |
-| Hall Sensor 5 V | Blue |
-| Motor Negative | White |
+<img height=300 scr=other/DrivingMotor3.jpg /> 
 
 Arduino pins:
 
@@ -750,8 +739,6 @@ Encoder B      -> D3
 Motor PWM      -> D11
 Motor Direction-> D13
 ```
-
-> **[TODO: Verify motor wire colors against the exact final motor before connecting. Do not rely only on generic wire-color convention.]**
 
 ---
 
@@ -907,7 +894,7 @@ Before connecting electronics:
 - [ ] LM2596 input correct,
 - [ ] LM2596 output approximately 5.1 V,
 - [ ] XL4015 input correct,
-- [ ] XL4015 output = **[TODO: final measured value]**,
+- [ ] XL4015 output = 11.1,
 - [ ] common ground continuity verified,
 - [ ] no exposed conductor contacting chassis / PCB,
 - [ ] connectors mechanically secure.
@@ -1067,7 +1054,6 @@ Expected behavior:
 - task plan is created,
 - software exits without attempting normal hardware-driving behavior.
 
-> **[TODO: Verify exact expected console output from the final release and add a short example.]**
 
 ---
 
@@ -1111,12 +1097,6 @@ PID_v2
 ```
 
 The repository also contains library files associated with the Arduino firmware.
-
-> **[TODO: Record final Servo library version.]**
-
-> **[TODO: Record final PID_v2 library version.]**
-
-> **[TODO: Decide whether the canonical method is "use repository-bundled versions" or "install exact versions through Arduino Library Manager". Use only one primary method in the final instructions.]**
 
 Existing Arduino Library Manager screenshots may remain as supporting instructions:
 
@@ -1695,7 +1675,6 @@ Check:
 4. common ground
 5. battery state
 
-> **[TODO: Add measured normal Pi-rail minimum voltage from the final robot.]**
 
 ---
 
@@ -1841,12 +1820,6 @@ After cloning:
 
 ```bash
 cd ~/WRO-FE-YBR-SUNFLOWER
-```
-
-Then:
-
-```bash
-git checkout [TODO: FINAL_RELEASE_TAG]
 ```
 
 Verify:
