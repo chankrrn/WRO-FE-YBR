@@ -219,20 +219,20 @@ Where possible, the exact model used by our team is listed together with the ori
 
 | Category | Component | Qty | Notes | Purchase Link |
 |---|---|---:|---|---|
-| Compute | Raspberry Pi 5 | 1 | 8 GB version used by our team | https://gammaco.com/gammaco/Raspberry_Pi_GB_89RD014.html |
-| Compute | Arduino UNO R4 Minima | 1 | Standard non-Wi-Fi version | https://www.ortech-online.com/product/1370 |
-| Motor | CHP-20GP-180 DC geared motor with encoder | 1 | 19:1 gear ratio | https://th.shp.ee/dcTw6X4o |
-| Steering | GEEKSERVO 2 kg 360° Servo | 1 | LEGO-compatible steering servo | https://th.shp.ee/xjXZcp6A |
-| Sensing | RPLiDAR C1 | 1 | Main 2D environmental sensor | https://www.dfrobot.com/product-2803.html |
-| Sensing | Raspberry Pi Night Vision Camera | 1 | Used for traffic-pillar detection | https://th.cytron.io/p-fish-eye-lense-raspberry-pi-5mp-ir-camera |
-| Sensing | Gravity BNO055 IMU | 1 | DFRobot SEN0253 | https://www.dfrobot.com/product-1793.html |
-| Control | L298P Motor Shield | 1 | Drive-motor control | https://th.shp.ee/DExzLgGb |
-| Control | IO Expansion HAT for Raspberry Pi 5 / 4B / 3B+ | 1 | DFR0566 | https://www.dfrobot.com/product-1930.html |
-| Control | ZX-Switch01 Start Button | 1 | Competition start input | https://inex.co.th/home/product/zx-switch01/ |
-| Power | Helicox 1100 mAh 11.1 V 3S LiPo | 1 | Main battery | https://sl1nk.com/tpaqu28 |
-| Power | LM2596 Step-Down Converter | 1 | Adjusted to approximately 5.1 V | https://www.ortech-online.com/product/212 |
-| Power | XL4015 Step-Down Converter | 1 | **[TODO: Verify final output voltage]** | https://www.ortech-online.com/product/206 |
-| Power | Quick Wire Connectors | 2 | PCT-21 and D1-2 | https://th.shp.ee/pKZ9582e |
+| Compute | Raspberry Pi 5 | 1 | 8 GB version used by our team | [Gammaco](https://gammaco.com/gammaco/Raspberry_Pi_GB_89RD014.html)  |
+| Compute | Arduino UNO R4 Minima | 1 | Standard non-Wi-Fi version | [ORtech](https://www.ortech-online.com/product/1370)  |
+| Motor | CHP-20GP-180 DC geared motor with encoder | 1 | 19:1 gear ratio | [Shopee](https://th.shp.ee/dcTw6X4o)  |
+| Steering | GEEKSERVO 2 kg 360° Servo | 1 | LEGO-compatible steering servo | [Shopee](https://th.shp.ee/xjXZcp6A)  |
+| Sensing | RPLiDAR C1 | 1 | Main 2D environmental sensor | [DFRobot](https://www.dfrobot.com/product-2803.html)  |
+| Sensing | Raspberry Pi Night Vision Camera | 1 | Used for traffic-pillar detection | [Cytron](https://th.cytron.io/p-fish-eye-lense-raspberry-pi-5mp-ir-camera)  |
+| Sensing | Gravity BNO055 IMU | 1 | DFRobot SEN0253 | [DFRobot](https://www.dfrobot.com/product-1793.html)  |
+| Control | L298P Motor Shield | 1 | Drive-motor control | [Shopee](https://th.shp.ee/DExzLgGb)  |
+| Control | IO Expansion HAT for Raspberry Pi 5 / 4B / 3B+ | 1 | DFR0566 | [DFRobot](https://www.dfrobot.com/product-1930.html) |
+| Control | ZX-Switch01 Start Button | 1 | Start Button | [INEX](https://inex.co.th/home/product/zx-switch01/)  |
+| Power | Helicox 1100 mAh 11.1 V 3S LiPo | 1 | Main battery | [PrinceBot](https://www.princebotshop.com/product/%E0%B9%81%E0%B8%9A%E0%B8%95%E0%B9%80%E0%B8%95%E0%B8%AD%E0%B8%A3%E0%B9%8C%E0%B8%A3%E0%B8%B5%E0%B9%88-li-po-%E0%B8%A2%E0%B8%B5%E0%B9%88%E0%B8%AB%E0%B9%89%E0%B8%AD-helicox-11-1v-1100mah-t-plug/11000585830000250) |
+| Power | LM2596 Step-Down Converter | 1 | Tune to 5.1 V | [ORtech](https://www.ortech-online.com/product/212)  |
+| Power | XL4015 Step-Down Converter | 1 | Tune to 11.1 V | [ORtech](https://www.ortech-online.com/product/206)  |
+| Power | Quick Wire Connectors | 2 | PCT-21 and D1-2 | [Shopee](https://th.shp.ee/pKZ9582e)  |
 
 ---
 
@@ -240,13 +240,13 @@ Where possible, the exact model used by our team is listed together with the ori
 
 | Component | Qty | Notes | Purchase / File Reference |
 |---|---:|---|---|
-| LEGO Technic 28T Differential | 1 | Rear drivetrain | **[TODO: Add purchase link if available]** |
-| LEGO Tire 43.2 × 22 ZR | 4 | Final tires | **[TODO: Add purchase link if available]** |
-| LEGO Reinforced Wheel Rim | 4 | Used with final tires | **[TODO: Add purchase link if available]** |
-| Rear Bearings | **[TODO]** | Add exact model / dimensions | **[TODO]** |
-| Rear Axles / Shafts | **[TODO]** | Add exact type / dimensions | **[TODO]** |
-| Structural Pillars / Spacers | **[TODO]** | Add dimensions / quantity | **[TODO]** |
-| Screws / Nuts / Washers | **[TODO]** | Add final sizes and quantities | **[TODO]** |
+| LEGO Technic 28T Differential | 1 | Rear drivetrain | [LEGO](https://www.lego.com/en-us/product/robot-inventor-51515) |
+| LEGO Tire 43.2 × 22 ZR | 4 | Final tires | [LEGO](https://www.lego.com/en-us/product/lego-mindstorms-ev3-31313) |
+| LEGO Wheel Rim | 4 | Used with final tires | [LEGO](https://www.lego.com/en-us/product/lego-mindstorms-ev3-31313) |
+| Front Bearings | 2 | 8x14x4mm | [Shopee](https://th.shp.ee/6UK8voGj) |
+| Rear Bearings | 3 | 8x16x5mm | [Shopee](https://th.shp.ee/6UK8voGj) |
+| Rear Axles | 1| LEGO Technic Axle 11 | [LEGO](https://www.lego.com/en-us/product/robot-inventor-51515) |
+| Structural Pillars | 7 | M3x30 | [Shopee](https://th.shp.ee/fPzjk2dR) |
 | Custom 3D-Printed Parts | 1 set | See mechanical CAD files | [`mech/models/`](mech/models/) |
 
 ---
@@ -255,15 +255,12 @@ Where possible, the exact model used by our team is listed together with the ori
 
 | Item | Qty / Length | Notes | Purchase Link |
 |---|---|---|---|
-| Raspberry Pi ↔ Arduino USB Data Cable | 1 | USB Serial communication | **[TODO]** |
-| RPLiDAR Adapter / USB Cable | 1 | LiDAR communication | **[TODO]** |
-| Raspberry Pi CSI Camera Cable | 1 | Camera interface | **[TODO]** |
-| BNO055 I²C / Gravity Cable | 1 | IMU communication | **[TODO]** |
-| Power Wire | **[TODO]** | Add wire gauge and approximate length | **[TODO]** |
-| Signal Wire | **[TODO]** | Low-current signal wiring | **[TODO]** |
-| Heat-Shrink Tubing | As required | Electrical insulation | **[TODO]** |
-| Solder | As required | Electrical assembly | **[TODO]** |
-| Cable Ties | As required | Cable management | **[TODO]** |
+| Raspberry Pi ↔ Arduino USB Data Cable | 1 | USB Serial communication | [Shopee](https://th.shp.ee/pc7EZXs8) |
+| RPLiDAR Adapter / USB Cable | 1 | LiDAR communication | [Shopee](https://th.shp.ee/pc7EZXs8) |
+| Raspberry Pi CSI Camera Cable | 1 | Camera interface | [Cytron](https://th.cytron.io/p-fpc-22-way-to-15-way-for-camera-20cm?srsltid=AfmBOor3ugG8ZzgVzqswMLIZwMEmnHumaQoeX4VZsRKsL-_xYs4fENHY) |
+| Power Wire | As required | Add wire gauge and approximate length |  |
+| Heat-Shrink Tubing | As required | Electrical insulation |  |
+| Solder | As required | Electrical assembly |  |
 
 ---
 
@@ -271,49 +268,12 @@ Where possible, the exact model used by our team is listed together with the ori
 
 | Material | Purpose | Purchase Link |
 |---|---|---|
-| Bambu Lab ABS | General structural and impact-tolerant parts | **[TODO: Add original purchase link if available]** |
-| Bambu Lab ABS-GF | Parts requiring greater stiffness and dimensional stability | **[TODO: Add original purchase link if available]** |
+| Bambu Lab ABS | General structural and impact-tolerant parts | [Bambulab](https://asia.store.bambulab.com/products/abs-filament?id=42078846615667) |
+| Bambu Lab ABS-GF | Parts requiring greater stiffness and dimensional stability | [Bambulab](https://asia.store.bambulab.com/products/abs-gf?id=41652562329715) |
 
 The detailed reason for selecting ABS and ABS-GF is documented in:
 
 [`mech/mech_README.md`](mech/mech_README.md)
-
----
-
-## 3.5 Mechanical Components
-
-| Component | Qty | Notes |
-|---|---:|---|
-| LEGO Technic 28T Differential | 1 | Rear drivetrain |
-| LEGO Tire 43.2 × 22 ZR | 4 | Final wheels |
-| Compatible wheel rims | 4 | Reinforced-rim configuration |
-| Rear drivetrain bearings | **[TODO]** | Add exact bearing size and quantity |
-| Rear axles / shafts | **[TODO]** | Add exact type / length |
-| Structural pillars / spacers | **[TODO]** | Add quantity and dimensions |
-| Screws | **[TODO]** | Add M-size and lengths |
-| Nuts | **[TODO]** | Add sizes / quantities |
-| Washers | **[TODO]** | Add sizes / quantities if used |
-
-The exact fastener specification is important for full reproducibility.
-
-> **[TODO: Create a final fastener and bearing table from the completed V3 robot.]**
-
----
-
-## 3.6 Wiring and Consumables
-
-| Item | Qty / Length |
-|---|---|
-| USB cable — Raspberry Pi ↔ Arduino | 1 |
-| LiDAR USB / serial adapter cable | 1 |
-| Raspberry Pi CSI camera cable | 1 |
-| I²C / Gravity cable for BNO055 | 1 |
-| Power wire | **[TODO: Record gauge and approximate length]** |
-| Signal wire | **[TODO]** |
-| Heat-shrink tubing | As required |
-| Solder | As required |
-| Cable ties / cable management | As required |
-| Electrical connectors | **[TODO: Add exact connector types / quantities]** |
 
 ---
 
@@ -362,15 +322,14 @@ Detailed material reasoning is documented in:
 Before printing:
 
 1. identify only the **final V3 parts**,
-2. do not accidentally print V1 / V2 prototype geometry,
-3. inspect STL orientation,
-4. select ABS or ABS-GF according to the final part configuration,
-5. slice the models,
-6. inspect support placement,
-7. print,
-8. remove supports,
-9. clean mounting holes,
-10. test-fit mating parts before final assembly.
+2. inspect STL orientation,
+3. select ABS or ABS-GF according to the final part configuration,
+4. slice the models,
+5. inspect support placement,
+6. print,
+7. remove supports,
+8. clean mounting holes,
+9. test-fit mating parts before final assembly.
 
 ---
 
@@ -379,30 +338,27 @@ Before printing:
 The final mechanical documentation contains the complete CAD list.
 
 Important final components include:
--components (quantity)
-
-- Main Base (1)
-- Electrical Base (1)
-- Arduino Base (1)
-- Raspberry Pi Base (1)
+- Main Base
+- Electrical Base
+- Arduino Base
+- Raspberry Pi Base 
 - Motor Bracket 
 - 16T Driver Gear
-- Bearing Mounts
-- Axle Sleeves
+- Bearing Mounts (3)
+- Axle Sleeves (5)
 - Steering Axles
 - Steering Arms
 - Steering Linkage
 - Steering Mounts
-- Servo Bracket (1)
+- Servo Bracket 
 - Camera Mount
 - Camera Plate
 - Camera Arm
 - Camera Connector
 - LiDAR / IMU Mount
-- Rear Wing (1)
+- Rear Wing
 - XL4015 Step-down Tray
 
-> **[TODO: Add quantity beside every final printed component.]**
 
 ---
 
@@ -412,12 +368,11 @@ Only record settings that were actually used.
 
 | Setting | ABS | ABS-GF |
 |---|---|---|
-| Layer height | **[TODO]** | **[TODO]** |
-| Wall loops | **[TODO]** | **[TODO]** |
-| Infill | **[TODO]** | **[TODO]** |
-| Support | **[TODO]** | **[TODO]** |
-| Nozzle | **[TODO]** | **[TODO]** |
-| Build plate | **[TODO]** | **[TODO]** |
+| Wall loops | 4 | 4 |
+| Infill | 15% | 15% |
+| Support | Enable(Auto) | Enable(Auto) |
+| Nozzle | 0.4mm | 0.4mm |
+| Build plate | Textured PEI plate | Textured PEO plate |
 
 ---
 
