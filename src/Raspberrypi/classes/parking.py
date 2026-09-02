@@ -40,6 +40,7 @@ clearance guard every tick rather than a scripted sequence of arcs.
 """
 import math
 
+from classes.wall_sense import arc_points, wall_yaw
 from utils.angle_utils import angle_difference, clamp, normalize_angle
 
 # ============================================================================
@@ -49,6 +50,15 @@ WALL_LENGTH_MM = 200.0      # how far each wall sticks out from the outer wall
 WALL_THICKNESS_MM = 10.0    # its extent ALONG the outer wall
 WALL_HEIGHT_MM = 100.0      # low enough that a high lidar mount misses it
 NOMINAL_BAY_MM = 340.0      # clear gap between the two inner faces, MEASURED
+
+# How close the wall AHEAD has to be for the look to believe it is a blade
+# rather than the far end of the track. Derived, not tuned: the two blades
+# leave NOMINAL_BAY_MM of clear gap, the pose point is the rear axle, so the
+# worst a robot inside a bay can read ahead is the whole gap less its rear
+# overhang - about 300mm. 400 keeps a third of that in hand and is still
+# nowhere near the metre-plus a legal track start reads along its section.
+# Used with in_bay_mm, never alone - see UnparkController._decide_side.
+BAY_FRONT_MM = 400.0
 YAW_ARM_MM = 200.0          # what a radian of yaw is worth, as a length
 
 # Which way is "out from the outer wall", and which axis the walls run along,
@@ -1201,6 +1211,10 @@ class UnparkController:
         self.steer = 0.0
         self.reverse_steer = 0.0
         self.left_mm = self.right_mm = float("nan")
+        # The other axis, and only the half of it that can be measured: the
+        # rear arc is blocked by the robot's own chassis, so the bay wall
+        # BEHIND is never visible. See _decide_side.
+        self.front_mm = float("nan")
         # Whether the look actually found a bay around the robot. False on a
         # track start, and then the reading says nothing about lap direction.
         self.in_bay = False
@@ -1211,6 +1225,7 @@ class UnparkController:
         self._elapsed = 0.0
         self._looks = 0
         self._left_sum = self._right_sum = 0.0
+        self._front_sum = 0.0
 
         self.phase = self.LOOK
         missing = [name for name, value in (("unpark.reverse_mm", self.reverse_mm),
@@ -1356,16 +1371,30 @@ class UnparkController:
     # WHICH WAY IS OUT
     # ------------------------------------------------------------------
     def _sample(self):
-        """Folds this tick's two side ranges into the running means."""
+        """
+        Folds this tick's three ranges into the running means.
+
+        Two axes, asked two different questions. The SIDES say which way is
+        out, which is what the manoeuvre needs. AHEAD says whether there is
+        anything to get out of, which is what everything downstream needs -
+        see _decide_side.
+
+        There is no fourth reading. The rear arc is the robot's own chassis,
+        so the bay wall behind can never be measured, and asking for it gets
+        the body radius back dressed up as a wall.
+        """
         if self.lidar is None:
             return
         left = self._sector_min(-self.side_bearing_deg)
         right = self._sector_min(+self.side_bearing_deg)
+        front = self._sector_min(0.0)
         self._left_sum += left
         self._right_sum += right
+        self._front_sum += front
         self._looks += 1
         self.left_mm = self._left_sum / self._looks
         self.right_mm = self._right_sum / self._looks
+        self.front_mm = self._front_sum / self._looks
 
     def _sector_min(self, bearing_deg):
         """
@@ -1386,30 +1415,72 @@ class UnparkController:
         A margin, not a plain comparison: parked square in a 300mm bay both
         sides read the same wall a few millimetres apart, and a difference
         that small is noise, not information about where the track is.
+
+        Also settles `in_bay` and `side_confident`, which are two different
+        questions and are answered off two different axes - see below.
         """
         if self._looks == 0:
             print("WARNING: no lidar to unpark by - "
                   f"exiting {self.side_name(self.default_side)} on faith")
             return self.default_side
+
+        # IN A BAY, OR JUST STANDING ON THE TRACK? Asked FIRST, because the
+        # answer gates the manoeuvre, the lap direction, and therefore the
+        # round - and asked of BOTH axes, because neither one settles it.
+        #
+        # THE SIDE ALONE SAYS ALMOST NOTHING. A bay is a slot in the outer
+        # wall, so a robot in one reads that wall a hand's width off one flank
+        # - but a robot standing legally on the track reads the same shape
+        # whenever anything happens to be beside it, and something usually is.
+        # Measured: a start with a GREEN pillar 132mm off the right flank
+        # satisfied "is either side close?" on its own, so the round reversed,
+        # swung 119 degrees onto full lock and drove 200mm INTO the centre
+        # block before the first tick of lap driving. The block was then the
+        # nearest wall, so the cascade measured its lane off that and held
+        # 760mm from the wrong reference for the rest of the run: 0.5 laps in
+        # 200 seconds, nose in the corner.
+        #
+        # AHEAD ALONE SAYS LITTLE MORE - a pillar in front reads exactly like
+        # the bay wall in front, and over sixteen random starts three of them
+        # had something inside 400mm ahead (one at 66mm).
+        #
+        # TOGETHER THEY ARE STRONG, because a bay is the only thing on the mat
+        # that is both. A slot puts the outer wall inside in_bay_mm of one
+        # flank AND a blade inside BAY_FRONT_MM of the nose, at the same time.
+        # To fake that, the track would need one pillar off a flank and
+        # another in front of the nose, 250mm and 400mm away - and
+        # PILLAR_MIN_SPACING_MM keeps pillars 800mm apart, while a legal start
+        # sits a metre clear of the walls at both ends of its section. Across
+        # those same sixteen starts the conjunction rejects all sixteen; each
+        # half on its own lets three or four through.
+        #
+        # AND THERE IS NO THIRD READING TO ADD. The far blade is BEHIND, which
+        # is the one direction this robot cannot see: the rear arc is its own
+        # chassis (which is why NavigationManager crops the FOV), so asking
+        # for it returns the body radius wearing a wall's clothes - a constant
+        # under 110mm that makes every start look boxed in.
+        self.in_bay = (min(self.left_mm, self.right_mm) <= self.in_bay_mm
+                       and self.front_mm <= BAY_FRONT_MM)
+        if not self.in_bay:
+            print(f"Unpark: nearest side wall {min(self.left_mm, self.right_mm):.0f}mm "
+                  f"and {self.front_mm:.0f}mm ahead; a bay puts a wall inside "
+                  f"{self.in_bay_mm:.0f}mm of one flank AND {BAY_FRONT_MM:.0f}mm of "
+                  f"the nose - this is not a bay start, so there is nothing to unpark "
+                  f"from and the lap direction is left to the racing line")
+            self.side_confident = False
+            return 1 if self.right_mm > self.left_mm else -1
+
+        # In a bay - so now the SIDES get the question they can answer: which
+        # way is out. A tie is settled by default_side, which is a guess, and
+        # a guess must not be allowed to set the lap direction: side_confident
+        # is what wall_side gates on, and it stays false here.
         if abs(self.right_mm - self.left_mm) < self.side_margin_mm:
             print(f"Unpark: both sides within {self.side_margin_mm:.0f}mm of each "
-                  f"other, going {self.side_name(self.default_side)} by default")
+                  f"other, going {self.side_name(self.default_side)} by default - "
+                  f"too close to call to settle the lap direction")
+            self.side_confident = False
             return self.default_side
-        # IN A BAY, OR JUST STANDING ON THE TRACK? The comparison below is only
-        # ever meaningful between two bay walls. Out on the mat the two sectors
-        # read hundreds of millimetres either way and they are never equal, so
-        # the margin test above passes on any start at all and the wider side
-        # gets reported as "the track" with full confidence - which
-        # FinalTask._lap_direction then trusts over the racing line and runs
-        # the whole round, and the park, backwards. A bay pins BOTH sides
-        # close: 340mm of slot around a 150mm body is under 100mm a side.
-        self.in_bay = min(self.left_mm, self.right_mm) <= self.in_bay_mm
-        self.side_confident = self.in_bay
-        if not self.in_bay:
-            print(f"Unpark: nearest wall is "
-                  f"{min(self.left_mm, self.right_mm):.0f}mm away, further than the "
-                  f"{self.in_bay_mm:.0f}mm a bay puts it - this is not a bay start, "
-                  f"so the lap direction is left to the racing line")
+        self.side_confident = True
         return 1 if self.right_mm > self.left_mm else -1
 
     @property
@@ -2367,32 +2438,20 @@ class ParkingSequence:
         """
         if self.lidar is None or self.angle_gain <= 0.0:
             return float("nan")
-        points = self._side_points()
-        if len(points) < self.angle_min_points:
-            return float("nan")
-        line = self._fit_line(points)
-        if line is None:
-            return float("nan")
-        # One robust pass: the bay wall enters the front of the arc before it
-        # reaches the perpendicular beam, and a handful of points 200mm proud
-        # would drag the fit round. Throw the outliers out and fit again.
-        kept = self._without_outliers(points, line)
-        if len(kept) < self.angle_min_points:
-            return float("nan")
+        # One robust pass inside wall_yaw(): the bay wall enters the front of
+        # the arc before it reaches the perpendicular beam, and a handful of
+        # points 200mm proud would drag the fit round. It throws the outliers
+        # out and fits again.
+        #
         # WHETHER ANYTHING WAS THROWN OUT IS ITSELF A MEASUREMENT: it is the
         # first sign that something which is not the outer wall has entered
         # the arc. The arc reaches about 210mm ahead where the side sector
         # only reaches 120mm, so this notices a bay wall roughly 90mm - half a
         # second - before the range does. _learn_wall_heading needs that
         # warning, because those are exactly the ticks that would poison it.
-        self._fit_clean = len(kept) == len(points)
-        if len(kept) < len(points):
-            line = self._fit_line(kept)
-            if line is None:
-                return float("nan")
-        yaw = math.degrees(math.atan(line[0]))
-        if abs(yaw) > self.angle_max_deg:
-            return float("nan")     # a corner or a step, not the wall
+        yaw, self._fit_clean = wall_yaw(self._side_points(),
+                                        self.angle_min_points,
+                                        self.angle_max_deg)
         return yaw
 
     def _side_points(self):
@@ -2407,49 +2466,9 @@ class ParkingSequence:
             scan = self.lidar.get_scan()
         except (AttributeError, TypeError):
             return []
-        if scan is None or len(scan) < 360:
-            return []
-        first = int(round(self.side_bearing_deg - self.angle_arc_deg))
-        last = int(round(min(self.side_bearing_deg + self.angle_arc_deg,
-                             USABLE_FOV_DEG)))
-        points = []
-        for bearing in range(first, last + 1):
-            distance = float(scan[int(round(bearing * self.wall_side)) % 360])
-            if math.isnan(distance):
-                continue
-            if not MIN_DETECT_RANGE_MM < distance < MAX_DETECT_RANGE_MM:
-                continue
-            radians = math.radians(bearing)
-            points.append((distance * math.cos(radians),
-                           distance * math.sin(radians)))
-        return points
-
-    @staticmethod
-    def _fit_line(points):
-        """
-        Least squares depth = intercept + slope * along, or None.
-
-        With the wall on the right and the robot yawed by psi, every return
-        satisfies depth = D/cos(psi) + along*tan(psi) exactly - so the slope
-        IS the tangent of the yaw, and the depth cancels out of it.
-        """
-        count = len(points)
-        mean_along = sum(p[0] for p in points) / count
-        mean_depth = sum(p[1] for p in points) / count
-        spread = sum((p[0] - mean_along) ** 2 for p in points)
-        if spread < 100.0:              # all bunched up: no baseline, no angle
-            return None
-        cross = sum((p[0] - mean_along) * (p[1] - mean_depth) for p in points)
-        slope = cross / spread
-        return slope, mean_depth - slope * mean_along
-
-    @staticmethod
-    def _without_outliers(points, line):
-        slope, intercept = line
-        residuals = [p[1] - (slope * p[0] + intercept) for p in points]
-        rms = math.sqrt(sum(r * r for r in residuals) / len(residuals))
-        limit = max(3.0 * rms, 40.0)
-        return [p for p, r in zip(points, residuals) if abs(r) <= limit]
+        return arc_points(scan, self.side_bearing_deg, self.angle_arc_deg,
+                          self.wall_side, MIN_DETECT_RANGE_MM,
+                          MAX_DETECT_RANGE_MM, USABLE_FOV_DEG)
 
     def _mouth_range(self):
         """

@@ -53,6 +53,7 @@ from classes.parking import (NOMINAL_BAY_MM, WALL_THICKNESS_MM, along_axis_of,
                              bay_interior, section_of, wall_heading_of,
                              wall_rects)
 from classes.racing_line import RacingLine
+from classes.slot_map import Location, Side, slot_position
 from tasks.cli import load_config
 from utils.angle_utils import angle_difference
 from utils.enums import Color
@@ -496,29 +497,65 @@ class SimObjectSolver:
         return detections
 
 
+def lattice_cells():
+    """
+    The twelve (segment, location) cells in the order a lap meets them.
+
+    Location C is furthest from the wall ahead, so it is the one entered
+    FIRST; A is entered last, right before the corner. Reading the enum
+    backwards here is the whole of it.
+    """
+    return [(segment, location)
+            for segment in range(4)
+            for location in (Location.C, Location.B, Location.A)]
+
+
 def place_pillars(path, direction, count, rng):
     """
-    `count` pillars spread around the lap, alternating colour, each dropped
-    somewhere in the corridor rather than exactly on the racing line.
+    `count` pillars spread around the lap, on the positions the field has.
 
-    Placed by progress along the lap and offset sideways, because that is how
-    they matter: what the round has to get right is the distance between one
-    pillar and the next, and how far each sits off the line it is driving.
+    A WRO obstacle field does not put pillars wherever they fit: there are
+    twelve marked spots, three per segment, and each holds a pillar on the
+    inner or the outer side. Dropping them at arbitrary points in the
+    corridor tests a field that cannot be built, and - more to the point -
+    guarantees the slot map never commits a cell, because every reading
+    lands in a dead-band. So the position comes from slot_position(), the
+    inverse of the classifier the round itself uses.
+
+    Progress along the lap is then MEASURED from the resulting point rather
+    than chosen, since it is only used for reporting and for spacing checks.
     """
     if count <= 0:
         return []
-    spacing = path.length / count
-    if spacing < PILLAR_MIN_SPACING_MM:
-        raise SystemExit(f"{count} pillars on a {path.length / 1000:.1f}m lap would sit "
-                         f"{spacing:.0f}mm apart; nothing can dodge that. Use fewer.")
+    cells = lattice_cells()
+    if count > len(cells):
+        raise SystemExit(f"the field has {len(cells)} pillar positions; {count} "
+                         f"will not fit on it.")
+
+    # Even stride through the twelve cells with a random phase: keeps them
+    # spread around the lap instead of clustered, without ever landing two
+    # on the same spot.
+    stride = len(cells) / float(count)
+    phase = rng.randrange(len(cells))
 
     pillars = []
     for index in range(count):
-        progress = (index + 0.5) * spacing + rng.uniform(-spacing / 6.0, spacing / 6.0)
-        lateral = rng.uniform(-PILLAR_LATERAL_MM, PILLAR_LATERAL_MM)
-        x, y = path.point_at(progress, direction, lateral)
+        segment, location = cells[int(index * stride + phase) % len(cells)]
+        side = Side.OUTER if rng.random() < 0.5 else Side.INNER
         color = Color.GREEN if rng.random() < 0.5 else Color.RED
-        pillars.append(SimPillar(x, y, color, progress))
+        # clockwise=True names all four segments' worth of physical spots
+        # exactly once; the other direction addresses the same twelve
+        # points under different segment numbers, so fixing it here is not
+        # a restriction on the layout.
+        x, y = slot_position(segment, location, side, True)
+        pillars.append(SimPillar(x, y, color, path.project(x, y, direction)[0]))
+
+    pillars.sort(key=lambda p: p.progress)
+    for near, far in zip(pillars, pillars[1:]):
+        gap = far.progress - near.progress
+        if gap < PILLAR_MIN_SPACING_MM:
+            raise SystemExit(f"{count} pillars landed {gap:.0f}mm apart on the lap; "
+                             f"nothing can dodge that. Use fewer.")
     return pillars
 
 
@@ -706,10 +743,33 @@ def simulate(task_class, config, start, debug=False, window=False, timeout_s=180
                      max_road_wheel_deg=config.get("pursuit.max_road_wheel_deg", 30.0),
                      max_steer_command=config.get("pursuit.max_steer_command", 80.0),
                      lag_s=lag_s, rate_deg_s=rate_deg_s, gain_error=gain_error)
-    lidar = SimLidar(field_map, seed=seed + 1)
     compass = SimCompass(drift_deg=0.0, seed=seed + 2)
-    lidar.set_pose(*robot.pose)
     compass.set_true_heading(robot.heading)
+
+    # Tell the round which way the robot was set down, the way a team does.
+    #
+    # startup.start_heading_deg is what anchors the compass (see
+    # PathDrivingTask._wait_for_localization): it says "whatever the IMU reads
+    # right now, the robot is really facing THIS". A team sets it once, because
+    # they place the robot themselves. This harness places it in a RANDOM one
+    # of the eight legal poses and used to leave the config's single fixed
+    # value standing, so most trials ran with an anchor that was wrong - and an
+    # anchor wrong by 180 degrees is not a small error. The field is
+    # 180-degree rotationally symmetric, so the mirrored pose explains the
+    # lidar EXACTLY as well as the true one; the filter settles on it at full
+    # confidence and never doubts it. Measured, before this line existed: three
+    # of five trials spent 54-100% of their ticks on the mirror solution,
+    # 1.6-3.4m from the robot, at confidence 0.89. The lap cascade never reads
+    # the pose so it drove on regardless, and parking - the one part that does
+    # - failed 5/5, driving away from a bay it thought was on the other side.
+    #
+    # The CARDINAL, not the truth. The operator knows the robot faces north,
+    # not that it faces 354.2 degrees, so rounding to 90 leaves the
+    # hand-placement jitter unmodelled by the anchor - exactly where it is in
+    # real life. Anchoring on robot.heading itself would hand the round an
+    # accuracy nobody has at the start line.
+    config.set("startup.start_heading_deg",
+               round(robot.heading / 90.0) * 90.0 % 360.0)
 
     # Placed on the same loop the round will drive, so "700mm apart" means
     # 700mm of LAP between them, which is the distance that decides whether
@@ -723,6 +783,26 @@ def simulate(task_class, config, start, debug=False, window=False, timeout_s=180
                    corner_radius_mm=config.get("path.corner_radius_mm"),
                    resolution_mm=config.get("path.resolution_mm", 20.0)),
         1, pillars, random.Random(seed + 4))
+
+    # THE LIDAR SEES THE PILLARS. They are 100mm tall boxes standing in the
+    # scan plane, so a round that ranges pillars off the lidar cannot be
+    # tested at all against a map that only contains walls - every detection
+    # falls back to the camera's own range and nothing downstream of the
+    # fusion ever runs.
+    #
+    # Its own map, not the collision one: obstacles here are raycast-only by
+    # design (see FieldMap.add_obstacle), and the chassis already scores
+    # pillar contact through SimPillar.observe. The particle filter keeps the
+    # clean map and therefore cannot explain these returns - which is exactly
+    # the situation on the mat, and worth simulating rather than papering over.
+    lidar_map = FieldMap()
+    lidar_map.set_obstacles(field_map.obstacle_rectangles())
+    for pillar in placed:
+        half = BLOCK_SIZE_MM / 2.0
+        lidar_map.add_obstacle((pillar.x - half, pillar.y - half),
+                               (pillar.x + half, pillar.y + half))
+    lidar = SimLidar(lidar_map, seed=seed + 1)
+    lidar.set_pose(*robot.pose)
 
     context = SimContext(field_map, robot, lidar, compass, debug=debug, seed=seed,
                          pillars=placed, nav_map=nav_map,

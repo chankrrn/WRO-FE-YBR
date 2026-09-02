@@ -111,6 +111,131 @@ DEFAULTS = {
     "goals.max_gates": 3,                # pillars one plan reaches through
     "goals.replan_interval_s": 0.1,      # cadence when nothing has changed
     "goals.replan_cross_track_mm": 120.0,  # drift that forces a new plan
+
+    # --- [wall] ------------------------------------------------------------
+    # The final round's lap driving. Two cascaded P loops on a fitted wall
+    # line: lateral error -> a heading the robot would rather hold -> steering.
+    # Nothing here reads the particle filter except the heading, so pose error
+    # cannot reach the wheels. Off, and the round drives the goal planner as
+    # before - the planner is retired, not removed.
+    "wall.enabled": True,
+    # +1 when a POSITIVE steer command turns the robot the same way a positive
+    # heading error asks it to. MEASURE THIS ON THE ROBOT before a first run:
+    # backwards, the lateral loop diverges instead of converging, and it does
+    # so smoothly enough to look like a tuning problem.
+    "wall.steer_sign": 1.0,
+    # Degrees of heading offset per mm of lateral error. 0.18 is 180 deg/m,
+    # ported from a robot with a different wheelbase, so it is a starting
+    # point: 100mm off line asks for 18 degrees of lean-in.
+    "wall.p_deg_per_mm": 0.18,
+    # Degrees of steering per degree of heading error. Their 3.0 percent-of-
+    # full-lock converts to 1.38 at our 46-degree rack, and 1.38 is wrong for
+    # this car: it closes the heading loop in ~0.44s against a 0.35s servo
+    # lag, so the wheels are still chasing the last command when the next one
+    # arrives and the robot weaves. Swept in the simulator over 16 runs each:
+    #
+    #     1.38 -> 10/16 pillars, 26.3cm off-line rms
+    #     0.90 -> 13/16,         21.3cm
+    #     0.60 -> 14/16,         15.2cm   <- here
+    #     0.40 -> 15/16,         23.5cm   (loop too slow, wanders wide)
+    #
+    # 0.6 is roughly a 1.0s loop, about 3x the lag - the usual separation.
+    # Re-sweep if pursuit.servo_lag_s is ever measured properly.
+    "wall.heading_p_deg_per_deg": 0.6,
+    # Stiffer wall term for a segment the map says holds no pillars: a
+    # straighter, faster line when there is nothing to weave around.
+    # Restored to wall.p_deg_per_mm on PRE_TURN.
+    "wall.no_pillars_p_deg_per_mm": 0.30,
+
+    # --- [lanes] -----------------------------------------------------------
+    # Where to drive in the 1000mm lane, in mm from the OUTER wall. Five
+    # rungs, and which one is used comes from the pillar in play: a pillar on
+    # the side you must pass on gets the hard squeeze, anything else the soft
+    # one. THE LADDER IS THE CLEARANCE BUDGET - there is no separate margin
+    # setting, because a 1000mm lane cannot deliver one.
+    #
+    # Worked back from where pillars stand (435mm out for an OUTER one,
+    # 595mm for an INNER one) and how much room the body needs (100mm half
+    # width + 25mm pillar half = 125mm):
+    #
+    #            clears OUTER(435)   clears INNER(595)
+    #     250        185 yes             345 yes
+    #     430          5 NO              165 yes
+    #     500 centre  65 NO               95 NO
+    #     620        185 yes              25 NO
+    #     760        325 yes             165 yes
+    #
+    # Centre is the one distance that clears NOTHING, which is why the
+    # controller holds the last chosen lane rather than returning to it.
+    "lanes.centre_mm": 500.0,
+    "lanes.outer1_mm": 430.0,       # ease toward the outer wall
+    "lanes.outer2_mm": 250.0,       # hard squeeze against the outer wall
+    "lanes.inner1_mm": 620.0,       # ease toward the inner wall
+    "lanes.inner2_mm": 760.0,       # hard squeeze against the inner wall
+    # Where to drive when the slot map has not committed anything yet. Only
+    # 250 and 760 clear BOTH pillar rows (435 and 595, needing 125); every
+    # softer lane including centre is inside one of them. 760 because it
+    # fails against the centre block, which is a clean fit the resolver
+    # never loses, rather than against the outer wall, which is what the
+    # crashes are against - and it keeps clear of the parking bay.
+    "lanes.blind_mm": 760.0,
+
+    # --- [turning] ---------------------------------------------------------
+    # How close to the wall ahead the robot gets before committing, in mm.
+    # Steering lock is fixed, so the arc is fixed, so WHEN it starts decides
+    # where it ends: these five numbers are the whole corner planner. They
+    # are chosen from the NEXT segment's first pillar, which is what makes
+    # the robot exit a corner already on the correct side of it.
+    #
+    # THE MOST CHASSIS-SPECIFIC NUMBERS IN THE FILE. They came from a car
+    # with a different wheelbase and lock, and they scale with turning
+    # radius, so re-sweep them before trusting a corner:
+    #     test_driving.py --round final --sweep turning.front_mm 700,780,860
+    "turning.pre_turn_front_mm": 1200.0,  # start reading the next segment
+    "turning.front_mm": 780.0,            # default, nothing known ahead
+    "turning.outer1_mm": 670.0,           # turn later -> exit nearer outer
+    "turning.outer2_mm": 500.0,           # turn much later
+    "turning.inner1_mm": 970.0,           # turn earlier -> exit nearer inner
+    "turning.inner2_mm": 1070.0,          # turn earliest
+    # A pillar cluster can fit as a short wall dead ahead, which reads as a
+    # corner that is not there. Nothing may re-enter PRE_TURN for this long
+    # after LEAVING a turn - measured from the exit, not the entry, because
+    # at ~230mm/s this car spends 3.5s crossing the 1200mm lookahead and a
+    # cooldown started at the entry is over before the corner has begun.
+    "turning.cooldown_s": 4.0,
+    # The turn ends this far short of the new cardinal and the wall term
+    # finishes the alignment, instead of the heading loop snapping the last
+    # few degrees with the steering already near full lock.
+    "turning.exit_tolerance_deg": 30.0,
+
+    # --- [slots] -----------------------------------------------------------
+    # The 24-cell pillar lattice. A cell commits to whichever answer leads
+    # its running tally, once it has this many observations. Swept 3/6/10/16
+    # over 8 placements: 3 is the only value that finishes a clean run (3/8,
+    # against 1/8 and 0/8), and it has the best worst-case clearance by
+    # 2.3cm. Higher values gain a third of a pillar of side accuracy and lose
+    # clearance steadily, because an uncommitted cell cannot steer - the
+    # robot drives the blind lane until the tally is satisfied, so waiting
+    # only delays the map past the point where it could have helped. Full
+    # table in tasks/final/config.toml.
+    "slots.votes_to_commit": 3,
+    # ...and the leader must also beat the runner-up by this factor. The
+    # count says "seen a lot"; the margin says "and not contradicted just as
+    # often". A cell that stays split never commits and reads as unknown,
+    # which the lap controller drives the blind lane for.
+    #
+    # Measures as a no-op: 1.0 (off) through 3.0 give identical results now
+    # that cells receive their full evidence and leaders win by hundreds to
+    # single figures. Kept as insurance for the real classifier, which will
+    # be noisier than the sim's. See tasks/final/config.toml.
+    "slots.commit_margin": 2.0,
+    # Detection is dropped above this yaw rate. Camera bearing and lidar
+    # range are sampled at different instants, so under rotation they
+    # describe different places and pillar_range starts pairing the wrong
+    # things - a confident wrong answer, which the lattice would then make
+    # permanent. Discarding is the cheaper failure.
+    "slots.max_heading_rate_deg_s": 20.0,
+
     # The robot's own extent forward of and behind THE POINT THE POSE
     # DESCRIBES, which with pursuit.rear_axle_offset_mm at 0 is the rear axle -
     # so robot_front_mm is nearly the whole length of the car, not half of it.
@@ -494,6 +619,15 @@ DEFAULTS = {
     # one. Under this the two are the same wall seen twice, and
     # default_side decides (+1 right, -1 left).
     "unpark.side_margin_mm": 100.0,
+    # How close the nearer FLANK has to be for the look to call it a bay.
+    # Never sufficient on its own - it is ANDed with the wall ahead being
+    # inside parking.BAY_FRONT_MM, because a pillar beside the robot reads
+    # exactly like the outer wall of a bay and three of sixteen random starts
+    # had something inside 400mm of the nose. Getting this wrong is
+    # expensive in one direction only: a spurious unpark reverses and swings
+    # the robot 119 degrees into the centre block before the lap has begun,
+    # while a missed one costs a scruffy first corner. See
+    # UnparkController._decide_side.
     "unpark.in_bay_mm": 250.0,
     "unpark.default_side": 1,
     "unpark.timeout_s": 15.0,
@@ -537,6 +671,7 @@ class PathDrivingTask(Task):
         self._reversing_until = None
         self.calibrator = None
         self._steer_rate_limit = None    # units/s, resolved at setup
+        self.yaw_rate_deg_s = 0.0        # from odometry, not from the pose
         self._debug_view = None
 
     # ========================================================================
@@ -779,7 +914,14 @@ class PathDrivingTask(Task):
         # still on its way to the last command, and the mean angle it actually
         # held over this dt - not the command - is what the robot turned on.
         held = self.pursuit.advance_servo(dt)
-        context.nav.report_motion(distance, self._turned(distance, held))
+        turned = self._turned(distance, held)
+        context.nav.report_motion(distance, turned)
+        # The same yaw, as a rate. Anything that wants to know how hard the
+        # robot is turning should read this rather than differentiate a pose
+        # heading: this comes off the bicycle model and the wheel angle, so it
+        # is smooth, where the filter's heading jitters a degree or two a tick
+        # and differentiating that reports 50-100deg/s on a dead straight.
+        self.yaw_rate_deg_s = turned / dt if dt > 0.0 else 0.0
         pose = context.nav.get_pose()
 
         self._track_progress(pose)
@@ -806,9 +948,7 @@ class PathDrivingTask(Task):
 
         self._update_lost_state(pose, now)
 
-        self.target = self.target_point(pose)
-        # Steer off where the robot WILL be once the wheels have caught up.
-        wanted = self.pursuit.steering(self._lead_pose(pose), self.target)
+        wanted = self.steering_command(pose, dt)
         # ... then hold the servo to a sane speed. `steer_command` is the
         # LIMITED value from here on, so the odometry, the calibrator and the
         # status line all describe what the wheels were actually told to do.
@@ -1094,6 +1234,25 @@ class PathDrivingTask(Task):
     # ========================================================================
     # TARGET - the one thing the final round changes
     # ========================================================================
+
+    def steering_command(self, pose, dt):
+        """
+        Road-wheel angle to ask for this tick, in signed degrees.
+
+        The seam between "where do I want to go" and everything around it -
+        rate limiting, the reverse-out, the speed ramp, the calibrator and the
+        odometry all live in step() and are the same whatever answers this.
+        Qualification answers it by chasing a point on the racing line; the
+        final round answers it from the walls directly, without a pose.
+
+        I/O:
+            pose: the filter's current best estimate
+            dt:   seconds since the last tick
+            return: wanted road-wheel angle, degrees, BEFORE rate limiting
+        """
+        self.target = self.target_point(pose)
+        # Steer off where the robot WILL be once the wheels have caught up.
+        return self.pursuit.steering(self._lead_pose(pose), self.target)
 
     def target_point(self, pose):
         """

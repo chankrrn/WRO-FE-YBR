@@ -298,6 +298,208 @@ robot_rear_mm = 40.0
 replan_interval_s = 0.1
 replan_cross_track_mm = 120.0
 
+[wall]
+# The lap-driving loop for this round. Two cascaded P terms on a line fitted
+# to the outer wall: lateral error -> a heading the robot would rather hold
+# -> steering. Nothing in it reads the particle filter except the heading,
+# and that is lidar-derived modulo 90, so a position error in the filter
+# cannot reach the wheels. Set enabled = false to fall back to the goal
+# planner, which is retired for this round but still in the tree.
+enabled = true
+
+# +1 when a POSITIVE steer command turns the robot the same way a positive
+# heading error asks it to. MEASURE THIS ON THE ROBOT before a first run -
+# backwards, the lateral loop diverges instead of converging, and it does so
+# smoothly enough to look like a tuning problem rather than a sign error.
+steer_sign = 1.0
+
+# Degrees of heading offset per mm of lateral error. 100mm off line asks for
+# 18 degrees of lean-in. This is the OUTER loop of the cascade; it should be
+# several times slower than heading_p below, or the two fight each other.
+p_deg_per_mm = 0.18
+
+# Degrees of steering per degree of heading error. The ported value converts
+# to 1.38 at our 46-degree rack and is too fast for this car: it closes the
+# heading loop in ~0.44s against a 0.35s servo lag, so the wheels are still
+# chasing the last command when the next arrives. Swept, 16 runs each:
+#
+#     1.38 -> 10/16 pillars passed correctly, 26.3cm off-line rms
+#     0.90 -> 13/16,                          21.3cm
+#     0.60 -> 14/16,                          15.2cm   <- here
+#     0.40 -> 15/16,                          23.5cm   (too slow, wanders)
+#
+# Re-sweep if pursuit.servo_lag_s is ever measured on the bench.
+heading_p_deg_per_deg = 0.6
+
+# Stiffer wall term where the map says there are no pillars: a straighter,
+# faster line with nothing to weave around. Restored on PRE_TURN.
+no_pillars_p_deg_per_mm = 0.30
+
+[lanes]
+# Where to drive in the 1000mm lane, in mm from the OUTER wall. Five rungs;
+# which one applies comes from the pillar in play. THE LADDER IS THE
+# CLEARANCE BUDGET - there is deliberately no separate margin setting,
+# because a 1000mm lane cannot deliver the 515mm the old planner asked for.
+#
+# Worked back from where pillars stand (435mm from the outer wall for an
+# OUTER one, 595mm for an INNER one) against the 125mm the body needs
+# (100mm half-width + 25mm pillar half):
+#
+#              clears OUTER(435)  clears INNER(595)
+#     250          185 yes            345 yes
+#     430            5 NO             165 yes
+#     500 centre    65 NO              95 NO
+#     620          185 yes             25 NO
+#     760          325 yes            165 yes
+#
+# Centre clears NOTHING. That is why the controller HOLDS the last lane it
+# chose rather than returning to centre between pillars, and why centre is
+# only ever used where the map says the segment is empty.
+centre_mm = 500.0
+outer1_mm = 430.0
+outer2_mm = 250.0
+inner1_mm = 620.0
+inner2_mm = 760.0
+
+# WHERE TO DRIVE WHEN THE MAP CANNOT SAY YET. This is not the same question as
+# centre_mm. Centre is where to be when there is nothing to avoid; this is
+# where to be when there MIGHT be, which is most of the first lap - the slot
+# map commits on three unanimous votes, and until it does, an empty row is
+# ignorance, not an empty road.
+#
+# A pillar stands 435mm from the outer wall (OUTER row) or 595mm (INNER row),
+# and the body needs 125mm of either - 100mm half-width plus the pillar's
+# 25mm half. So:
+#
+#   lane   clears an OUTER pillar   clears an INNER pillar
+#   250          +185mm                   +345mm
+#   430           -5mm                    +165mm
+#   500 centre    -65mm                    -95mm      <- hits BOTH
+#   620          +185mm                    -25mm
+#   760          +325mm                   +165mm
+#
+# Only 250 and 760 clear both, so the blind lane has to be one of them.
+# 760 because the two fail differently: 250 leaves 150mm of body to the outer
+# wall and the outer wall is what the crashes are against, while 760 leaves
+# 180mm to the centre block, which is a large clean fit the resolver never
+# loses. It also keeps the start segment away from the parking bay, which
+# stands against the outer wall.
+blind_mm = 760.0
+
+[turning]
+# How close to the wall ahead the robot gets before committing to the corner,
+# in mm. Steering lock is fixed, so the arc is fixed, so WHEN it starts
+# decides where it ends: these numbers are the entire corner planner. They
+# are chosen from the NEXT segment's first pillar, which is what makes the
+# robot exit a corner already on the correct side of it instead of correcting
+# its way out - and correcting its way out is what puts it in the centre wall.
+#
+# THE MOST CHASSIS-SPECIFIC NUMBERS IN THIS FILE. They came from a car with a
+# different wheelbase and lock and they scale with turning radius, so sweep
+# them before trusting a corner:
+#     test_driving.py --round final --pillars 4 --sweep turning.front_mm 700,780,860
+pre_turn_front_mm = 1200.0
+front_mm = 780.0
+outer1_mm = 670.0
+outer2_mm = 500.0
+inner1_mm = 970.0
+inner2_mm = 1070.0
+
+# A cluster of pillars can fit as a short wall dead ahead, which reads as a
+# corner that is not there. Nothing may re-enter PRE_TURN for this long after
+# LEAVING a turn. Measured from the exit, not the entry: at ~230mm/s this car
+# spends 3.5s crossing the 1200mm lookahead, so a cooldown started at the
+# entry has expired before the corner has even begun, and the robot takes the
+# same corner twice.
+cooldown_s = 4.0
+
+# The turn ends this far short of the new cardinal and the wall term finishes
+# the alignment. Deliberately loose - snapping the last few degrees with the
+# steering already near full lock is what unsettles the exit.
+exit_tolerance_deg = 30.0
+
+[slots]
+# The 24-cell pillar lattice: 4 segments x A/B/C, with side and colour as the
+# cell's value. Each cell keeps a running tally and commits to whichever
+# answer leads it, once that answer has this many observations.
+#
+# THIS WAS THREE UNANIMOUS READINGS IN A ROW, and that turned out to be no
+# filter at all. Three in a row spans 60ms at 50Hz, which is shorter than any
+# glitch worth worrying about, so a glitch produces its three-in-a-row by
+# construction. One segment committed INNER on a tally standing at 22 OUTER
+# to 3 INNER, purely because the three INNERs arrived together - and the cell
+# was write-once, so the 2524 OUTER confirmations that followed were thrown
+# away. The robot then held the inner-pillar lane, 430mm from the wall,
+# against a pillar standing at 435mm, and stalled there for two thirds of the
+# round.
+#
+# Still three, but now as a measured result rather than an inherited one.
+# Swept 3/6/10/16 with everything else held fixed (8 placements, 4 pillars):
+#
+#   votes   clean runs   correct side   worst clearance   median clearance
+#     3        3/8          30/32           -3.8cm             +4.2cm
+#     6        1/8          30/32           -7.2cm             +4.3cm
+#    10        0/8          31/32           -6.7cm             +2.9cm
+#    16        0/8          31/32           -6.1cm             +1.9cm
+#
+# The trade runs the other way from intuition. Waiting longer buys a third of
+# a pillar - 30/32 against 31/32, one placement, inside the noise - and pays
+# for it everywhere else. Three is the only value that finishes clean runs at
+# all, and its worst case is 2.3cm better.
+#
+# The median column is the one that explains it: clearance gets steadily
+# WORSE as the threshold rises, because an uncommitted cell cannot steer. The
+# robot drives the blind lane until the tally is satisfied, so every extra
+# vote is more metres spent passing pillars on a lane chosen without them.
+# What the higher rows learn, they learn about pillars already behind them.
+#
+# Measured after the veto and mirror fixes. An earlier sweep here recorded
+# 3/6/12/24 and told a different story; it ran while the start-segment veto
+# was discarding most observations and the particle filter was sitting on the
+# field's mirror solution, so it measured a broken map. Not comparable.
+votes_to_commit = 3
+
+# ...and the leading answer must also have this many times the runner-up's
+# votes. The count says "I have seen this a lot"; the margin says "and I have
+# not been seeing something else just as often", which is the half that
+# catches a cell whose geometry is genuinely being misread rather than merely
+# noisy. A cell that stays split never commits, reads as unknown, and the lap
+# controller drives the blind lane past it.
+#
+# IT DOES NOTHING MEASURABLE IN SIMULATION. Swept 1.0/1.5/2.0/3.0, where 1.0
+# is the margin switched off entirely (8 placements, 4 pillars):
+#
+#   margin   clean runs   correct side   worst clearance   median clearance
+#     1.0       3/8          30/32           -3.8cm             +3.9cm
+#     1.5       3/8          30/32           -3.8cm             +4.1cm
+#     2.0       3/8          30/32           -3.8cm             +4.2cm
+#     3.0       3/8          30/32           -3.8cm             +4.2cm
+#
+# Four identical rows. Once a cell actually receives its evidence the leader
+# wins by hundreds of votes to single figures, so a rule about beating the
+# runner-up 2x never gets to bind.
+#
+# An earlier sweep recorded here claimed the opposite - that switching it off
+# cost 6cm of rms and a pillar. That was taken while the veto was discarding
+# most observations, leaving cells to decide on a handful of readings, which
+# is the only regime where a 2x margin changes an answer. Fixing the veto
+# removed the conditions this constant was earning its keep under.
+#
+# Kept at 2.0 as insurance, not as tuning. The real side classifier will be
+# noisier than the sim's - lighting, motion blur, and a camera-to-lidar
+# association that degrades under yaw - and this is what turns a genuinely
+# split cell into an honest "unknown" instead of a coin flip. It costs
+# nothing when it does not bind, which on this evidence is always. If it
+# starts to matter on the robot, that is a signal about the classifier.
+commit_margin = 2.0
+
+# Detection is dropped above this yaw rate. Camera bearing and lidar range
+# are sampled at different instants, so under rotation they describe
+# different places and the fusion starts pairing the wrong things. Suppressed
+# ticks add no votes and clear none: a corner must not cost the map what it
+# already knows.
+max_heading_rate_deg_s = 20.0
+
 [steer]
 # How fast the steering command may move, in command units per second. A RATE
 # LIMIT, not a filter: it does nothing until the controller asks the servo to

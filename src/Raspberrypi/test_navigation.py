@@ -142,10 +142,13 @@ class SimLidar:
         self.dropout = dropout
         self.body_radius_mm = body_radius_mm
         self.pose = (0.0, 0.0, 0.0)
+        self._scan = None
         self._rng = np.random.default_rng(seed)
 
     def set_pose(self, x_mm, y_mm, heading_deg):
         self.pose = (x_mm, y_mm, heading_deg)
+        # A new pose is a new sweep - see get_scan.
+        self._scan = None
 
     def get_min_distance(self, start_deg, end_deg, max_age_s=None):
         """
@@ -164,6 +167,28 @@ class SimLidar:
         return float(sector[closest]), int(indices[closest] % 360)
 
     def get_scan(self, max_age_s=None):
+        """
+        The current sweep, generated once per pose and then held.
+
+        HELD, not regenerated per call, for two reasons. The real
+        LidarManager stores the sweep its thread produced and every query in a
+        tick reads that same array, so a task asking for three sectors gets
+        three views of ONE world; regenerating here would hand it three
+        different ones and quietly hide any bug that needs a consistent scan.
+
+        And it keeps the noise stream a function of the tick count alone.
+        Draw per call, and the stream position depends on how many questions
+        the code happens to ask - so adding one sector query to one controller
+        reshuffles the noise in every trial, and an unrelated placement ten
+        trials later changes its verdict. Measured the hard way: adding a
+        third sector to UnparkController._sample moved two trials that had
+        taken an identical decision either side of the change.
+        """
+        if self._scan is None:
+            self._scan = self._sweep()
+        return self._scan
+
+    def _sweep(self):
         x, y, heading = self.pose
         bearings = np.arange(360.0)
         ranges = self.map.raycast(x, y, np.radians(heading + bearings))

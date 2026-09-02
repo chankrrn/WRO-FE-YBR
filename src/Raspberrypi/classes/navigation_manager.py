@@ -244,6 +244,9 @@ class NavigationManager:
         self.blocks = block_map or BlockMap(
             field_map=self.map, debug=debug,
             camera_offset_mm=camera_offset_behind_lidar(self.lidar_offset_mm))
+        # Last raw camera frame, (detections, monotonic time) - see
+        # observe_blocks. None until the camera has produced one.
+        self.last_detections = None
 
         self._rng = np.random.default_rng(seed)
 
@@ -914,6 +917,13 @@ class NavigationManager:
             for block in context.nav.blocks.confirmed():
                 plan_around(block.x, block.y)
         """
+        # Keep the frame as the camera reported it, before the pose is folded
+        # in. The final round re-ranges these against the lidar and never
+        # places them through the filter at all, so what it needs is the raw
+        # (colour, bearing) pair - which the field-frame Blocks no longer
+        # carry. One tuple assignment, so the control loop can read it without
+        # a lock; a torn read is impossible and a stale one is a frame old.
+        self.last_detections = (detections, time.monotonic())
         # max_age_s=None deliberately: this is called from whichever thread
         # runs the camera, and the default would let it trigger a full filter
         # update - predict/correct/resample, all mutating the particle arrays -

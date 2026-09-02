@@ -48,10 +48,19 @@ from classes.parking import (BayFinder, ParkingSequence, UnparkController,
                              nearest_outer_wall, section_of,
                              travel_direction_beside_wall, wall_heading_of,
                              wall_rects)
+from classes.pillar_range import refine as refine_pillar_ranges
 from classes.racing_line import RacingLine
+from classes.slot_map import SlotMap, segment_from_heading
+from classes.wall_sense import resolve_walls
+from tasks.final.lap_controller import Lanes, LapController, Triggers
 from tasks.path_task import PathDrivingTask
-from utils.angle_utils import angle_difference
+from utils.angle_utils import angle_difference, normalize_angle
 from utils.enums import Color
+
+# Four corners to a lap. The lap counter derives from these rather than from
+# distance along the racing line, because the wall-relative loop never
+# projects onto the racing line at all - see laps_done.
+TURNS_PER_LAP = 4
 
 # `lateral` is positive to the right of travel (see RacingLine.project).
 # Passing a block on its LEFT means the robot ends up to the left of it, i.e.
@@ -147,6 +156,21 @@ class FinalTask(PathDrivingTask):
         # as a raw point rather than a progress: the lap direction is not
         # settled yet, and project() needs it.
         self._start_point = None
+        # The wall-relative loop that actually drives the lap, its pillar
+        # lattice, and the last thing it decided. All None until the lap
+        # direction is settled - see _start_lap_driving.
+        self.lap = None
+        self.slots = None
+        self._lap_command = None
+        # Heading rate, for the slot map's yaw gate. Differentiated here
+        # rather than read from the IMU because the compass reports an angle,
+        # not a rate, and this is the same heading the controller steers on.
+        self._last_heading = None
+        self._heading_rate = 0.0
+        # Which camera frame the lattice has already been shown, so a frame
+        # is not voted on twice just because the control loop out-runs it.
+        self._detections_at = None
+        self._lap_mismatch_said = False
     # ========================================================================
     # SETUP
     # ========================================================================
@@ -190,6 +214,11 @@ class FinalTask(PathDrivingTask):
         self._warn_if_the_corridor_is_too_narrow()
         self._warn_if_the_horizon_is_too_short()
         self._replan(pose, "setup")
+        # Starting on the track, the direction is already settled. Starting in
+        # a bay it is not, and _rejoin_the_line does this instead - the exit
+        # owns the wheels until then, so nothing is waiting on it.
+        if self._unparking is None:
+            self._start_lap_driving(pose, "placed on the track")
 
     def _steerable_radius_mm(self):
         """
@@ -399,6 +428,7 @@ class FinalTask(PathDrivingTask):
         self._rejoin_progress = self.progress
         print(f"Out of the bay at {pose} -> running "
               f"{RacingLine.direction_name(self.direction)} ({source})")
+        self._start_lap_driving(pose, source)
         self._warn_if_parking_cannot_reach_the_bay()
 
     def _warn_if_parking_cannot_reach_the_bay(self):
@@ -610,6 +640,13 @@ class FinalTask(PathDrivingTask):
         whose target point jitters. So it is rebuilt on a fixed cadence, and
         immediately whenever something it was built from has changed.
         """
+        # RETIRED, not removed. While the cascade drives, nothing reads the
+        # plan, and re-running the candidate search ten times a second to
+        # produce a target point no one chases is pure cost - it was also the
+        # churn that stopped the robot committing to one side of a pillar.
+        # The planner stays wired up so a config flip brings it back.
+        if self._driving_on_walls():
+            return ""
         if self._plan is None:
             return "no plan"
         if len(self._pillars) != self._planned_pillars:
@@ -641,6 +678,139 @@ class FinalTask(PathDrivingTask):
         self._replan_reason = reason
         if self._plan.compromised and self._plans_made % 20 == 1:
             print(f"WARNING: plan compromised - {self._plan.reason}")
+
+    # ========================================================================
+    # LAP DRIVING - the wall-relative cascade
+    # ========================================================================
+
+    def _start_lap_driving(self, pose, why):
+        """
+        Hand the lap over to the wall-relative loop.
+
+        Called once the direction is settled and not before: everything below
+        is indexed by which way round the robot is going, and the direction is
+        not known while it is still inside the bay.
+
+        The segment comes from the heading rather than the position, because
+        the heading is the one thing the localizer gets right in a bay - it is
+        lidar-derived modulo 90 with only the quadrant from the IMU, so it is
+        wrong only if the IMU has drifted 45 degrees.
+        """
+        if not self.setting("wall.enabled"):
+            return
+        segment = segment_from_heading(pose.heading)
+        self.slots = SlotMap(
+            start_segment=segment,
+            votes_to_commit=int(self.setting("slots.votes_to_commit")),
+            max_heading_rate_deg_s=float(
+                self.setting("slots.max_heading_rate_deg_s")),
+            commit_margin=float(self.setting("slots.commit_margin")))
+        self.lap = LapController(
+            clockwise=self.direction < 0,
+            slot_map=self.slots,
+            start_segment=segment,
+            max_steer_deg=float(self.pursuit.max_steer_command),
+            steer_sign=float(self.setting("wall.steer_sign")),
+            wall_p=float(self.setting("wall.p_deg_per_mm")),
+            heading_p=float(self.setting("wall.heading_p_deg_per_deg")),
+            no_pillars_wall_p=float(self.setting("wall.no_pillars_p_deg_per_mm")),
+            # Named, not splatted from a list: both tuples are five numbers
+            # of the same magnitude, so a positional slip would swap two
+            # rungs of a ladder and still run.
+            lanes=Lanes(
+                centre=float(self.setting("lanes.centre_mm")),
+                outer1=float(self.setting("lanes.outer1_mm")),
+                outer2=float(self.setting("lanes.outer2_mm")),
+                inner1=float(self.setting("lanes.inner1_mm")),
+                inner2=float(self.setting("lanes.inner2_mm")),
+                blind=float(self.setting("lanes.blind_mm"))),
+            triggers=Triggers(
+                default=float(self.setting("turning.front_mm")),
+                outer1=float(self.setting("turning.outer1_mm")),
+                outer2=float(self.setting("turning.outer2_mm")),
+                inner1=float(self.setting("turning.inner1_mm")),
+                inner2=float(self.setting("turning.inner2_mm"))),
+            pre_turn_front_mm=float(self.setting("turning.pre_turn_front_mm")),
+            pre_turn_cooldown_s=float(self.setting("turning.cooldown_s")),
+            turn_exit_tolerance_deg=float(
+                self.setting("turning.exit_tolerance_deg")))
+        self._last_heading = pose.heading
+        print(f"Wall-relative driving from segment {segment} "
+              f"(datum {self.lap.heading_direction_deg:.0f}deg, {why})")
+
+    def _driving_on_walls(self):
+        """True while the cascade owns the wheels."""
+        return self.lap is not None
+
+    def steering_command(self, pose, dt):
+        """
+        Steering from the walls, with the racing line as the fallback.
+
+        The pose is accepted and mostly ignored, which is the point. What is
+        read out of it is the heading - drift-free modulo 90 because the lidar
+        supplies it - and nothing else. Position error in the filter, which is
+        what put the robot into pillars, cannot reach the steering from here.
+
+        Falling back is not a failure mode to be avoided at all costs: with no
+        lidar there is nothing to be wall-relative about, and the racing line
+        is a better answer than a straight-ahead guess.
+        """
+        if not self._driving_on_walls() or self.context.lidar is None:
+            return super().steering_command(pose, dt)
+
+        scan = self.context.lidar.get_scan()
+        if scan is None:
+            return super().steering_command(pose, dt)
+
+        heading = pose.heading
+        self._last_heading = heading
+
+        # Classify against the direction we are TRYING to hold, not the nose -
+        # see wall_sense.classify. That is what stops a mid-correction crab
+        # from renaming the front wall.
+        walls = resolve_walls(scan, heading, self.lap.heading_direction_deg)
+        self._observe_slots(scan, walls, heading)
+
+        command = self.lap.update(dt, walls, heading, time.monotonic())
+        self._lap_command = command
+        # TELL THE SERVO MODEL. advance_servo tracks the angle PurePursuit
+        # last commanded, and PurePursuit is not running - so without this the
+        # modelled wheel angle sits at zero for the whole round, _turned()
+        # reports no yaw at all, and the filter is told the robot drove every
+        # corner in a straight line. Same reason and same call as
+        # _apply_manoeuvre makes for the park.
+        #
+        # The value is in MotorManager command units, not degrees: full lock
+        # is pursuit.max_steer_command, which is what LapController clamps to.
+        self.pursuit.set_road_wheel_command(command.steer_deg)
+        # The overlay draws a chase point; there is no longer one to draw.
+        self.target = None
+        return command.steer_deg
+
+    def _observe_slots(self, scan, walls, heading):
+        """
+        Show the lattice this tick's pillars, at most once per camera frame.
+
+        The camera runs on its own thread at its own rate and the control loop
+        is faster, so without the timestamp check one frame would cast three
+        votes and the "three unanimous consecutive observations" rule would
+        mean "one frame" - which is exactly the noise immunity it exists to
+        provide.
+        """
+        frame = self.context.nav.last_detections
+        if not frame:
+            return
+        detections, taken_at = frame
+        if taken_at == self._detections_at:
+            return
+        self._detections_at = taken_at
+        fixes = refine_pillar_ranges(scan, detections, walls)
+        committed = self.slots.observe(fixes, walls, self.lap.segment,
+                                       self.lap.clockwise,
+                                       heading_rate_deg_s=self.yaw_rate_deg_s)
+        for slot in committed:
+            print(f"Pillar committed: segment {slot.segment} "
+                  f"{slot.location.name} {slot.side.name} {slot.color.name}")
 
     # ========================================================================
     # TARGET - the one thing this round changes about the driving
@@ -685,9 +855,44 @@ class FinalTask(PathDrivingTask):
         is bought with speed.
         """
         speed = super()._choose_speed(pose)
+        if self._driving_on_walls():
+            # No plan to be compromised: the lane ladder encodes the clearance
+            # it can actually achieve instead of asking for one it cannot.
+            # What DOES want caution is having lost the wall - the lateral
+            # loop is coasting on heading alone until it comes back.
+            if self._lap_command is not None and self._lap_command.wall_lost:
+                speed = min(speed, int(self.setting("speed.compromised")))
+            return speed
         if self._plan is not None and self._plan.compromised:
             speed = min(speed, int(self.setting("speed.compromised")))
         return speed
+
+    @property
+    def laps_done(self):
+        """
+        Laps, counted in CORNERS rather than in distance along the line.
+
+        The base round divides distance_driven by the path length, and
+        distance_driven accumulates from odometry projected onto the racing
+        line - a chain the cascade deliberately does not use. Corners are the
+        measurement that survives it: they come off the heading datum, which
+        advances by exactly 90 degrees per turn and cannot creep.
+
+        The distance figure is still computed and still cross-checked, because
+        the two drifting apart is early evidence that something is wrong -
+        either a phantom corner or a real one that went unnoticed.
+        """
+        by_distance = super().laps_done
+        if not self._driving_on_walls():
+            return by_distance
+        by_turns = self.lap.turn_count / TURNS_PER_LAP
+        if abs(by_turns - by_distance) > 0.5 and not self._lap_mismatch_said:
+            self._lap_mismatch_said = True
+            print(f"WARNING: {self.lap.turn_count} corners counted "
+                  f"({by_turns:.2f} laps) but the odometry says "
+                  f"{by_distance:.2f}. One of them has missed something; "
+                  f"driving on the corners.")
+        return by_turns
 
     # ========================================================================
     # PARKING
@@ -969,6 +1174,20 @@ class FinalTask(PathDrivingTask):
         config asked for. That distinction is the entire point of the rewrite,
         so it is what the status line reports.
         """
+        if self._driving_on_walls():
+            command = self._lap_command
+            if command is None:
+                return f"wall=seg{self.lap.segment} starting"
+            # The two scalars that control everything, and what they are being
+            # measured against. If the robot is behaving oddly this line says
+            # which of the two rulers went wrong, which is the whole question.
+            outer = "lost" if command.outer_mm is None else f"{command.outer_mm:.0f}"
+            front = "none" if command.front_mm is None else f"{command.front_mm:.0f}"
+            return (f"{command.state} seg{command.segment} "
+                    f"outer {outer}/{command.target_outer_mm:.0f} "
+                    f"front {front}/{command.turning_front_mm:.0f} "
+                    f"err {command.heading_error_deg:+.0f}deg "
+                    f"slots {len(self.slots)}")
         if self._plan is None:
             return "plan=none"
         gaps = []
