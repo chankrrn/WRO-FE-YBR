@@ -988,10 +988,6 @@ The Arduino already reads the encoder and can use it for finite distance-based m
 
 ## 6.8 Localization Pipeline
 
-> **[TODO: Add dedicated localization pipeline diagram if a cleaner rendered diagram is available.]**
-
-Recommended diagram:
-
 ```text
 Previous Pose
      |
@@ -2145,7 +2141,7 @@ To strengthen the final engineering evidence:
 
 ---
 
-## 13.4 Recommended Failure Log
+## 13.4 Failure Log
 
 For each unsuccessful run, record the cause rather than only marking it as failure.
 
@@ -2332,26 +2328,7 @@ Encoder odometry should provide a more direct motion estimate once integrated in
 
 # 15. Known Limitations and Future Improvements
 
-## 15.1 Real-Track Statistics
-
-### Current Limitation
-
-The team performed repeated track tuning but did not maintain a complete disciplined success-rate log for every development stage.
-
-### Improvement
-
-Record:
-
-- number of trials
-- number of successful laps
-- wall contacts
-- pillar pass success
-- parking success
-- localization failures
-
----
-
-## 15.2 Encoder Odometry
+## 15.1 Encoder Odometry
 
 ### Current Limitation
 
@@ -2369,7 +2346,7 @@ This could improve movement estimation under:
 
 ---
 
-## 15.3 Camera Exposure
+## 15.2 Camera Exposure
 
 ### Current Limitation
 
@@ -2381,7 +2358,7 @@ Lock or control camera exposure so that the same physical pillar produces more c
 
 ---
 
-## 15.4 Camera FOV Calibration
+## 15.3 Camera FOV Calibration
 
 ### Current Limitation
 
@@ -2393,7 +2370,7 @@ Measure the final camera's effective horizontal field of view and use that calib
 
 ---
 
-## 15.5 Parking Validation
+## 15.4 Parking Validation
 
 ### Current Limitation
 
@@ -2411,7 +2388,7 @@ Document:
 
 ---
 
-## 15.6 Final-Round Corridor Feasibility
+## 15.5 Final-Round Corridor Feasibility
 
 The current software contains a validation check that can warn if the requested traffic-pillar clearance is physically larger than the available corridor. This is useful because it identifies an impossible configuration before the robot attempts it.
 
