@@ -25,7 +25,7 @@ goal = 2
 # the value goes to analogWrite unchanged. These are the figures measured
 # AFTER the 16:28 reduction was fitted (see startup.mm_per_s_at_full): 60 is
 # about 24% duty and around 234mm/s.
-base = 60
+base = 65
 corner = 60
 lost = 55
 minimum = 55
@@ -42,7 +42,7 @@ resolution_mm = 20.0
 # Gap from the outer wall to the straights. Unset centres the loop in the
 # corridor (500mm to the wall, 500mm to the centre block), which is the most
 # forgiving line and leaves a pass equal room either way.
-wall_margin_mm = 480.0
+wall_margin_mm = 520.0
 
 # Corner radius. Unset takes the biggest that still clears the centre block,
 # which here is 480mm - this is deliberately WIDER than that.
@@ -78,9 +78,9 @@ wheelbase_mm = 165.0
 # there are no steep dodges to cut across. Kept moderate rather than raised
 # straight away: raise it if the robot weaves on the straights, lower it if it
 # runs wide, and re-measure after any change to max_road_wheel_deg.
-lookahead_base_mm = 130.0
+lookahead_base_mm = 110.0
 lookahead_per_speed_mm = 2.5
-lookahead_min_mm = 120.0
+lookahead_min_mm = 110.0
 lookahead_max_mm = 400.0
 
 # Inside a bend the lookahead is additionally capped at this fraction of the
@@ -475,7 +475,7 @@ settle_relax = 0.5
 #    TURN IN, counted on the COMPASS. Leave the steer unset for full lock,
 #    which is the tightest arc and what the 204mm drop above assumes.
 turn_in_deg = 90.0
-# turn_in_steer = 46.0
+# turn_in_steer = 45.0
 
 #    THE TURN NEEDS ROOM. It carries the axle a whole radius (204mm) toward
 #    the wall before the nose comes round, so it has to start at least
@@ -522,7 +522,7 @@ timeout_s = 20.0
 # follow gets a run at the wall before the bay turns up in it - it needs about
 # 1.4m to settle onto the wall from a bad handover. Then: how many failed
 # attempts to retry before giving up and driving out the clock.
-start_early_mm = 2500.0
+start_early_mm = 800.0
 # 2, not 0: at 0 the FIRST abort gives up on the bay for the whole round and
 # just drives out the clock, which is a round that settles into the approach,
 # quits, and laps without ever trying again. Each retry costs most of a lap.
@@ -551,8 +551,8 @@ enabled = true
 # forward_mm is how far to drive on that lock before the racing line takes
 # over.
 reverse_mm = 160.0
-steer_command = 46.0
-forward_mm = 400.0
+steer_command = 45.0
+forward_mm = 340.0
 # Counter-steer for the reverse leg, a MAGNITUDE pointing AWAY from the exit
 # side. Reversing negates yaw rate, so backing up on the opposite lock turns
 # the robot the same way the forward leg will - it leaves the bay mouth with
