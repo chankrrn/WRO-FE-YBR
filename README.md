@@ -70,6 +70,8 @@
 
 </div>
 
+<br>
+
 We are **YBR-SUNFLOWER**, representing Yothinburana School, Thailand.
 
 | Member | Primary Responsibility | Supporting Responsibilities |
@@ -142,10 +144,9 @@ The starting position, driving direction and field configuration may change betw
 
 For this reason, our final software does not depend on one fixed prerecorded path from one fixed starting point.
 
-**Obstacle Challenge Performance Video:**  `[TODO: OPEN CHALLENGE VIDEO]`
+**Obstacle Challenge Performance Video:**  `[TODO: OBSTACLE CHALLENGE VIDEO]`
 
 > **All the videos including additional testing videos can be found in:** [`video/RunTest_video.md`](https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/e39aad0b6cc114cde8bbbf52a57e2f17c71f2b99/video/RunTest_video.md)
-
 
 ---
 
@@ -175,7 +176,6 @@ A major engineering decision throughout this project was:
 This principle influenced the complete system. Mechanically, it affected motor selection, drivetrain reduction, Ackermann-style steering, bearing support and chassis rigidity. Electrically, it influenced sensor placement and the decision to separate the Raspberry Pi power path from actuator-related loads.
 
 The same philosophy also influenced software development. Localization, path tracking, steering control and parameter tuning were designed around predictable behavior rather than aggressive speed. The final result is a vehicle intended to perform the same maneuver consistently instead of being optimized only for its fastest possible run.
-
 
 ---
 
@@ -216,16 +216,13 @@ The following photographs document the final competition robot from all required
 |---|---|---|
 | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Front.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Right.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Rear.png" width="250"> |
 
-
 | Left View | Top View | Bottom View |
 |---|---|---|
 | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Left.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Top.png" width="250"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/b80bfdc62db4c16ad0f3b1d6b3734f01582681df/robot-photos/Bottom.png" width="250"> |
 
 | Right-Front View | Right-Rear View | Left-Front View | Left-Rear View |
 |---|---|---|---|
-| <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Right%20to%20Front.png" width="187.5"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Right%20to%20Rear.png" width="187.5"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Left%20to%20Front.png" width="187.5"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Left%20to%20Rear.png" width="187.5">
-
-
+| <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Right%20to%20Front.png" width="187.5"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Right%20to%20Rear.png" width="187.5"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Left%20to%20Front.png" width="187.5"> | <img src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/4d5d33f8a46e3297b6dbb8371d7695a194f6d349/robot-photos/Left%20to%20Rear.png" width="187.5"> |
 
 ## 3.3 Annotated Final Robot Layout
 
@@ -272,11 +269,13 @@ We track and document major physical architecture changes using version numbers 
 
 | Version | Mechanical Development | Electrical / Sensor Development | Software Development | Main Outcome |
 |---|---|---|---|---|
-| **V1 — Initial Prototype** | Initial printed chassis and 1:1 external drivetrain | Ultrasonic + light-sensor sensing concept | Arduino-side control; complete Raspberry Pi autonomous driving not yet implemented | Initial hardware concept and drivetrain testing |
-| **V2 — LiDAR Prototype** | 21T drive gear, Ackermann steering, bearings and expanded structure | LiDAR introduced; ultrasonic and light sensor removed; IMU relocated | Navigation development and tuning became the main focus | More complete autonomous sensing architecture |
-| **V3 — Final Robot** | Robot rebuilt, 16T drive gear, stronger rear structure and final component layout | Final sensor placement, final wiring and separated power architecture | Localization, racing line, Pure Pursuit, obstacle mapping and competition software | Current competition platform |
+| **V1 — Initial Prototype** | Initial printed chassis and 28:28 (1:1) external drivetrain | Initial plan used front ultrasonic sensing + two downward-facing light sensors; a rear ultrasonic sensor was also planned for reverse-distance feedback during parking | Arduino-side control; complete Raspberry Pi autonomous driving not yet implemented | Initial hardware and sensing concept |
+| **V2 — LiDAR Prototype** | Same main robot platform with Ackermann steering, bearings and 21:28 external drivetrain | Front ultrasonic sensing was removed; RPLiDAR C1 was introduced; BNO055 was relocated beneath the LiDAR. The two light sensors were still physically attached in the prototype photo but were no longer part of the active sensing strategy | Navigation development and LiDAR-based localization/tuning became the main focus | Functional LiDAR-based prototype without the XL4015 branch |
+| **V3 — Final Robot** | Robot was completely rebuilt; final 16:28 drivetrain, improved motor performance, stronger final assembly and several green 3D-printed parts including Ackermann steering-arm components | Core V2 sensing architecture was retained; final wiring was reorganized and an XL4015 DC-DC step-down converter was added to the motor/control-side power architecture | Localization, racing line, Pure Pursuit, obstacle mapping and competition software retained and integrated into the rebuilt platform | Current competition robot and final integrated architecture |
 
-> V1 did not have a complete Raspberry Pi autonomous competition run. We therefore do not claim autonomous performance results for that version.
+> V1 did not have a complete Raspberry Pi autonomous competition run. We therefore do not claim autonomous performance results for that version. The rear ultrasonic sensor described above was part of the V1 design plan for parking-distance feedback and was not part of the final LiDAR-based architecture.
+
+> **[TODO: Add a compact V1 → V2 → V3 evolution diagram showing the major changes in drivetrain, sensing, power architecture and physical rebuild. Use the real prototype photographs rather than a generic engineering-cycle illustration.]**
 
 ---
 
@@ -286,19 +285,23 @@ We track and document major physical architecture changes using version numbers 
 
 <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/5e710e7e09354c6d071cfc761c1bd883adb1747e/robot-photos/ver-1/v1-Front.webp">
 
-**Main purpose:** establish the initial drivetrain, steering and sensing concept.
+**Main purpose:** establish the initial drivetrain, steering and sensing concept. The original V1 sensing plan used the front ultrasonic sensor for distance measurement together with two downward-facing light sensors. The team also planned to add another ultrasonic sensor at the rear so reverse distance could be observed during the parking maneuver. This concept was replaced before the final autonomous architecture was completed.
 
 ### Version 2
 
 <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/5e710e7e09354c6d071cfc761c1bd883adb1747e/robot-photos/ver-2/v2-Front.webp">
 
-**Main purpose:** integrate LiDAR-based sensing and begin complete autonomous navigation development.
+**Main purpose:** integrate LiDAR-based sensing and begin complete autonomous navigation development. The ultrasonic sensor was removed and RPLiDAR C1 became the main environmental-distance sensor. The BNO055 was moved beneath the LiDAR.
+
+> **Photo note:** the two light sensors are still visible on the Version 2 robot in this photograph because the team did not physically remove them from the chassis at that stage. They were no longer used by the active sensing architecture. The ultrasonic sensor, however, had already been removed.
+
+Version 2 did **not** use the final XL4015 motor/control power branch.
 
 ### Version 3
 
 <img width="250" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/620ed8f2468a557cd779440bb241dcd40da863fb/robot-photos/Front.png">
 
-**Main purpose:** final mechanical rebuild and integrated competition architecture.
+**Main purpose:** rebuild the robot into the final competition platform while retaining the core LiDAR + camera + IMU + encoder architecture developed in V2. Version 3 was assembled as a new robot, introduced the final 16:28 drivetrain for improved motor performance, reorganized the final electrical layout, and added the XL4015 DC-DC step-down converter. Several newly printed mechanical parts are green, including parts of the Ackermann steering-arm assembly.
 
 ---
 
@@ -362,8 +365,6 @@ The robot is divided into five interacting engineering subsystems:
 5. **Autonomous software**
 
 <img width="600" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/f2017970688b854a59edb393f0448ff55e84f3cf/other/system_architecture.png">
-
-```
 
 The exact interfaces and software modules are documented in the electrical and software documentation.
 
@@ -439,6 +440,7 @@ The final drivetrain combines:
 - LEGO-compatible wheels
 
 The final drivetrain uses a CHP-20GP-180 motor with a 19:1 internal gearbox to power a rear differential through a custom 16-tooth motor drive gear meshed with a 28-tooth LEGO differential gear. Ball bearings support the rear axle and reduce direct shaft contact with the printed structure, driving the LEGO-compatible wheels efficiently.
+
 The external drivetrain was developed through several iterations:
 
 ```text
@@ -455,6 +457,8 @@ V3: 16T → 28T
 Each step increased the external reduction. This reduced maximum drivetrain speed but increased available torque and improved low-speed controllability, which better matched our autonomous driving and parking requirements.
 
 Detailed torque calculations, motor selection, drivetrain iterations and CAD files are documented in the mechanical README.
+
+> **[TODO: Consider adding one compact mechanical overview diagram in the main README showing Motor → 19:1 gearbox → 16T → 28T differential → rear wheels together with the servo-driven Ackermann steering linkage. Keep detailed mechanical diagrams in `mech/mech_README.md`.]**
 
 ---
 
@@ -504,9 +508,11 @@ The Raspberry Pi is supplied through an LM2596 step-down converter adjusted to a
 
 ### Motor / Control Branch
 
-The actuator and control side uses a separate XL4015-based power path together with the motor-control electronics. The separation is intended to reduce the effect that rapidly changing motor and servo current can have on the Raspberry Pi supply.
+The actuator and control side uses a separate XL4015-based power path together with the motor-control electronics. On the completed Version 3 robot, the XL4015 output was measured at approximately **11.1 V**, with approximately **11.0 V measured at the downstream motor/control input** under static power-on. Version 2 did not use this XL4015 branch; it was added as part of the Version 3 electrical rebuild.
 
-> **[TODO: In the final electrical rewrite, confirm and document the exact XL4015 output voltage measured on the completed robot.]**
+The separation is intended to reduce direct interaction between rapidly changing actuator loads and the Raspberry Pi power path.
+
+> **[TODO: Add a compact power-architecture diagram to the main README showing the 3S LiPo → D1-2 distribution → LM2596 / XL4015 branches, including the measured 5.1 V → 5.0 V and 11.1 V → 11.0 V values. Keep the complete schematic and wiring diagram in `elec/elec_README.md`.]**
 
 ---
 
@@ -538,7 +544,7 @@ BNO055 IMU
 Motor Encoder
 ```
 
-The ultrasonic and light-sensor approach was removed because the final localization strategy required richer two-dimensional environmental information. LiDAR provided field geometry over many directions and therefore matched the navigation architecture more effectively.
+The V1 sensing plan depended on front ultrasonic distance measurement and two downward-facing light sensors, with an additional rear ultrasonic sensor planned for reverse-distance feedback during parking. In V2, the ultrasonic concept was removed and LiDAR became the main environmental-distance sensor. The light sensors remained physically attached to the V2 prototype for a period, which is why they are visible in some photographs, but they were no longer used by the active sensing architecture. LiDAR provided field geometry over many directions and therefore matched the navigation architecture more effectively.
 
 The camera remains important because LiDAR cannot determine the red or green color of a traffic pillar, while the BNO055 provides orientation information and the motor encoder provides drivetrain feedback.
 
@@ -550,11 +556,13 @@ Two important physical sensing problems were identified during development.
 
 ### Camera Field of View
 
-**Problem:** the original camera lens provided a limited field of view.
+**Problem:** the original camera view was too limited for reliable traffic-pillar observation.
 
-**Change:** the lens was replaced with a wider-angle configuration.
+**Change:** the camera/lens configuration was changed to provide a wider view.
 
-**Result:** approximately 60° field of view.
+The purchased OV5647 fish-eye camera reference lists approximately **130° diagonal FOV**, while the current vision software uses approximately **80° horizontal FOV** as its working calibration parameter. These values describe different FOV axes and the camera configuration changed during development, so the software parameter is treated separately from the supplier optical specification.
+
+> **[TODO: Before final submission, verify the exact lens physically installed on Version 3 and make the camera-FOV wording identical in `README.md`, `elec/elec_README.md`, and `software/software_README.md`.]**
 
 ### LiDAR Orientation
 
@@ -617,6 +625,8 @@ Arduino
      ├── Drive Motor
      └── Steering Servo
 ```
+
+> **[TODO: Add a polished autonomous navigation data-flow diagram to the main README. It should show LiDAR + IMU → particle-filter localization → base racing line, Camera → pillar detection → field coordinates → persistent block map → path offset, then Final Path → Lookahead → Pure Pursuit → steering/speed → Arduino. Keep algorithm details in `software/software_README.md`.]**
 
 ---
 
@@ -711,7 +721,7 @@ Current high-level parking sequence:
 4. apply the final steering correction to become parallel with the outer wall,
 5. stop.
 
-> **[TODO: Add parking state-machine diagram after the final parking implementation is locked.]**
+> **[TODO: Add a parking control-flow / state diagram after the final parking implementation is locked. The diagram must match the real code and should not introduce states that are not implemented.]**
 
 > **[TODO: Add parking success-rate / repeatability result from real track testing.]**
 
@@ -776,6 +786,8 @@ Software testing revealed real steering behavior that differed from assumed stee
 
 This required the control model to represent the actual physical steering response rather than only the CAD geometry.
 
+> **[TODO: Add a subsystem-interaction diagram showing Mechanical ↔ Electrical ↔ Software dependencies. Suggested labeled examples: gear ratio → software speed profile; sensor placement → data quality; LiDAR architecture → localization; steering tests → mechanical/control-model calibration.]**
+
 ---
 
 # 10. Testing, Validation and Failure Analysis
@@ -829,7 +841,7 @@ These measurements are important because the real mechanical response affects Pu
 | Problem | Investigation / Observation | Engineering Change | Result |
 |---|---|---|---|
 | Low drivetrain torque | Robot difficult to control smoothly at low speed | 28:28 → 21:28 → 16:28 external drivetrain | Improved low-speed controllability |
-| Narrow camera view | Insufficient visible area | Wider-angle camera lens | Approximately 60° FOV |
+| Narrow camera view | Insufficient visible area | Wider camera/lens configuration | Larger usable view; supplier optical reference and software FOV are documented separately |
 | Distorted LiDAR map | LiDAR mounting angle not sufficiently level | Repositioned LiDAR | Improved 2D environment representation |
 | Crowded electronics | IMU beside Pi I/O HAT | Relocated IMU under LiDAR | Cleaner physical layout |
 | Limited ultrasonic architecture | Needed richer environmental information | Replaced ultrasonic/light-sensor concept with LiDAR | Enabled localization-based navigation |
@@ -857,6 +869,8 @@ This section should contain only results that were actually measured by the team
 
 > **Do not replace TODO values with estimated numbers. Only include measurements that were actually recorded.**
 
+> **[TODO: After the final measured trial counts are entered, generate one testing-results chart for the main README (for example Open Challenge completion, pillar-pass success, parking success and wall-contact rate). Use only logged team data.]**
+
 ---
 
 ## 10.5 Engineering Testing Evidence
@@ -872,7 +886,6 @@ This section should contain only results that were actually measured by the team
 Additional evidence:
 
 [`engineering-process/testing/`](engineering-process/testing/)
-
 
 ---
 
@@ -1024,9 +1037,9 @@ The Git history is part of the engineering documentation because it shows that t
 
 | Version | Major Change | Status |
 |---|---|---|
-| V1 | Initial chassis, 1:1 external drivetrain and original sensing concept | Archived prototype |
-| V2 | Ackermann steering, bearings, 21T drivetrain gear and LiDAR architecture | Functional prototype |
-| V3 | New chassis, 16T drivetrain gear, final electrical layout and competition architecture | Current robot |
+| V1 | Initial chassis, 28:28 external drivetrain; front ultrasonic + light-sensor sensing plan, with rear ultrasonic planned for parking-distance feedback | Archived prototype |
+| V2 | Ackermann steering, bearings, 21:28 drivetrain and LiDAR architecture; ultrasonic removed; light sensors still physically present in some photos but no longer active; no XL4015 branch | Functional prototype |
+| V3 | Completely rebuilt robot, 16:28 drivetrain, improved motor performance, green reprinted mechanical parts, final electrical layout and added XL4015 motor/control power branch | Current robot |
 
 ---
 
@@ -1104,7 +1117,9 @@ Component datasheets and manufacturer references are maintained in the subsystem
 
 YBR-SUNFLOWER is the result of an iterative engineering process that connects mechanical design, electrical architecture, sensing and autonomous software.
 
-The project evolved from an initial prototype using a simpler drivetrain and sensing concept into a localization-based autonomous vehicle using:
+The project evolved from an initial V1 concept based on ultrasonic and light sensing, through a V2 LiDAR prototype, into a completely rebuilt Version 3 competition robot. Version 3 retained the core V2 sensing architecture but added the final 16:28 drivetrain, improved motor performance, reorganized electrical packaging, several green reprinted mechanical parts, and the XL4015 motor/control power branch.
+
+The final localization-based autonomous vehicle uses:
 
 - a torque-focused drivetrain,
 - Ackermann-style steering,
