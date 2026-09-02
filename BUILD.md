@@ -379,12 +379,13 @@ Before printing:
 The final mechanical documentation contains the complete CAD list.
 
 Important final components include:
+-components (quantity)
 
-- Main Base
-- Electrical Base
-- Arduino Base
-- Raspberry Pi Base
-- Motor Bracket
+- Main Base (1)
+- Electrical Base (1)
+- Arduino Base (1)
+- Raspberry Pi Base (1)
+- Motor Bracket 
 - 16T Driver Gear
 - Bearing Mounts
 - Axle Sleeves
@@ -392,49 +393,20 @@ Important final components include:
 - Steering Arms
 - Steering Linkage
 - Steering Mounts
-- Servo Bracket
+- Servo Bracket (1)
 - Camera Mount
 - Camera Plate
 - Camera Arm
 - Camera Connector
 - LiDAR / IMU Mount
-- Rear Wing
+- Rear Wing (1)
 - XL4015 Step-down Tray
 
 > **[TODO: Add quantity beside every final printed component.]**
 
 ---
 
-## 5.3 Slicer Reproducibility
-
-To make the mechanical build more reproducible than STL geometry alone:
-
-> **[TODO: Add the final Bambu Studio `.3mf` files if they are available.]**
-
-Recommended future structure:
-
-```text
-mech/
-├── models/
-│   └── ...
-│
-└── slicer/
-    ├── ABS/
-    └── ABS-GF/
-```
-
-The slicer files can preserve:
-
-- orientation
-- supports
-- layer settings
-- wall count
-- infill
-- material profile
-
----
-
-## 5.4 Final Printing Settings
+## 5.3 Final Printing Settings
 
 Only record settings that were actually used.
 
@@ -782,8 +754,6 @@ Raspberry Pi
 ```
 
 Use the I²C / Gravity connector corresponding to the final wiring diagram.
-
-> **[TODO: Add a close-up photograph showing the exact DFR0566 port used.]**
 
 ---
 
@@ -1190,8 +1160,6 @@ PID_v2
 
 The repository also contains library files associated with the Arduino firmware.
 
-For maximum reproducibility, the final competition documentation should record the exact versions used.
-
 > **[TODO: Record final Servo library version.]**
 
 > **[TODO: Record final PID_v2 library version.]**
@@ -1289,23 +1257,6 @@ For exact reproduction:
 3. first reproduce the robot behavior,
 4. only then change tuning values if the reproduced mechanical platform differs.
 
----
-
-## 11.2 Final Competition Configuration
-
-> **[TODO: Record the exact final Git commit / release containing the competition configuration.]**
-
-Example:
-
-```text
-Release:
-[TODO]
-
-Commit:
-[TODO]
-```
-
-This is required so that future repository updates do not change the version that was actually evaluated.
 
 ---
 
