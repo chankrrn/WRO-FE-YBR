@@ -202,7 +202,8 @@ The same philosophy also influenced software development. Localization, path tra
 | Main battery | 11.1 V 3S LiPo, 1100 mAh |
 | Power architecture | Separate computing and motor/control branches |
 | Final dimensions | Approximately **230 × 140 × 130 mm** |
-| Final weight | **[TODO: Measure final competition weight]** |
+| Final weight without LiPo battery | 768 grams |
+| Final weight with LiPo battery | 854 grams |
 | Final physical version | Version 3 |
 
 ---
@@ -360,38 +361,8 @@ The robot is divided into five interacting engineering subsystems:
 4. **Computing and control**
 5. **Autonomous software**
 
-> **[TODO: Add NEW high-level system architecture block diagram]**
+<img width="600" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/f2017970688b854a59edb393f0448ff55e84f3cf/other/system_architecture.png">
 
-Recommended diagram structure:
-
-```text
-                           SENSORS
-              ┌──────────────┼───────────────┐
-              │              │               │
-            LiDAR          Camera           IMU
-              │              │               │
-              └──────────────┼───────────────┘
-                             │
-                             v
-                      Raspberry Pi 5
-                             │
-              ┌──────────────┼───────────────┐
-              │              │               │
-          Localization   Vision System   Path Planning
-              │              │               │
-              └──────────────┼───────────────┘
-                             │
-                       Pure Pursuit
-                             │
-                        USB Serial
-                             │
-                             v
-                    Arduino UNO R4
-                       │          │
-                       v          v
-                  Drive Motor   Steering
-                       │
-                    Encoder
 ```
 
 The exact interfaces and software modules are documented in the electrical and software documentation.

@@ -69,8 +69,9 @@ PHYSICS_STEP_S = 0.02        # bicycle model integration step
 # were the outer wall and the centre block, both of which the robot passes
 # broadside; the parking bay is 16mm-per-end tight at the worst angle, and a
 # 100mm disc simply cannot express that. Measured from the POSE POINT, which
-# in this sim is the rear axle (the bicycle model integrates about it and
-# pursuit.rear_axle_offset_mm is 0).
+# is the rear axle: the bicycle model integrates about it, the SimLidar puts
+# its beam LIDAR_AHEAD_MM in front of it (as NavigationManager expects), and
+# pursuit.rear_axle_offset_mm is 0.
 ROBOT_LENGTH_MM = 240.0
 ROBOT_WIDTH_MM = 120.0
 ROBOT_REAR_OVERHANG_MM = 40.0    # rear axle back to the rear bumper

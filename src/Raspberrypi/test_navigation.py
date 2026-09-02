@@ -40,9 +40,11 @@ life-size 5cm squares, hollow and grey until seen enough times to be confirmed:
 
     python test_navigation.py --hardware --camera
 
-The lens defaults to 12cm straight back from the lidar, so --camera-offset is
+The lens defaults to 17cm straight back from the lidar, so --camera-offset is
 only needed if it is mounted somewhere else. Both offsets are (forward, right)
-from the robot's center, and --lidar-offset moves the camera with it.
+from the REAR AXLE - the point the pose describes - and --lidar-offset moves
+the camera with it. The lidar's default is the measured 15cm ahead of the
+axle from classes/robot_geometry.py.
 
 The blocks are only ever placed with a reliable pose, so if localization has
 not converged you will see detections counted as rejected instead of mapped.
@@ -54,9 +56,10 @@ import time
 import cv2
 import numpy as np
 
-from classes.block_map import CAMERA_BEHIND_LIDAR_MM
 from classes.field_map import FieldMap
 from classes.navigation_manager import NavigationManager
+from classes.robot_geometry import (CAMERA_BEHIND_LIDAR_MM, DEFAULT_LIDAR_OFFSET_MM,
+                                    to_field)
 from utils.angle_utils import normalize_angle
 
 # ============================================================================
@@ -133,19 +136,33 @@ class SimLidar:
     A LidarManager stand-in: raycasts the map from the true pose and adds the
     noise and dropouts a real C1 scan has. Only get_scan() is needed, which is
     all NavigationManager ever calls.
+
+    `set_pose` takes the ROBOT's pose - the rear axle, like every pose in the
+    stack - and the beam starts `offset_mm` ahead of it, where the real lidar
+    is. So a sim that feeds this to a NavigationManager built with the same
+    offset is testing the transform the real robot relies on, not skipping it.
     """
 
     def __init__(self, field_map, noise_mm=SIM_RANGE_NOISE_MM, dropout=SIM_DROPOUT,
-                 body_radius_mm=110.0, seed=1):
+                 body_radius_mm=110.0, seed=1, offset_mm=DEFAULT_LIDAR_OFFSET_MM):
         self.map = field_map
         self.noise_mm = noise_mm
         self.dropout = dropout
         self.body_radius_mm = body_radius_mm
+        self.offset_mm = tuple(float(v) for v in offset_mm)
         self.pose = (0.0, 0.0, 0.0)
         self._rng = np.random.default_rng(seed)
 
     def set_pose(self, x_mm, y_mm, heading_deg):
+        """The robot's (rear axle) pose; the beam origin is derived from it."""
         self.pose = (x_mm, y_mm, heading_deg)
+
+    @property
+    def origin(self):
+        """(x, y, heading) of the beam itself, in field mm."""
+        x, y, heading = self.pose
+        origin_x, origin_y = to_field(x, y, heading, self.offset_mm)
+        return float(origin_x), float(origin_y), heading
 
     def get_min_distance(self, start_deg, end_deg, max_age_s=None):
         """
@@ -164,7 +181,7 @@ class SimLidar:
         return float(sector[closest]), int(indices[closest] % 360)
 
     def get_scan(self, max_age_s=None):
-        x, y, heading = self.pose
+        x, y, heading = self.origin
         bearings = np.arange(360.0)
         ranges = self.map.raycast(x, y, np.radians(heading + bearings))
         ranges = ranges + self._rng.normal(0.0, self.noise_mm, 360)
@@ -320,7 +337,7 @@ def start_camera(args, nav):
             nav.blocks.camera_offset_mm = tuple(args.camera_offset)
         nav.blocks.debug = True
         print(f"Camera up, mapping blocks "
-              f"(lens at {nav.blocks.camera_offset_mm}mm from the robot's center).")
+              f"(lens at {nav.blocks.camera_offset_mm}mm from the rear axle).")
         return camera, solver
     except Exception as e:
         print(f"WARNING: camera unavailable ({e!r}) - continuing without block mapping")
@@ -441,14 +458,16 @@ if __name__ == "__main__":
                           help="where the robot really is, to seed the filter")
     hardware.add_argument("--compass-sign", type=float, default=1.0,
                           help="+1 if the IMU counts up clockwise, -1 otherwise")
-    hardware.add_argument("--lidar-offset", type=float, nargs=2, default=[0.0, 0.0],
+    hardware.add_argument("--lidar-offset", type=float, nargs=2,
+                          default=list(DEFAULT_LIDAR_OFFSET_MM),
                           metavar=("FORWARD_MM", "RIGHT_MM"),
-                          help="where the lidar sits relative to the robot's center")
+                          help=f"where the lidar sits relative to the rear axle "
+                               f"(default: {DEFAULT_LIDAR_OFFSET_MM[0]:.0f}mm ahead)")
     hardware.add_argument("--camera", action="store_true",
                           help="also map the red/green blocks with the camera")
     hardware.add_argument("--camera-offset", type=float, nargs=2, default=None,
                           metavar=("FORWARD_MM", "RIGHT_MM"),
-                          help=f"where the lens sits relative to the robot's center "
+                          help=f"where the lens sits relative to the rear axle "
                                f"(default: {CAMERA_BEHIND_LIDAR_MM:.0f}mm behind the lidar)")
     hardware.add_argument("--camera-every", type=int, default=5,
                           help="run detection every N filter ticks (default: 5)")

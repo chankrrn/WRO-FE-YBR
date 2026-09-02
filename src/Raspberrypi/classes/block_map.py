@@ -35,6 +35,8 @@ import cv2
 
 from classes.field_map import FieldMap
 from classes.object_solver import CAPTURED_HORIZONTAL_FOV_DEG
+from classes.robot_geometry import (CAMERA_BEHIND_LIDAR_MM,  # noqa: F401 - re-exported
+                                    camera_offset_behind_lidar, to_field)
 from utils.angle_utils import angle_difference, normalize_angle
 from utils.enums import Color
 from utils.image_drawing_utils import ImageDrawingUtils
@@ -102,11 +104,9 @@ BLOCK_EDGE_MARGIN_MM = 20.0
 # copy of it would silently break the "should I have seen that block?" test.
 DEFAULT_CAMERA_FOV_DEG = CAPTURED_HORIZONTAL_FOV_DEG
 
-# The lens sits this far straight back from the lidar on the same mast. Both
-# sensors are described relative to the robot's center, but only ONE of the two
-# distances is a fixed property of the build - so the camera's offset is
-# derived from the lidar's rather than typed in twice and left to drift apart.
-CAMERA_BEHIND_LIDAR_MM = 170.0
+# Where the lens is relative to the rear axle (the point the pose describes)
+# lives in classes/robot_geometry.py with the rest of the robot's dimensions;
+# the names are re-exported here for the callers that always found them here.
 # Blocks at the very edge of the frame are half-cut and range badly, so the
 # "should I have seen it?" test uses a slightly narrower cone than the real one.
 VISIBILITY_FOV_MARGIN_DEG = 4.0
@@ -119,20 +119,6 @@ COLOR_BGR = {
     Color.RED: (140, 30, 30),
 }
 UNCONFIRMED_BGR = (110, 110, 110)
-
-
-def camera_offset_behind_lidar(lidar_offset_mm=(0.0, 0.0),
-                               behind_mm=CAMERA_BEHIND_LIDAR_MM):
-    """
-    Where the lens is, given where the lidar is: `behind_mm` straight back
-    along the robot's forward axis, same lateral position.
-
-    I/O:
-        lidar_offset_mm: (forward, right) of the lidar from the robot's center
-        return: (forward, right) of the lens, in the same frame
-    """
-    forward, right = lidar_offset_mm
-    return forward - behind_mm, right
 
 
 # A serial number per tracked block, for anything that has to remember
@@ -190,11 +176,13 @@ class BlockMap:
                  max_range_mm=MAX_MAPPING_RANGE_MM, debug=False):
         """
         I/O:
-            camera_offset_mm: (forward, right) of the lens from the robot's
-                              center, in the robot's own frame. Defaults to
-                              CAMERA_BEHIND_LIDAR_MM behind a centered lidar;
-                              NavigationManager overrides this with the offset
-                              measured from wherever the lidar actually is.
+            camera_offset_mm: (forward, right) of the lens from the REAR
+                              AXLE - the point the pose describes - in the
+                              robot's own frame. Defaults to
+                              CAMERA_BEHIND_LIDAR_MM behind the lidar's own
+                              default position; NavigationManager overrides
+                              this with the offset derived from wherever its
+                              lidar actually is.
             camera_yaw_deg: how far the camera is turned off straight ahead
             camera_fov_deg: horizontal field of view, for the visibility test
         """
@@ -291,10 +279,8 @@ class BlockMap:
 
     def camera_position(self, pose):
         """Where the lens is in field coordinates, given the robot's pose."""
-        forward, right = self.camera_offset_mm
-        radians = math.radians(pose.heading)
-        return (pose.x + forward * math.sin(radians) + right * math.cos(radians),
-                pose.y + forward * math.cos(radians) - right * math.sin(radians))
+        x, y = to_field(pose.x, pose.y, pose.heading, self.camera_offset_mm)
+        return float(x), float(y)
 
     def _to_field(self, pose, camera_x, camera_y, detection):
         """

@@ -16,8 +16,10 @@ wants a long lookahead, slow in a corner wants a short one.
 Two conversions are easy to get wrong and are handled explicitly here:
 
   * pure pursuit is defined from the REAR AXLE, not the middle of the robot.
-    `rear_axle_offset_mm` shifts the pose back to it. Left at 0 the robot
-    understeers slightly on tight corners.
+    NavigationManager already reports the axle (the lidar is described as an
+    offset ahead of it - see classes/robot_geometry.py), so
+    `rear_axle_offset_mm` stays at 0. It is only here for a pose source
+    whose point is somewhere else on the body.
   * MotorManager.steer() takes a servo command, not a road-wheel angle. The
     two are proportional but not equal, so `max_road_wheel_deg` (measure it:
     turn the wheel to full lock and put a protractor on it) maps one to the
