@@ -371,7 +371,7 @@ The final ratio was not selected only because it produced more theoretical torqu
 
 # 4. Final Mechanical Architecture
 
-> **[TODO: Add NEW annotated final mechanical layout image]**
+<img width="300" src="https://github.com/chankrrn/WRO-FE-YBR-SUNFLOWER/blob/937cd6a481424097b992a8eb9cef23175d5ff3cf/robot-photos/Right%20to%20Front.png">
 
 The recommended labels for the image are **Main Base, Front Steering Assembly, Steering Servo, Camera Mechanism, Motor, 16T Drive Gear, Differential, Rear Axle, Bearing Mounts, Electrical Base, UNO Base, Raspberry Pi Base, LiDAR / IMU Mount, Rear Wing and Step-down Tray**.
 
