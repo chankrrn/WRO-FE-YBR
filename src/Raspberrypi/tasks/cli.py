@@ -104,6 +104,8 @@ def run_task(task_class, argv=None):
     except Exception:
         pass
 
+    from tasks.path_task import DEFAULTS
+
     context = TaskContext(
         debug=args.debug or args.ascii,
         ascii_debug=args.ascii,
@@ -114,6 +116,7 @@ def run_task(task_class, argv=None):
         lidar_port=args.lidar_port,
         start_pose=args.start_pose,
         no_drive=args.no_drive,
+        lidar_ahead_mm=config.get("robot.lidar_ahead_mm", DEFAULTS["robot.lidar_ahead_mm"]),
     )
 
     with context:
@@ -130,6 +133,7 @@ def dry_run(task_class, config):
     from classes.field_map import FieldMap
     from classes.pure_pursuit import PurePursuit
     from classes.racing_line import RacingLine
+    from classes.robot_geometry import CAMERA_BEHIND_LIDAR_MM
     from tasks.path_task import DEFAULTS
 
     def setting(key):
@@ -152,6 +156,10 @@ def dry_run(task_class, config):
           f"= {path.length * setting('laps.goal') / 1000:.1f}m")
     print(f"  clearances      {field.outer - path.half:.0f}mm to the wall, "
           f"{path.half - field.inner:.0f}mm to the block on the straights")
+    lidar_ahead = float(setting("robot.lidar_ahead_mm"))
+    lens_ahead = lidar_ahead - CAMERA_BEHIND_LIDAR_MM
+    print(f"  pose point      rear axle; lidar {lidar_ahead:.0f}mm ahead of it, "
+          f"lens {abs(lens_ahead):.0f}mm {'ahead' if lens_ahead >= 0 else 'behind'}")
     print(f"  turning circle  robot {pursuit.min_turn_radius_mm:.0f}mm vs "
           f"path corner {path.corner_radius:.0f}mm "
           f"{'OK' if path.corner_radius >= pursuit.min_turn_radius_mm else 'TOO TIGHT'}")

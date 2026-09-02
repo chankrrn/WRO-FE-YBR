@@ -28,6 +28,10 @@ class TaskContext:
     motor ever turning, so a round can be walked through by hand - see
     MotorManager.drive_enabled.
 
+    context.nav reports the pose of the REAR AXLE. The lidar is on a mast at
+    the front of the car, `lidar_ahead_mm` ahead of that, and the localizer
+    casts its rays from there - see classes/robot_geometry.py.
+
     Usage:
         with TaskContext(debug=True) as context:
             context.motor.forward(55)
@@ -36,7 +40,15 @@ class TaskContext:
 
     def __init__(self, debug=False, ascii_debug=False, use_lidar=False, use_camera=False,
                  laps_goal=3, motor_port=None, lidar_port=None,
-                 start_pose=None, no_drive=False):
+                 start_pose=None, no_drive=False, lidar_ahead_mm=None):
+        """
+        I/O:
+            lidar_ahead_mm: how far the lidar sits ahead of the rear axle,
+                            which is the point every pose describes. None
+                            takes robot_geometry's measured default; a round
+                            passes its robot.lidar_ahead_mm so the config is
+                            the one place the number lives.
+        """
         self.debug = debug
         self.ascii_debug = ascii_debug
         self.use_lidar = use_lidar
@@ -55,7 +67,10 @@ class TaskContext:
         # Always constructed so context.nav.get_pose() is safe to call from any
         # task, but it only has anything to localize against once the lidar is
         # up - without it every pose comes back with confidence 0.
-        self.nav = NavigationManager(compass=self.compass, debug=debug)
+        nav_options = {}
+        if lidar_ahead_mm is not None:
+            nav_options["lidar_offset_mm"] = (float(lidar_ahead_mm), 0.0)
+        self.nav = NavigationManager(compass=self.compass, debug=debug, **nav_options)
 
         # Built during startup only when asked for.
         self.lidar = None

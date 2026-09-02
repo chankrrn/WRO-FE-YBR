@@ -17,6 +17,14 @@
 # Distances are millimetres, angles degrees.
 # =============================================================================
 
+[robot]
+# The pose is the middle of the REAR (driving) AXLE. The lidar stands on the
+# mast at the front, almost over the steering wheels, this far ahead of it -
+# measured from the rear axle's centreline to the middle of the lidar. The
+# localizer casts its rays from here and reports the axle, so this is the one
+# number that turns "where the lidar is" into "where the robot is".
+lidar_ahead_mm = 150.0
+
 [laps]
 goal = 2
 
@@ -413,11 +421,13 @@ mouth_sector_deg = 6.0
 # blade_below_mm = 330.0     # unset = the same threshold as the trigger
 creep_max_mm = 700.0
 
-#    THE LIDAR IS NOT AT THE AXLE - it is 130mm forward of it. That moves both
-#    ends of this: the beam goes level with a bay wall while the axle is still
-#    130mm short of it, and it reads the outer wall from 130mm closer than the
-#    nose is. Measure this one properly, it moves everything below.
-lidar_ahead_mm = 130.0
+#    THE LIDAR IS NOT AT THE AXLE - it sits robot.lidar_ahead_mm forward of it.
+#    That moves both ends of this: the beam goes level with a bay wall while
+#    the axle is still that far short of it, and it reads the outer wall from
+#    that much closer than the nose is. Left unset it takes robot.lidar_ahead_mm,
+#    the same number the localizer uses - set it only to make the park
+#    disagree with the localizer on purpose.
+# lidar_ahead_mm = 150.0
 
 #    MEASURE THE BAY, then back up to its middle. Instead of turning a fixed
 #    distance after the first bay wall, drive past BOTH walls - so the bay's
@@ -468,7 +478,7 @@ settle_relax = 0.5
 #    second wall is never found. It rolls on further before turning in. UNSET
 #    lands the body in the middle of the bay on its own: half the bay, plus
 #    how far the lidar leads the axle, minus the radius the turn carries the
-#    axle through - 170 + 130 - 204, about 96mm. At zero it lands 96mm off
+#    axle through - 170 + 150 - 204, about 116mm. At zero it lands 116mm off
 #    centre, far enough over to graze the far wall.
 # turn_after_mm = 0.0
 
