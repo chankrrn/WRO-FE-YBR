@@ -79,7 +79,7 @@ minimum = 30
 # 230: comfortably past the cliff, and the straights still run 770mm from the
 # centre block. Push it back toward 200 to hug the wall again, but not below
 # 180.
-wall_margin_mm = 230.0
+wall_margin_mm = 320.0
 #
 # Corner radius. Leave unset for the biggest that still clears the centre
 # block, and keep it above the robot's turning circle (setup warns if not).
@@ -92,7 +92,7 @@ wall_margin_mm = 230.0
 # opens the corners out. That is very likely an improvement, but it is a
 # change to a round that is already tuned, so it is left as a deliberate
 # choice: delete this line to take it.
-corner_radius_mm = 700.0
+corner_radius_mm = 600.0
 resolution_mm = 20.0
 
 [pursuit]
@@ -101,7 +101,7 @@ wheelbase_mm = 165.0
 # Lookahead = base + per_speed * speed, clamped. This is THE tuning knob:
 # raise it if the robot weaves down the straights, lower it if it runs wide in
 # the corners.
-lookahead_base_mm = 600.0
+lookahead_base_mm = 500.0
 lookahead_per_speed_mm = 3.0
 lookahead_min_mm = 400.0
 lookahead_max_mm = 800.0
@@ -113,7 +113,7 @@ lookahead_max_mm = 800.0
 # bend's radius, which is what stops the robot cutting the apex and then
 # running wide correcting. Lower it if it still cuts; raise it if it weaves.
 # Measured on the sim: 0.9 -> 2.1cm corner error, 0.7 -> 1.2cm, off -> 4.2cm.
-corner_lookahead_fraction = 0.75
+corner_lookahead_fraction = 0.8
 
 # THE SERVO IS NOT A VALUE, IT IS AN ACTUATOR. Time constant of the steering,
 # from `test_steering.py --lag`: ~0.35s to 63%. Everything that dead-reckons

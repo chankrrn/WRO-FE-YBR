@@ -13,13 +13,28 @@ HUE_SEAM = HUE_MAX - 1
 # ignored entirely.
 COLOR_SPECS = {
     #                  anchor RGB        hue_tol  saturation   value
-    Color.BLUE:       ((50, 40, 45),        15,   (30, 160),  (50, 200)),
-    Color.ORANGE:     ((67, 44, 108),       12,   (70, 170),  (100, 160)),
+    Color.BLUE:       ((47, 64, 160),        15,   (100, 190),  (50, 200)),
+    Color.ORANGE:     ((227, 104, 149),       12,   (70, 150),  (150, 260)),
     Color.ALL_COLORS: ((255, 255, 255),   None,   (100, 255), (50, 255)),
     #Color.GREEN:     ((0, 255, 0),         10,   (90, 255),  (50, 205)),
-    Color.GREEN:      ((80, 121, 65),         16,  (70, 150),  (75, 185)),
-    Color.RED:        ((148, 36, 58),         3,   (110, 190), (90, 180)),
-    Color.PINK:       ((118, 29, 66),         2,   (150, 200), (100, 255)),
+    # Eyedroppered off the mat with test_color_picker.py, three points down the
+    # body of each block, then widened so the samples sit in the MIDDLE of every
+    # band rather than on its edge - a sample on a boundary is a detection that
+    # flickers. Measured (H, S, V):
+    #
+    #     green  H 63-67   S 126-144  V  69-78
+    #     red    H 174     S 167-195  V 105-110
+    #     pink   H 166-167 S 176-190  V 120-127
+    #
+    # Red and pink are the pair that has to be told apart, and only HUE does it:
+    # their saturations overlap outright and their values nearly do. The gap is
+    # 7 hue units, so the two windows meet at 170/171 and neither reaches over -
+    # contiguous, so a pixel between the samples still lands somewhere, but
+    # disjoint, so it can never land in both. Do NOT widen either toward the
+    # other; widen S/V instead, which is where lighting actually moves them.
+    Color.GREEN:      ((38, 78, 43),         11,  (25, 140),  (50, 180)),
+    Color.RED:        ((150, 45, 75),         3,  (150, 200), (130, 300)),
+    Color.PINK:       ((126, 43, 93),         2,  (140, 235), (90, 180)),
     Color.WHITE:      ((197, 174, 191),   None,   (10, 40),    (190, 210)),
 }
 

@@ -26,7 +26,10 @@
 lidar_ahead_mm = 120.0
 
 [laps]
-goal = 2
+# ONE LAP, THEN PARK. The round is driven as `uv run python main.py final`
+# with no flags, so this is the number that decides it - --laps still
+# overrides for a one-off.
+goal = 1
 
 [speed]
 # A speed is the RAW PWM duty the Arduino writes (0-255), not a percentage -
@@ -153,7 +156,7 @@ localize_timeout_s = 8.0
 # To find the right value: set one of the four, run, and read the startup line
 # "Parking bay expected in the <section> section". If that is not the section
 # the bay is really in, rotate this by 90 and go again.
-start_heading_deg = 180.0
+start_heading_deg = 0.0
 
 # 700 through the original gearing; 390 MEASURED with a tape after the 16:28
 # reduction was fitted - 700mm in 3.0s at command 60. Re-measure the same way
@@ -352,7 +355,82 @@ front_sector_deg = 25.0
 # it is right.
 # =============================================================================
 [parking]
-enabled = false
+enabled = true
+
+# ---------------------------------------------------------------------------
+# THE ROUND ITSELF NOW RUNS BayPark (classes/bay_park.py), NOT the six-state
+# manoeuvre the rest of this section's comments describe. tasks/final/task.py
+# ._start_parking builds it; tasks/parking_test still builds the old one on
+# the bench, and everything below is kept because both read from here and
+# most of the measured numbers (follow_mm, front_stop_mm, camera thresholds)
+# transfer directly. Five keys are BayPark-only and were not here before -
+# see classes/bay_park.py's module docstring for what replaced what, and
+# why:
+road_middle_mm = 500.0     # SETTLE's target - the MIDDLE of the road, not
+                            # wall_distance_mm below (see bay_park.py: the
+                            # turn-in spends a whole turn radius, so settling
+                            # at the middle is what leaves that radius spare)
+bay_mm = 340.0              # the field's own gap between the blades - a
+                            # rule, not something measured fresh off one beam
+blade_step_mm = 110.0       # how far the side range must drop to count as a
+                            # blade rather than the wall
+# How far the wide side sector reports the near blade EARLY - see
+# classes/bay_park.py's _place_bay for why this is a real, one-directional
+# bias and not noise: get_min_distance reports the CLOSEST return over the
+# whole sector, so it starts seeing the blade before the axle is actually
+# level with it, every time. The 2026-xx-xx mat run parked short of the
+# bay's true middle by a visible margin with this at 0 (near blade found at
+# s=197mm after driving only 21mm of FIND, which is itself a strong sign the
+# blade was caught very early). 120mm is a first guess from the sector's own
+# geometry (25-30deg wide, roughly a wall-distance's worth of tan(half
+# angle)), not a measurement - raise it further if the next run still parks
+# short, lower it if it overshoots.
+blade_lead_mm = 120.0
+steer_slew_deg_s = 150.0    # how fast SETTLE's follow may move the wheels
+find_max_mm = 4000.0        # how far FIND may run before giving up
+
+# WIGGLE - an OPTIONAL extra pass after DRIVE_IN stops: a fully custom LIST
+# of legs, driven in order, each one its own steer angle and distance - not
+# a fixed shape, so this can be a plain parallel-park-style correction
+# (angle, straight, opposite angle) or anything else, as many legs as you
+# want. One shared speed (wiggle_speed) for every leg; each leg's own
+# "reverse" says which direction it drives. See classes/bay_park.py's
+# module docstring and _wiggle for the mechanics.
+#
+# EMPTY (commented out, as below) = OFF, and this is the state to leave it
+# in until the plain nose-in park above is trusted on the mat - wiggling
+# spends road behind the car for a manoeuvre that, done wrong, can walk the
+# car sideways into a bay wall rather than straighten it. Turn it on only
+# once DRIVE_IN's landing spot is known to need the extra correction.
+#
+# Uncomment and edit to turn it on - each [[parking.wiggle_steps]] block
+# below is ONE leg, run in the order they appear. steer_deg is a STEERING
+# COMMAND (same units/sign as everywhere else in this file: - left, + right)
+# not a road-wheel angle. reverse defaults to false (forward) if omitted.
+# This example is a plain three-point correction: back-right, straight
+# forward, back-left - delete it or add more legs freely.
+wiggle_speed = 55
+# [[parking.wiggle_steps]]
+# steer_deg = 30.0
+# distance_mm = 70.0
+# reverse = true
+#
+# [[parking.wiggle_steps]]
+# steer_deg = 0.0
+# distance_mm = 50.0
+# reverse = false
+#
+# [[parking.wiggle_steps]]
+# steer_deg = -30.0
+# distance_mm = 70.0
+# reverse = true
+
+# wall_gain, wall_max_steer and heading_gain below are SHARED with BayPark's
+# own wall-follow and heading-hold, carried over as a starting point because
+# they are dimensionally the same thing (steer per mm, steer per degree) -
+# but they were tuned against the old manoeuvre's 450mm follow distance and
+# 90mm blade-proud freeze, not BayPark's 500mm target and single-blade
+# placement. Re-tune on the mat rather than assume they transfer exactly.
 
 # 1. how far off the outer wall to run while looking for the bay, and how
 #    hard to hold it there. Far enough out that the bay wall is a clear step
@@ -370,6 +448,9 @@ follow_mm = 800.0
 # the round drives on without parking; and 300 is BELOW trigger_below_mm, so
 # plain wall reads as a bay wall. 450 is also very nearly the middle of the
 # 1000mm road, which is where the reverse and the turn-in want to start from.
+#
+# NOT read by BayPark - see road_middle_mm above. Kept because
+# tasks/parking_test's bench manoeuvre still uses it.
 wall_distance_mm = 450.0
 wall_gain = 0.3
 wall_max_steer = 30.0
@@ -520,10 +601,42 @@ nose_stop_mm = 20.0
 camera_confirms = true
 camera_bearing_deg = 60.0
 
-# 5. speeds, and the pause that lets the servo reach each new angle before the
-#    wheels move. Slow: every millimetre of overshoot lands on the tightest
-#    clearance of the whole manoeuvre, and the legs are measured by odometry.
-speed = 50
+# ---------------------------------------------------------------------------
+# THE VELOZ PORT'S OWN KNOBS - read by tasks/parking_test (classes/
+# veloz_parking.py), NOT by the manoeuvre the rest of this section describes.
+#
+# Every one of them is a plain config.get(key, default), so a key that is
+# absent here is not an error - it is the constructor default, silently. That
+# is why none of these were in the file: the port has been running on its
+# built-in numbers the whole time. Nothing validates the section, so adding a
+# key is all it takes to take one over.
+#
+# WHERE THE REVERSE STARTS ALONG THE BAY. These two together decide it, and
+# between them they are what puts the tail on the far blade.
+#
+# The approach ends when the bay draws LEVEL and then rolls on past_bay_mm, so
+# the tail swings into the slot rather than onto the near blade. Roll too far
+# and you overshoot to the other end of the bay and hit the FAR one. Read the
+# real roll-on off the status line - it prints `level@<mm>` and `on=<mm>`, and
+# the difference is what was actually driven - then take the overlap off here.
+past_bay_mm = 0.0
+
+# The catch is that "level" usually fires not on the bearing but on the mark
+# leaving the lens, and that path waits out the full lost-timeout first. At
+# 55 duty (~215mm/s) 0.8s is ~170mm of roll-on that happens BEFORE past_bay_mm
+# starts counting - more than the roll-on itself, and invisible in the number
+# above. 0.4 halves it. Lower still and a mark that flickers behind a pillar
+# starts throwing away good approaches, which is what this timeout is for.
+marker_lost_s = 0.4
+# ---------------------------------------------------------------------------
+
+# 5. speeds. Slow: every millimetre of overshoot lands on the tightest
+#    clearance of the whole manoeuvre, and BayPark measures every leg by
+#    odometry off the duty it ACTUALLY drives at (see MIN_MOVE_SPEED in
+#    classes/bay_park.py) - 50 here used to be floored to 55 in secret, which
+#    made every measured leg run about 10% further than the manoeuvre
+#    thought. 55 is now the true floor, so the measurement is honest.
+speed = 55
 reverse_speed = 60
 servo_settle_s = 0.4
 timeout_s = 20.0
@@ -532,7 +645,7 @@ timeout_s = 20.0
 # follow gets a run at the wall before the bay turns up in it - it needs about
 # 1.4m to settle onto the wall from a bad handover. Then: how many failed
 # attempts to retry before giving up and driving out the clock.
-start_early_mm = 2300.0
+start_early_mm = 1000.0
 # 2, not 0: at 0 the FIRST abort gives up on the bay for the whole round and
 # just drives out the clock, which is a round that settles into the approach,
 # quits, and laps without ever trying again. Each retry costs most of a lap.
@@ -541,7 +654,7 @@ start_early_mm = 2300.0
 # closes. No extra laps hunting for the bay, no going round for another run,
 # no giving up and driving out the clock. A failed attempt reverses this far
 # and goes again, as many times as the clock allows.
-retry_back_mm = 900.0
+retry_back_mm = 700.0
 
 [unpark]
 # Leaving a bay the robot was PLACED in, before the first lap. Off unless the
@@ -562,16 +675,16 @@ enabled = true
 # over.
 reverse_mm = 160.0
 steer_command = 45.0
-forward_mm = 340.0
+forward_mm = 350.0
 # Counter-steer for the reverse leg, a MAGNITUDE pointing AWAY from the exit
 # side. Reversing negates yaw rate, so backing up on the opposite lock turns
 # the robot the same way the forward leg will - it leaves the bay mouth with
 # the nose already aimed out, instead of having to develop all that yaw from
 # inside the slot. The tail swings the other way while it does, so 0 (straight
 # back) is the right answer for a bay with no room behind the rear corners.
-reverse_steer_command = 20
-speed = 65
-reverse_speed = 60
+reverse_steer_command = 10
+speed = 70
+reverse_speed = 65
 look_s = 0.6
 servo_settle_s = 0.4
 side_bearing_deg = 90.0
@@ -579,3 +692,55 @@ side_sector_deg = 45.0
 side_margin_mm = 100.0
 default_side = 1
 timeout_s = 15.0
+
+# LOOK AROUND BEFORE DECIDING WHERE YOU ARE.
+#
+# The lap's direction, its counter and the whole plan are worked out ONCE, on
+# the tick the exit ends. Asked at that moment the filter has just come out of
+# a bay - where the scan is two blades 200mm away and very little else - after
+# reversing and turning on the spot, which is the motion it learns least from.
+# A cloud locked onto the wrong quadrant of a 90-degree symmetric field says so
+# with full confidence, and the direction, the bay and every pillar inherit it.
+#
+# So the exit is followed by a short walk with the wheels OFF CENTRE - a curve
+# sweeps the heading, so consecutive scans disagree with a wrong hypothesis in
+# a way a straight run does not - and then a full stop, because at 50Hz the
+# round asks for a pose far faster than the lidar refreshes and standing still
+# gives the filter whole revolutions of clean returns.
+#
+# Set relocalise_enabled = false to go back to deriving the lap the instant
+# the exit ends.
+relocalise_enabled = true
+relocalise_mm = 200.0
+# Which way to kink. Either sign works - it is the change of heading that
+# helps, not the direction - so pick the one with more room where the robot
+# starts.
+relocalise_steer = 37.0
+relocalise_speed = 50
+# Stand still for at least this long, and go when the confidence is back.
+relocalise_settle_s = 1.0
+relocalise_min_confidence = 0.6
+# ...but do not stand there for ever. A round that will not localize still has
+# to be driven.
+relocalise_max_settle_s = 4.0
+
+# READ THE MAP AGAIN AT THE STOP, AND START THE ROUND FROM THERE.
+#
+# The pose the round carries out of setup() was seeded INSIDE the bay - two
+# blades 200mm away, most of the field hidden behind them - and then dead
+# reckoned through a reverse and a turn on the spot. The stop at the end of
+# the look-around is the first clean, stationary look the lidar gets at the
+# whole field, so reread_map throws that pose away and localizes again from
+# scratch, and the settle above is what gives the filter time to converge.
+#
+# restart_here then makes THAT pose the round's reference: the lap counter is
+# zeroed there, the start section is re-read there, and a lap ends back there
+# rather than back at the bay.
+#
+# WHAT THIS CANNOT FIX: the re-read seeds every particle's heading from the
+# compass, and the field is 90-degree symmetric, so it searches only within
+# the quadrant the compass believes. If startup.start_heading_deg is wrong it
+# will confidently find the same wrong corner again. That setting is the only
+# cure for that - the startup block prints all four candidates.
+reread_map = true
+restart_here = true

@@ -63,6 +63,8 @@ _SECTIONS = {
     "west": (0, -1),
 }
 
+side = None
+
 
 def section_of(x, y, field_map):
     """
@@ -1206,6 +1208,7 @@ class UnparkController:
         # +1 exits to the right, -1 to the left. Set by hand to skip the look,
         # otherwise decided in LOOK.
         self.side = None if side is None else (1 if int(side) >= 0 else -1)
+        side = self.side
         # Whether that side came from two clearly different readings, or from
         # default_side breaking a tie. Only a confident side is worth deciding
         # the LAP direction on - see wall_side.
@@ -2705,3 +2708,124 @@ def _maybe(value, absolute=False):
     if value is None:
         return None
     return abs(float(value)) if absolute else float(value)
+
+
+class RelocaliseWalk:
+    """
+    A short kinked walk after the bay exit, then a full stop, before the round
+    decides where it is.
+
+    WHY. The lap's direction, its counter and the whole plan are derived once,
+    on the tick the exit ends, from whatever pose the filter is reporting
+    then - see FinalTask._rejoin_the_line. That is the worst moment to ask.
+    The robot has just been sitting in a bay, where the scan is dominated by
+    two blades 200mm away and the field beyond them is mostly hidden; it has
+    then reversed and turned on the spot, which is the motion a particle
+    filter learns least from. A cloud that has locked onto the wrong quadrant
+    of a 90-degree symmetric field reports it with complete confidence, and
+    every later thing - which way the lap runs, where the bay is, where the
+    pillars are - inherits that error.
+
+    So this drives on a little further with the wheels OFF CENTRE, and then
+    stands still.
+
+    THE ANGLE IS THE POINT. Driving straight shows the lidar the same walls
+    from a slightly different distance; driving on a curve sweeps the heading
+    as well, so consecutive scans disagree with a wrong hypothesis in a way
+    that a straight run does not. The stop afterwards is what lets the filter
+    use it: at 50Hz the round asks for a pose far faster than the scan
+    refreshes, and standing still for a second gives it whole revolutions of
+    clean, motionless returns to converge on.
+
+    Ends when the settle time is up AND the confidence has come back - or at
+    max_settle_s regardless, because a round that will not localize still has
+    to be driven.
+    """
+
+    WALK, SETTLE, DONE = "walk", "settle", "done"
+
+    def __init__(self, nav=None, distance_mm=400.0, steer_command=15.0,
+                 speed=30, settle_s=1.0, min_confidence=0.6,
+                 max_settle_s=4.0, mm_per_s_at_full=390.0, on_settle=None,
+                 side=1):
+        self.nav = nav
+        # Called once, on the tick the robot comes to rest. This is where the
+        # round re-reads the map: standing still with the bay behind it is the
+        # best look at the field it will get, and the settle that follows is
+        # the time the filter needs to converge on it.
+        self.on_settle = on_settle
+        self.distance_mm = float(distance_mm)
+        # `steer_command` is a MAGNITUDE, same convention as
+        # UnparkController.steer_command - which way it points comes from
+        # `side`, the side the exit just turned out on, so the kink continues
+        # the same curve the bay exit was already sweeping instead of
+        # fighting it back the other way.
+        self.side = 1 if side is None or side >= 0 else -1
+        self.steer_command = self.side * abs(float(steer_command))
+        self.speed = int(speed)
+        self.settle_s = float(settle_s)
+        self.min_confidence = float(min_confidence)
+        self.max_settle_s = float(max_settle_s)
+        self.mm_per_s_at_full = float(mm_per_s_at_full)
+
+        self.phase = self.WALK
+        self.driven_mm = 0.0
+        self.settled_s = 0.0
+        self.confidence = 0.0
+
+    @property
+    def active(self):
+        return self.phase != self.DONE
+
+    @property
+    def finished(self):
+        return self.phase == self.DONE
+
+    def summary(self):
+        return (f"{self.distance_mm:.0f}mm at {self.steer_command:+.0f}deg, "
+                f"then still for {self.settle_s:.1f}s or until confidence "
+                f"{self.min_confidence:.2f}")
+
+    def status_line(self):
+        if self.phase == self.WALK:
+            return (f"look {self.phase:6} {self.driven_mm:.0f}/"
+                    f"{self.distance_mm:.0f}mm")
+        return (f"look {self.phase:6} {self.settled_s:.1f}/{self.settle_s:.1f}s "
+                f"conf={self.confidence:.2f}")
+
+    def update(self, dt, max_steer=40.0):
+        """
+        One tick.
+
+        I/O:
+            return: (steer, speed), or None once the walk is over
+        """
+        if self.finished:
+            return None
+
+        steer = clamp(self.steer_command, -max_steer, max_steer)
+
+        if self.phase == self.WALK:
+            self.driven_mm += abs(self.speed) / 100.0 * self.mm_per_s_at_full * dt
+            if self.driven_mm < self.distance_mm:
+                return (steer, self.speed)
+            self.phase = self.SETTLE
+            if self.on_settle is not None:
+                self.on_settle()
+
+        # STOPPED. Wheels centred so the servo is not holding a load, and so
+        # the pose the lap is derived from is the pose the robot is actually
+        # in rather than one mid-turn.
+        self.settled_s += dt
+        self.confidence = self._confidence()
+        long_enough = self.settled_s >= self.settle_s
+        if ((long_enough and self.confidence >= self.min_confidence)
+                or self.settled_s >= self.max_settle_s):
+            self.phase = self.DONE
+        return (0.0, 0)
+
+    def _confidence(self):
+        if self.nav is None:
+            return 1.0
+        pose = self.nav.get_pose()
+        return 0.0 if pose is None else float(pose.confidence)

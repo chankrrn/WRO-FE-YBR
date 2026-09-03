@@ -42,10 +42,11 @@ from collections import namedtuple
 
 import cv2
 
+from classes.bay_park import BayPark
 from classes.block_map import BLOCK_SIZE_MM
 from classes.goal_planner import GoalPlanner, Obstacle
-from classes.parking import (BayFinder, ParkingSequence, UnparkController,
-                             nearest_outer_wall, section_of,
+from classes.parking import (BayFinder, RelocaliseWalk,
+                             UnparkController, nearest_outer_wall, section_of,
                              travel_direction_beside_wall, wall_heading_of,
                              wall_rects)
 from classes.racing_line import RacingLine
@@ -130,12 +131,16 @@ class FinalTask(PathDrivingTask):
         # Failed park attempts - see _retry_the_park. There is no cap and no
         # giving up: the round ends parked or on the time limit.
         self._park_attempts = 0
+        # Whether the laps are over. Latched - see parking_command.
+        self._park_armed = False
         # Millimetres still to reverse before the next attempt - see
         # _retry_the_park.
         self._park_backing_mm = 0.0
         # The exit from the bay the robot was placed in - see
         # _setup_manoeuvres.
         self._unparking = None
+        # The look-around between the exit and the lap - see RelocaliseWalk.
+        self._relocalise = None
         # Where on the lap the exit handed back to the racing line, and
         # whether the reach warning has been said - see
         # _warn_if_parking_cannot_reach_the_bay.
@@ -180,6 +185,7 @@ class FinalTask(PathDrivingTask):
         self._start_point = (pose.x, pose.y)
         self._start_section = section_of(pose.x, pose.y, self.context.nav.map)
         print(f"Parking bay expected in the {self._start_section} section")
+        self._report_start_heading_candidates(pose)
         if self.setting("parking.enabled") and self._start_section is not None:
             self._bay_finder = BayFinder(
                 self.context.nav.map, self._start_section,
@@ -367,23 +373,104 @@ class FinalTask(PathDrivingTask):
 
     def _start_speed(self):
         """Held still while the exit is pending: it drives its own first tick."""
-        if self._unparking is not None and not self._unparking.finished:
+        if self._leaving_the_bay():
             return 0
         return super()._start_speed()
+
+    def _leaving_the_bay(self):
+        """Still getting out, or still looking around after getting out."""
+        return ((self._unparking is not None and not self._unparking.finished)
+                or (self._relocalise is not None
+                    and not self._relocalise.finished))
 
     def unparking_command(self, dt):
         """
         The exit's (steer, speed) for this tick - see
         PathDrivingTask._drive_unparking.
+
+        Two manoeuvres, not one. The exit gets the robot out of the bay, and
+        then RelocaliseWalk drives a short kink and stops so the filter has a
+        settled, believable pose to hand over. Only when THAT finishes is the
+        lap derived: _rejoin_the_line reads the pose once and never asks
+        again, so it must not be asked while the robot is still in the bay's
+        blind spot.
         """
-        if self._unparking is None or self._unparking.finished:
-            return None
-        command = self._unparking.update(
-            self.context.nav.get_pose(), dt,
-            max_steer=self.pursuit.max_steer_command)
-        if self._unparking.finished:
+        if self._unparking is not None and not self._unparking.finished:
+            command = self._unparking.update(
+                self.context.nav.get_pose(), dt,
+                max_steer=self.pursuit.max_steer_command)
+            if self._unparking.finished:
+                self._start_relocalise()
+            return command
+
+        if self._relocalise is not None and not self._relocalise.finished:
+            command = self._relocalise.update(
+                dt, max_steer=self.pursuit.max_steer_command)
+            if self._relocalise.finished:
+                print(f"Look-around done - {self._relocalise.status_line()}")
+                self._rejoin_the_line()
+            return command
+
+        return None
+
+    def _start_relocalise(self):
+        """
+        Builds the look-around that follows the exit, if it is switched on.
+
+        With it off the lap is derived the instant the exit ends, which is the
+        old behaviour and the one that kept reading the map wrong.
+        """
+        if not self.setting("unpark.relocalise_enabled"):
             self._rejoin_the_line()
-        return command
+            return
+        self._relocalise = RelocaliseWalk(
+            nav=self.context.nav,
+            distance_mm=float(self.setting("unpark.relocalise_mm")),
+            steer_command=float(self.setting("unpark.relocalise_steer")),
+            speed=int(self.setting("unpark.relocalise_speed")),
+            settle_s=float(self.setting("unpark.relocalise_settle_s")),
+            min_confidence=float(
+                self.setting("unpark.relocalise_min_confidence")),
+            max_settle_s=float(self.setting("unpark.relocalise_max_settle_s")),
+            mm_per_s_at_full=float(self.setting("startup.mm_per_s_at_full")),
+            on_settle=self._reread_the_map,
+            # Continue the same curve the exit just turned out on, rather
+            # than a fixed direction that fights it on half the starts.
+            side=self._unparking.side)
+        print(f"Out of the bay - looking around: "
+              f"{self._relocalise.summary()}")
+
+    def _reread_the_map(self):
+        """
+        Throws the pose away and localizes again, from a standstill, with the
+        bay behind the robot.
+
+        Called on the tick the look-around stops. The pose the round has been
+        carrying until now was seeded inside a bay - two blades 200mm away and
+        most of the field hidden behind them - and then dead-reckoned through
+        a reverse and a turn on the spot. This is the first moment the lidar
+        has a clean, stationary look at the whole field, so it is the right
+        moment to ask again rather than to keep believing that.
+
+        NavigationManager.start() with no pose scatters over the whole
+        drivable ring and lets the scan find the robot, which is what "read
+        the map" means here. The settle that follows is what gives it the
+        revolutions to converge before anything is derived from the answer.
+
+        NOTE what this cannot do. _scatter seeds every particle's heading from
+        the compass, so the re-read searches within the quadrant the compass
+        believes - and the field is 90-degree symmetric, so no amount of
+        looking at it can tell that quadrant from the other three. If
+        startup.start_heading_deg is wrong, this finds the same wrong corner
+        again, confidently. That number is the only cure for that, and the
+        startup block prints the four candidates.
+        """
+        if not self.setting("unpark.reread_map"):
+            return
+        nav = self.context.nav
+        before = nav.get_pose()
+        nav.start()
+        print(f"Re-reading the map from a standstill (was {before})")
 
     def _rejoin_the_line(self):
         """
@@ -396,6 +483,24 @@ class FinalTask(PathDrivingTask):
         driven getting out does not count as lap.
         """
         pose = self.context.nav.get_pose()
+
+        # HERE IS THE START LINE NOW. setup() took the start point from inside
+        # the bay, which is where the lap counter was zeroed and where the
+        # start section was read - both off a pose that had only ever seen the
+        # inside of a slot. The round has since driven out, looked around and
+        # re-read the map from a standstill, so this pose is the best one it
+        # will have; make it the reference the whole round is measured from.
+        # A lap now ends back HERE rather than back at the bay.
+        if self.setting("unpark.restart_here"):
+            self._start_point = (pose.x, pose.y)
+            section = section_of(pose.x, pose.y, self.context.nav.map)
+            if section != self._start_section:
+                print(f"Start section was {self._start_section}, reading it as "
+                      f"{section} now the robot is out of the bay")
+                self._start_section = section
+                self._rebuild_bay_finder()
+            self._report_start_heading_candidates(pose)
+
         self.direction, source = self._lap_direction(pose)
         self.progress, self.lateral = self.path.project(pose.x, pose.y, self.direction)
         self.aim_progress = self.progress
@@ -507,7 +612,15 @@ class FinalTask(PathDrivingTask):
             # capture_for_blocks(), not capture_image() + transform_image():
             # this round reads the HSV frame and nothing else, and the full
             # pipeline costs ~19ms a frame to produce ~1.6ms of answer.
-            record = context.camera.record_video
+            # getattr, not an attribute read: this is the FALLBACK path, and
+            # it runs precisely when the vision thread could not be built -
+            # including against a camera stand-in that never had a recorder.
+            # Reading it directly threw on every tick, the except below
+            # swallowed it as "detection failed", and observe_blocks was never
+            # reached: the round then drove a whole lap with an empty block
+            # map and no idea there were any pillars. The simulator hits this
+            # on every run, which is why its pillar results meant nothing.
+            record = getattr(context.camera, "record_video", False)
             hsv = context.camera.capture_for_blocks(
                 with_display=context.object_solver.debug or record)
             if hsv is None:
@@ -727,7 +840,7 @@ class FinalTask(PathDrivingTask):
             return
         # Which way along the wall the robot is going, for a bay placed from a
         # single blade: the blade it meets first is the near one, so the bay
-        # lies ahead of it. Same test BayFrame uses for its own `forward`.
+        # lies ahead of it. Same test travel_direction_beside_wall uses.
         self._bay_finder.travel_sign = (
             1.0 if abs(angle_difference(pose.heading,
                                         wall_heading_of(self._start_section))) <= 90.0
@@ -758,65 +871,52 @@ class FinalTask(PathDrivingTask):
 
     def _start_parking(self):
         """
-        Builds the parking sequence, once the laps are done.
+        Builds the parking manoeuvre, once the laps are done.
 
-        No bay position, no frame, no map: the sequence finds the bay itself
-        from the side lidar. All this has to supply is which side the wall is
-        on, and that comes from the lap direction - which is itself measured
-        by lidar at the start of the round, so the pose is out of the chain
-        end to end.
+        No bay position, no frame, no map: BayPark finds the near blade
+        itself from the side lidar (or, failing that, from bay_ahead_mm - the
+        lap counter's own dead-reckoned backstop, unchanged from the old
+        manoeuvre - see _bay_ahead_mm). All this has to supply beyond its own
+        tunables is which side the wall is on, which comes from the lap
+        direction - itself measured by lidar at the start of the round, so
+        the pose is out of the chain end to end.
         """
-        self._parking = ParkingSequence(
+        self._parking = BayPark(
             lidar=self.context.lidar,
             compass=self.context.compass,
+            vision=self.context.vision,
             wall_side=1.0 if self.direction > 0 else -1.0,
-            wall_distance_mm=float(self.setting("parking.wall_distance_mm")),
-            wall_gain=float(self.setting("parking.wall_gain")),
-            wall_max_steer=float(self.setting("parking.wall_max_steer")),
-            side_bearing_deg=float(self.setting("parking.side_bearing_deg")),
-            side_sector_deg=float(self.setting("parking.side_sector_deg")),
-            angle_gain=float(self.setting("parking.angle_gain")),
-            angle_arc_deg=float(self.setting("parking.angle_arc_deg")),
-            angle_min_points=int(self.setting("parking.angle_min_points")),
-            angle_max_deg=float(self.setting("parking.angle_max_deg")),
-            front_stop_mm=float(self.setting("parking.front_stop_mm")),
-            front_sector_deg=float(self.setting("parking.front_sector_deg")),
-            front_hold_s=float(self.setting("parking.front_hold_s")),
-            body_stop_mm=float(self.setting("parking.body_stop_mm")),
-            body_sector_deg=float(self.setting("parking.body_sector_deg")),
-            inner_sector_deg=float(self.setting("parking.inner_sector_deg")),
-            inner_slack_mm=float(self.setting("parking.inner_slack_mm")),
-            trigger_below_mm=self.setting("parking.trigger_below_mm"),
-            mouth_sector_deg=float(self.setting("parking.mouth_sector_deg")),
-            blade_below_mm=self.setting("parking.blade_below_mm"),
-            lidar_ahead_mm=self._lidar_ahead_mm(),
-            turn_after_mm=self.setting("parking.turn_after_mm"),
-            measure_bay=bool(self.setting("parking.measure_bay")),
-            mouth_clear_mm=float(self.setting("parking.mouth_clear_mm")),
-            bay_min_mm=float(self.setting("parking.bay_min_mm")),
+            road_middle_mm=float(self.setting("parking.road_middle_mm")),
+            bay_mm=float(self.setting("parking.bay_mm")),
+            blade_step_mm=float(self.setting("parking.blade_step_mm")),
+            blade_lead_mm=float(self.setting("parking.blade_lead_mm")),
+            wiggle_steps=self.setting("parking.wiggle_steps"),
+            wiggle_speed=float(self.setting("parking.wiggle_speed")),
             settle_max_mm=float(self.setting("parking.settle_max_mm")),
             settle_tolerance_mm=float(self.setting("parking.settle_tolerance_mm")),
             settle_angle_deg=float(self.setting("parking.settle_angle_deg")),
             settle_relax=float(self.setting("parking.settle_relax")),
-            creep_max_mm=float(self.setting("parking.creep_max_mm")),
-            turn_in_deg=float(self.setting("parking.turn_in_deg")),
-            turn_in_steer=self.setting("parking.turn_in_steer"),
-            turn_in_min_mm=self.setting("parking.turn_in_min_mm"),
+            wall_gain=float(self.setting("parking.wall_gain")),
+            angle_gain=float(self.setting("parking.angle_gain")),
+            wall_max_steer=float(self.setting("parking.wall_max_steer")),
+            steer_slew_deg_s=float(self.setting("parking.steer_slew_deg_s")),
             heading_gain=float(self.setting("parking.heading_gain")),
-            nose_stop_mm=float(self.setting("parking.nose_stop_mm")),
+            side_bearing_deg=float(self.setting("parking.side_bearing_deg")),
+            side_sector_deg=float(self.setting("parking.side_sector_deg")),
+            angle_arc_deg=float(self.setting("parking.angle_arc_deg")),
+            angle_min_points=int(self.setting("parking.angle_min_points")),
+            angle_max_deg=float(self.setting("parking.angle_max_deg")),
+            front_stop_mm=float(self.setting("parking.front_stop_mm")),
+            find_max_mm=float(self.setting("parking.find_max_mm")),
+            lidar_ahead_mm=self._lidar_ahead_mm(),
+            robot_front_mm=float(self.setting("goals.robot_front_mm")),
             wheelbase_mm=float(self.setting("pursuit.wheelbase_mm")),
             max_road_wheel_deg=float(self.setting("pursuit.max_road_wheel_deg")),
-            vision=self.context.vision,
-            camera_confirms=bool(self.setting("parking.camera_confirms")),
-            camera_bearing_deg=float(self.setting("parking.camera_bearing_deg")),
+            turn_in_deg=float(self.setting("parking.turn_in_deg")),
+            nose_stop_mm=float(self.setting("parking.nose_stop_mm")),
             speed=int(self.setting("parking.speed")),
             reverse_speed=int(self.setting("parking.reverse_speed")),
-            servo_settle_s=float(self.setting("parking.servo_settle_s")),
             mm_per_s_at_full=float(self.setting("startup.mm_per_s_at_full")),
-            # The road's nominal width, so station-keeping beside the bay has
-            # a number to work with even if the follow never measured one.
-            nominal_corridor_mm=(self.context.nav.map.outer
-                                 - self.context.nav.map.inner),
             bay_ahead_mm=self._bay_ahead_mm(),
             timeout_s=float(self.setting("parking.timeout_s")))
         # The camera does nothing about the bay for the whole lap - a third
@@ -826,6 +926,61 @@ class FinalTask(PathDrivingTask):
         side = "right" if self.direction > 0 else "left"
         print(f"Laps done - parking. Outer wall on the {side}.")
         print(f"  {self._parking.summary()}")
+
+
+    def _rebuild_bay_finder(self):
+        """The bay hunt is tied to a section, so a corrected section needs a
+        new one - the old one has been voting on the wrong wall."""
+        if not self.setting("parking.enabled") or self._start_section is None:
+            self._bay_finder = None
+            return
+        self._bay_finder = BayFinder(
+            self.context.nav.map, self._start_section,
+            lidar_offset_mm=self.context.nav.lidar_offset_mm,
+            min_depth_mm=float(self.setting("parking.detect_min_depth_mm")),
+            min_gap_mm=float(self.setting("parking.detect_min_gap_mm")),
+            max_gap_mm=float(self.setting("parking.detect_max_gap_mm")),
+            min_scans=int(self.setting("parking.detect_min_scans")),
+            single_scans=int(self.setting("parking.detect_single_scans")))
+
+    def _report_start_heading_candidates(self, pose):
+        """
+        Prints what each of the four legal start_heading_deg values would make
+        the start section, so a wrong one is caught here and not a lap later.
+
+        WHY THIS IS WORTH A STARTUP BLOCK. The field is 90-degree rotationally
+        symmetric, so the lidar cannot tell its four quadrants apart; only the
+        compass can, and only once somebody has told it which way the robot is
+        pointing. Get that wrong by a multiple of 90 and NOTHING complains -
+        the pose is confident, the scan matches, the lap drives - but every
+        quantity read off the map is rotated by the same amount: the lap
+        direction, the start section, where the bay is, and the projection
+        that counts the lap. The round then ends a quarter, half or three
+        quarters of a lap from where it should, which is the "stops in the
+        wrong sector" this is here to prevent.
+
+        It cannot be measured from the robot. The only thing that knows which
+        section the bay is really in is the person who put it there, so this
+        prints the four answers and lets them pick - one run, not four.
+        """
+        current = self.setting("startup.start_heading_deg")
+        if current is None or self._start_point is None:
+            return
+        x, y = self._start_point
+        print("  start_heading_deg -> which section the bay comes out in:")
+        for candidate in (0.0, 90.0, 180.0, 270.0):
+            turn = math.radians(candidate - float(current))
+            # Clockwise, matching the heading convention: +90 takes east to
+            # south, which is what changing this setting actually does.
+            rx = x * math.cos(turn) + y * math.sin(turn)
+            ry = -x * math.sin(turn) + y * math.cos(turn)
+            section = section_of(rx, ry, self.context.nav.map)
+            mark = "  <- set now" if candidate == float(current) else ""
+            print(f"    {candidate:5.0f} -> {str(section):>5}{mark}")
+        print("  If the bay is not really in the section marked above, set "
+              "startup.start_heading_deg to the value beside the section it IS "
+              "in. Everything else - the lap direction, the lap counter, where "
+              "the round stops - follows from this one number.")
 
     def _bay_ahead_mm(self):
         """
@@ -880,8 +1035,21 @@ class FinalTask(PathDrivingTask):
         """
         if not self.setting("parking.enabled"):
             return None
-        if self.distance_driven < self._park_after_mm():
-            return None                      # laps not done - keep driving
+
+        # ARMED ONCE, ARMED FOR GOOD. distance_driven is signed - reversing
+        # counts backwards, deliberately, so the lap counter cannot be run up
+        # by shuffling - and the park reverses. Without the latch the first
+        # reverse leg carries it back under the threshold, this returns None,
+        # pure pursuit gets the wheels and drives forward, the threshold is
+        # crossed again and the park resumes: the robot sits in one spot
+        # alternating between the two for the rest of the round. That is
+        # exactly what the mat run did, at 55 forward and -60 back on
+        # alternating ticks. The docstring above always claimed the laps
+        # ending was one-way; this is what makes it true.
+        if not self._park_armed:
+            if self.distance_driven < self._park_after_mm():
+                return None                  # laps not done - keep driving
+            self._park_armed = True
 
         # ---- backing up between attempts ---------------------------------
         if self._park_backing_mm > 0.0:
@@ -895,7 +1063,7 @@ class FinalTask(PathDrivingTask):
         if self._parking is None:
             self._start_parking()
 
-        if self._parking.phase == ParkingSequence.ABORTED:
+        if self._parking.phase == BayPark.ABORTED:
             return self._retry_the_park()
 
         if self._parking.finished:
@@ -995,7 +1163,7 @@ class FinalTask(PathDrivingTask):
         if not self.setting("parking.enabled"):
             return self.laps_done >= self.laps_goal
         return (self._parking is not None
-                and self._parking.phase == ParkingSequence.DONE)
+                and self._parking.phase == BayPark.DONE)
 
     # ========================================================================
     # REPORTING
@@ -1032,6 +1200,8 @@ class FinalTask(PathDrivingTask):
         # useful about what the robot is doing - report the manoeuvre's.
         if self._unparking is not None and self._unparking.active:
             return f"{super().status()}  {self._unparking.status_line()}"
+        if self._relocalise is not None and self._relocalise.active:
+            return f"{super().status()}  {self._relocalise.status_line()}"
         if self._parking is not None and self._parking.active:
             # The park's own trace: which phase, what the side lidar reads and
             # how square the body is to the wall. Tuning the five distances by
