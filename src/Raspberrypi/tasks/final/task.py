@@ -176,6 +176,7 @@ class FinalTask(PathDrivingTask):
             horizon_mm=float(self.setting("goals.horizon_mm")),
             route_spacing_mm=float(self.setting("goals.route_spacing_mm")),
             max_gates=int(self.setting("goals.max_gates")),
+            allow_looping_path=bool(self.setting("goals.allow_looping_path")),
             approach_mm=float(self.setting("goals.approach_mm")),
             exit_mm=float(self.setting("goals.exit_mm")),
             align_mm=float(self.setting("goals.align_mm")))

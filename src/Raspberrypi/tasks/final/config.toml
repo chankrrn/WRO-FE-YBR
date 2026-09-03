@@ -259,6 +259,11 @@ approach_mm = 200.0
 # line. Raise it if the robot clips pillars with its back end on the way out.
 exit_mm = 330.0
 
+# Allow a Dubins path to loop around itself to buy clearance. False rejects
+# loop-shaped solutions and keeps the robot on the shortest non-looping route
+# it can find; it then reports a compromised pass rather than circling.
+allow_looping_path = false
+
 # How far BEFORE the pass to name a pose carrying the PASS's heading, so the
 # run-in is a straight line and the robot arrives already pointing the way it
 # will leave.

@@ -331,8 +331,8 @@ class GoalPlanner:
                  robot_rear_mm=90.0, clearance_mm=150.0,
                  min_clearance_mm=45.0, wall_clearance_mm=40.0,
                  horizon_mm=2200.0, route_spacing_mm=550.0, max_gates=3,
-                 approach_mm=450.0, exit_mm=350.0, align_mm=0.0,
-                 step_mm=SWEEP_STEP_MM):
+                 allow_looping_path=True, approach_mm=450.0, exit_mm=350.0,
+                 align_mm=0.0, step_mm=SWEEP_STEP_MM):
         """
         I/O:
             min_radius_mm: tightest arc a plan may contain. Pass the robot's
@@ -376,6 +376,7 @@ class GoalPlanner:
         self.horizon_mm = float(horizon_mm)
         self.route_spacing_mm = float(route_spacing_mm)
         self.max_gates = int(max_gates)
+        self.allow_looping_path = bool(allow_looping_path)
         self.approach_mm = float(approach_mm)
         self.exit_mm = float(exit_mm)
         self.align_mm = float(align_mm)
@@ -971,17 +972,18 @@ class GoalPlanner:
                 BLOCK_RADIUS_MM + self.half_width_mm):
             _, turned = dubins_cost(cursor, (goal.x, goal.y, goal.heading),
                                     self.min_radius_mm)
-            if turned <= LOOP_TURN_DEG:
-                segment = plan_dubins(cursor, (goal.x, goal.y, goal.heading),
-                                      self.min_radius_mm, step_mm=search_step)
-                if segment is not None and len(segment.points) >= 2:
-                    first = goal
-                    score = min(self.clearances(segment.points,
-                                                segment.headings, obstacles))
-                    if score > 0.0:
-                        return self._draw(cursor, goal)
-                    best = (score, goal)
-                    swept += 1
+            if self.allow_looping_path or turned <= 180.0:
+                if turned <= LOOP_TURN_DEG:
+                    segment = plan_dubins(cursor, (goal.x, goal.y, goal.heading),
+                                          self.min_radius_mm, step_mm=search_step)
+                    if segment is not None and len(segment.points) >= 2:
+                        first = goal
+                        score = min(self.clearances(segment.points,
+                                                    segment.headings, obstacles))
+                        if score > 0.0:
+                            return self._draw(cursor, goal)
+                        best = (score, goal)
+                        swept += 1
 
         for offset, clearance, turn, shift in self._attempts(goal):
             if shift < 0.0 and -shift > room:
@@ -1010,6 +1012,8 @@ class GoalPlanner:
             _, turned = dubins_cost(
                 cursor, (candidate.x, candidate.y, candidate.heading),
                 self.min_radius_mm)
+            if not self.allow_looping_path and turned > 180.0:
+                continue
             if turned > LOOP_TURN_DEG:
                 continue
 
