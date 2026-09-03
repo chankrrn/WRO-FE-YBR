@@ -455,6 +455,20 @@ wall_distance_mm = 450.0
 wall_gain = 0.3
 wall_max_steer = 30.0
 
+# SIMPLE SCRIPTED PARKING SEQUENCE
+# This is the replacement routine requested for the WRO Future Engineering bay
+# manoeuvre. Tune these on the mat in order: the bay wall approach, the forward
+# legs, then the reverse and the final straighten-out.
+straighten_to_wall_mm = 180.0
+forward_distance_mm = 140.0
+turn_opposite_deg = 30.0
+forward_to_middle_mm = 260.0
+reverse_away_mm = 200.0
+middle_straighten_after_mm = 80.0
+final_turn_deg = 28.0
+final_turn_distance_mm = 180.0
+final_straighten_mm = 70.0
+
 # 2. which lidar sector watches the wall. The sign is applied for you - it
 #    looks at whichever side the wall is on. Narrow it if the mast or the
 #    camera clips the beam.

@@ -207,6 +207,20 @@ DEFAULT_TIMEOUT_S = 45.0
 
 MIN_MOVE_SPEED = 55             # below this the wheels do not turn at all
 
+# Simple scripted park sequence: straighten to the wall, drive forward,
+# turn to the opposite side of the bay, drive forward to the middle island,
+# reverse away from it, turn at angle, then straighten. These are the values
+# to tune on the mat and keep in the final task config.
+STRAIGHTEN_TO_WALL_MM = 180.0
+FORWARD_DISTANCE_MM = 140.0
+TURN_OPPOSITE_DEG = 30.0
+FORWARD_TO_MIDDLE_MM = 260.0
+REVERSE_AWAY_MM = 200.0
+FINAL_TURN_DEG = 28.0
+FINAL_TURN_DISTANCE_MM = 180.0
+FINAL_STRAIGHTEN_MM = 70.0
+MIDDLE_STRAIGHTEN_AFTER_MM = 80.0
+
 
 def _valid(distance):
     return (distance is not None and not math.isnan(distance)
@@ -252,6 +266,15 @@ class BayPark:
                  wheelbase_mm=165.0,
                  max_road_wheel_deg=50.0,
                  turn_in_deg=90.0,
+                 straighten_to_wall_mm=STRAIGHTEN_TO_WALL_MM,
+                 forward_distance_mm=FORWARD_DISTANCE_MM,
+                 turn_opposite_deg=TURN_OPPOSITE_DEG,
+                 forward_to_middle_mm=FORWARD_TO_MIDDLE_MM,
+                 reverse_away_mm=REVERSE_AWAY_MM,
+                 middle_straighten_after_mm=MIDDLE_STRAIGHTEN_AFTER_MM,
+                 final_turn_deg=FINAL_TURN_DEG,
+                 final_turn_distance_mm=FINAL_TURN_DISTANCE_MM,
+                 final_straighten_mm=FINAL_STRAIGHTEN_MM,
                  speed=55, reverse_speed=60,
                  mm_per_s_at_full=390.0,
                  min_move_speed=MIN_MOVE_SPEED,
@@ -314,6 +337,15 @@ class BayPark:
         self.wheelbase_mm = float(wheelbase_mm)
         self.max_road_wheel_deg = float(max_road_wheel_deg)
         self.turn_in_deg = float(turn_in_deg)
+        self.straighten_to_wall_mm = float(straighten_to_wall_mm)
+        self.forward_distance_mm = float(forward_distance_mm)
+        self.turn_opposite_deg = float(turn_opposite_deg)
+        self.forward_to_middle_mm = float(forward_to_middle_mm)
+        self.reverse_away_mm = float(reverse_away_mm)
+        self.middle_straighten_after_mm = float(middle_straighten_after_mm)
+        self.final_turn_deg = float(final_turn_deg)
+        self.final_turn_distance_mm = float(final_turn_distance_mm)
+        self.final_straighten_mm = float(final_straighten_mm)
         self.speed = int(speed)
         self.reverse_speed = int(reverse_speed)
         self.mm_per_s_at_full = float(mm_per_s_at_full)
@@ -455,21 +487,7 @@ class BayPark:
     # 1. FIND - drive the wall until the near blade is placed
     # ------------------------------------------------------------------
     def _find(self, dt):
-        """
-        Drive the wall until the near blade is found, then place the bay's
-        middle from it directly and move on to SETTLE.
-
-        ONE BLADE IS ENOUGH - see the module docstring for why a second one
-        is not worth chasing. Two ways to get it:
-
-            the side beam sees it (_edges), which wins whenever it fires,
-                because a measured position beats a dead-reckoned one
-
-            bay_ahead_mm runs out first, which is the same backstop the
-                round's lap counter already provides everywhere else in
-                this task - see FinalTask._bay_ahead_mm. Placed at the AXLE,
-                not the beam, so it needs no lidar_ahead_mm correction.
-        """
+        """Straighten the heading while driving up to the bay wall."""
         self._advance(self.speed, dt)
         self._bank_wall_heading()
 
@@ -477,16 +495,21 @@ class BayPark:
         if _valid(front) and front < self.front_stop_mm:
             return self._abort("a corner arrived before the bay did")
 
-        if self._edges(dt):
-            self._place_bay(self.near_blade_s)
-            return self._follow_the_wall()
-        if self.bay_ahead_mm is not None and self.s_mm >= self.bay_ahead_mm:
-            print(f"Park: no blade seen in {self.s_mm:.0f}mm, but the lap "
-                  f"counter puts the bay here - placing it on that alone")
-            self._place_bay(self.s_mm)
-            return self._follow_the_wall()
+        if (_valid(self.side_mm)
+                and self.side_mm < self.road_middle_mm - self.blade_step_mm):
+            print(f"Park: bay wall reached at {self.side_mm:.0f}mm; moving to the "
+                  f"simple scripted park")
+            self._enter(self.SETTLE)
+            return (0.0, 0)
+
+        if self.leg_mm >= self.straighten_to_wall_mm:
+            print(f"Park: reached the wall approach distance of "
+                  f"{self.straighten_to_wall_mm:.0f}mm")
+            self._enter(self.SETTLE)
+            return (0.0, 0)
+
         if self.leg_mm >= self.find_max_mm:
-            return self._abort(f"no bay in {self.leg_mm:.0f}mm of wall")
+            return self._abort(f"no bay wall found in {self.leg_mm:.0f}mm")
         return self._follow_the_wall()
 
     def _place_bay(self, near_blade_s):
@@ -519,183 +542,76 @@ class BayPark:
     # 3. SETTLE - the one pose the whole open-loop half is measured from
     # ------------------------------------------------------------------
     def _settle(self, dt):
-        """
-        Middle of the road, square to the wall, physically clear of the bay.
-
-        "PAST THE BAY" IS AN ODOMETRY FACT HERE, NOT A GUESS FROM THE BEAM.
-        An earlier version asked the side beam whether it was "on clean
-        wall" - side_mm not far BELOW the target - to decide when it was
-        safe to test squareness. That only guards the CLOSE side: a blade
-        reading nearer than the wall. The open bay mouth reads FURTHER than
-        the wall instead, which passes that same test, so nothing stopped
-        SETTLE from taking a wide-open reading over the bay as "clean" and
-        squaring up against it - which is squaring up against a bay wall
-        180mm further back than intended, not the outer wall.
-        Now that bay_centre_s is known precisely from the one blade FIND
-        placed it from (see _place_bay), there is no need to infer "clear of
-        the bay" from the beam at all: the axle's own tracked position says
-        so directly, the same way the reverse budget elsewhere in this file
-        trusts odometry over a sensor that might be looking at the wrong
-        thing. The beam is still used for STEERING once clear (below) and
-        for freezing on an actual close blade in the meantime - just not for
-        deciding when squareness may be tested.
-
-        THE BAR COMES DOWN AS THE ROAD RUNS OUT ONCE CLEAR. Fixed tolerances
-        make squaring all-or-nothing - either the follow gets inside them or
-        the robot walks the whole allowance and backs in from wherever it
-        got to. The gate widens with distance instead, so a robot that is
-        already nearly right stops immediately and only a crooked one
-        spends the road.
-        """
+        """Drive forward, straightening the heading before the turn away."""
         self._advance(self.speed, dt)
-        self._bank_wall_heading()
-
-        front = self._front_range()
-        if _valid(front) and front < self.front_stop_mm:
-            return self._abort("ran out of wall to square up on")
-
-        clear_of_bay_s = (self.bay_centre_s + self.bay_mm / 2.0
-                          + WALL_THICKNESS_MM + PAST_BAY_MARGIN_MM)
-        if self.s_mm < clear_of_bay_s:
-            # Still over the bay by dead reckoning, whatever the beam says.
-            # A close reading here is a real blade - freeze rather than
-            # chase it; a far one is the open mouth - just as unsteerable,
-            # frozen the same way rather than trusted as "clean".
-            if not self._on_clean_wall():
-                self._settle_blind_mm += self._step(self.speed, dt)
-            return (self._steer, self._drive(self.speed))
-
-        slack = min(1.0, self.leg_mm / max(1.0, self.settle_max_mm)) * self.settle_relax
-        tolerance = self.settle_tolerance_mm * (1.0 + slack)
-        angle = self.settle_angle_deg * (1.0 + slack)
-        square = (_valid(self.side_mm)
-                  and abs(self.side_mm - self.road_middle_mm) < tolerance
-                  and not math.isnan(self.wall_angle_deg)
-                  and abs(self.wall_angle_deg) < angle)
-
-        if square or self.leg_mm >= self.settle_max_mm:
-            if not square:
-                print(f"Park: never settled in {self.leg_mm:.0f}mm "
-                      f"(side {self.side_mm:.0f}, yaw "
-                      f"{self.wall_angle_deg:+.0f}) - backing up anyway")
-            # THE COMPASS NOW, NOT THE BANKED AVERAGE - see the module
-            # docstring's note on a real run where wall_angle_deg read NaN
-            # through nearly all of FIND and SETTLE (the side arc kept
-            # missing angle_min_points, likely pillars near the wall
-            # crowding the wide sector), so _bank_wall_heading's average
-            # never got a single sample and hold_heading stayed None the
-            # whole manoeuvre. _hold_heading() treats hold_heading=None as
-            # "no target" and returns 0deg of correction - silently, so BACK
-            # steered dead centre and let the real mechanical yaw drift
-            # wherever it wanted, uncorrected, which read on the mat as
-            # "just backs at the wrong angle". The live compass heading, at
-            # the one instant SETTLE actually needs it, does not have that
-            # dependency - it is what TURN_IN already trusts for the exact
-            # same reason (_turn_from below). Only fall back to whatever the
-            # averaged bank managed to collect if the compass itself is down
-            # at this exact tick.
-            live_heading = self._heading()
-            if live_heading is not None:
-                self.hold_heading = live_heading
-            radius = self.turn_radius_mm()
-            self.back_target_s = self.bay_centre_s - radius
-            togo = self.s_mm - self.back_target_s
-            if togo <= 0:
-                return self._abort(f"the turn-in point is {-togo:.0f}mm "
-                                   f"AHEAD - the settle overshot it")
-            print(f"Park: square at {self.side_mm:.0f}mm off the wall, yaw "
-                  f"{self.wall_angle_deg:+.1f} - backing up {togo:.0f}mm to "
-                  f"one radius ({radius:.0f}mm) short of the bay's middle")
+        if self.leg_mm >= self.forward_distance_mm:
+            print(f"Park: forward {self.forward_distance_mm:.0f}mm complete; "
+                  f"turning to the opposite side of the bay")
+            self._turn_from = self._heading()
             self._enter(self.BACK)
             return (0.0, 0)
-        return self._follow_the_wall()
+
+        # Active heading correction while walking this extra forward leg. This
+        # continuously steers back toward the wall heading instead of merely
+        # holding the last command, which is what lets a small yaw error get
+        # corrected before the opposite-side turn starts.
+        heading = self._heading()
+        if heading is not None and self.hold_heading is not None:
+            error = angle_difference(heading, self.hold_heading)
+            steer = clamp(-self.heading_gain * error,
+                          -HEADING_MAX_STEER, HEADING_MAX_STEER)
+            steer = clamp(steer, -self.max_steer_seen, self.max_steer_seen)
+            return (steer, self._drive(self.speed))
+        return (self._hold_heading(), self._drive(self.speed))
 
     # ------------------------------------------------------------------
     # 4. BACK - straight, on the compass, to the turn-in point
     # ------------------------------------------------------------------
     def _back(self, dt):
-        """
-        Reverse to the turn-in point, holding the heading SETTLE arrived on.
-
-        THE STEERING SIGN IS NEGATED HERE, and this is the one place in the
-        manoeuvre where that is true. Reversing inverts what the wheels do to
-        the heading: on right lock going forward the nose comes right, going
-        backward it goes left. A correction written for the forward case and
-        used here does not merely fail to correct, it drives the error the
-        other way - which is a robot that leaves the reverse pointing at the
-        bay instead of along the wall.
-        """
-        self._advance(-self.reverse_speed, dt)
-        if self.s_mm <= self.back_target_s:
-            self._turn_from = self._heading()
-            self.turned_deg = 0.0
-            print(f"Park: at the turn-in point - turning "
-                  f"{self.turn_in_deg:.0f}deg toward the bay")
+        """Turn away from the bay, then straighten the heading as it drives on."""
+        self._advance(self.speed, dt)
+        if self.leg_mm >= self.forward_to_middle_mm:
+            print(f"Park: reached the middle-island approach distance of "
+                  f"{self.forward_to_middle_mm:.0f}mm; backing away")
             self._enter(self.TURN_IN)
             return (0.0, 0)
-        return (-self._hold_heading(), self._drive(-self.reverse_speed))
+
+        turn_steer = clamp(-self.wall_side * self.turn_opposite_deg,
+                           -self.max_steer_seen, self.max_steer_seen)
+        straighten_steer = self._hold_heading()
+        if self.leg_mm < self.middle_straighten_after_mm:
+            steer = turn_steer
+        else:
+            steer = straighten_steer
+        return (steer, self._drive(self.speed))
 
     # ------------------------------------------------------------------
     # 5. TURN_IN - full lock toward the wall, counted on the compass
     # ------------------------------------------------------------------
     def _turn_in(self, dt):
-        """
-        Ninety degrees toward the bay, at full lock, going FORWARD.
-
-        Forward, not reversing: the nose is what has to end up in the bay, so
-        it is the nose that goes round. The axle swings one radius toward the
-        wall and one radius along it, which is exactly the radius BACK left
-        in hand - so the turn finishes level with the bay's middle.
-        """
-        self._advance(self.speed, dt)
-        self.turned_deg = self._turned_since(self._turn_from, dt)
-        if abs(self.turned_deg) >= self.turn_in_deg:
-            print(f"Park: round {self.turned_deg:.0f}deg - driving in")
-            # DRIVE_IN has to hold THIS heading, not the wall-following one
-            # BACK was holding a moment ago - it is 90 degrees off it by
-            # construction. Reusing hold_heading unchanged here was a real
-            # bug caught end-to-end: DRIVE_IN would steer to UNDO the turn
-            # it had just made, walking the heading back toward the wall's
-            # own instead of holding square into the bay.
-            if self._turn_from is not None:
-                self.hold_heading = ((self._turn_from
-                                      + self.wall_side * self.turn_in_deg)
-                                     % 360.0)
+        """Reverse away from the middle island until clear of it."""
+        self._advance(-self.reverse_speed, dt)
+        if self.leg_mm >= self.reverse_away_mm:
+            print(f"Park: reversed {self.reverse_away_mm:.0f}mm away from the "
+                  f"middle island; turning into the final angle")
             self._enter(self.DRIVE_IN)
             return (0.0, 0)
-        return (self._lock_toward_the_wall(), self._drive(self.speed))
+        return (0.0, self._drive(-self.reverse_speed))
 
     # ------------------------------------------------------------------
     # 6. DRIVE_IN - straight in until the nose is off the wall
     # ------------------------------------------------------------------
     def _drive_in(self, dt):
-        """
-        Forward into the bay until the NOSE is nose_stop_mm off the wall.
-
-        The beam is not the nose. The lidar stands lidar_ahead_mm forward of
-        the axle and the nose is robot_front_mm forward of it, so the lidar
-        sits (robot_front - lidar_ahead) BEHIND the nose and reads that much
-        further than the gap being aimed for. Subtracting it is the whole
-        difference between stopping 20mm off the wall and hitting it.
-        """
+        """Turn at an angle for the final exit leg and then straighten out."""
         self._advance(self.speed, dt)
-        nose_to_beam = self.robot_front_mm - self.lidar_ahead_mm
-        stop_at = self.nose_stop_mm + nose_to_beam
-        front = self._front_range()
-        if _valid(front) and front <= stop_at:
-            print(f"Park: parked - nose {front - nose_to_beam:.0f}mm off the "
-                  f"wall after {self.leg_mm:.0f}mm in")
-            if self.wiggle_steps:
-                self._wiggle_index = 0
-                print(f"Park: wiggling - {len(self.wiggle_steps)} step(s)")
-                self._enter(self.WIGGLE)
-            else:
-                self.phase = self.DONE
+        if self.leg_mm >= self.final_turn_distance_mm:
+            print(f"Park: final turn complete after {self.final_turn_distance_mm:.0f}mm; "
+                  f"straightening forward")
+            self._enter(self.WIGGLE)
             return (0.0, 0)
-        if self.leg_mm > self.road_middle_mm + 200.0:
-            return self._abort(f"drove {self.leg_mm:.0f}mm in and the wall "
-                               f"never came - the turn missed the bay")
-        return (self._hold_heading(), self._drive(self.speed))
+        steer = clamp(self.wall_side * self.final_turn_deg,
+                      -self.max_steer_seen, self.max_steer_seen)
+        return (steer, self._drive(self.speed))
 
     # ------------------------------------------------------------------
     # 7. WIGGLE - optional, off unless wiggle_steps is non-empty. Drives the
@@ -703,39 +619,13 @@ class BayPark:
     # then DONE.
     # ------------------------------------------------------------------
     def _wiggle(self, dt):
-        """
-        Drive wiggle_steps in order - each one its own steer angle and
-        distance, one shared speed (wiggle_speed) for every leg, direction
-        per leg from its own "reverse" flag.
-
-        NOT closed-loop, same as BACK/TURN_IN/DRIVE_IN: this does not read
-        the side beam or correct toward a target, it just drives the list.
-        Getting it square or centred is entirely on however the steps were
-        written - there is no feedback here to paper over a bad one.
-
-        Each leg is bounded by odometry alone (self.leg_mm against the
-        step's own distance_mm), the same pattern BACK and TURN_IN already
-        use for legs nothing can measure the end of directly.
-        """
-        if self._wiggle_index >= len(self.wiggle_steps):
+        """Drive a short final straight segment to settle the heading."""
+        self._advance(self.speed, dt)
+        if self.leg_mm >= self.final_straighten_mm:
+            print(f"Park: fully straightened after {self.final_straighten_mm:.0f}mm")
             self.phase = self.DONE
             return (0.0, 0)
-
-        step = self.wiggle_steps[self._wiggle_index]
-        speed = -self.wiggle_speed if step["reverse"] else self.wiggle_speed
-        self._advance(speed, dt)
-
-        if self.leg_mm >= step["distance_mm"]:
-            self._wiggle_index += 1
-            self._enter(self.WIGGLE)
-            if self._wiggle_index >= len(self.wiggle_steps):
-                print(f"Park: wiggle done after {len(self.wiggle_steps)} "
-                      f"step(s)")
-                self.phase = self.DONE
-                return (0.0, 0)
-
-        steer = clamp(step["steer_deg"], -self.max_steer_seen, self.max_steer_seen)
-        return (steer, self._drive(speed))
+        return (0.0, self._drive(self.speed))
 
     # ------------------------------------------------------------------
     # STEERING
