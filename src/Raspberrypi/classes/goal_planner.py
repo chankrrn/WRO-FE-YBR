@@ -91,7 +91,17 @@ SPAN_MARGIN = 1.35
 # sharpest thing the plan ever contains is a 90-degree corner and a pass
 # either side of it - so this is a clean test for "that goal cannot be met
 # from here". See _chain.
-LOOP_TURN_DEG = 270.0
+#
+# 200, not the 270 this was first set to. 270 is inside the failure it is
+# meant to exclude: a goal a hundred-odd mm ahead needs most of a circle to
+# reach, and measured over 3000 random layouts every such path came out
+# between 255 and 270 - under the gate, so accepted, and then PREFERRED,
+# because a circle sweeps wide of the pillars and therefore scores clear.
+# Legitimate segments are nowhere near: their 99th percentile turn is 163.
+# Swept end to end, every value from 240 down to 160 removes the last of the
+# circles without changing a single scenario verdict or losing one reported-ok
+# plan, so this sits in the middle of that plateau rather than at either edge.
+LOOP_TURN_DEG = 200.0
 
 # How many progressively tighter passes a pillar's goal is retried at when the
 # one it wanted turns out to be unreachable from where the robot is. They run
@@ -331,8 +341,8 @@ class GoalPlanner:
                  robot_rear_mm=90.0, clearance_mm=150.0,
                  min_clearance_mm=45.0, wall_clearance_mm=40.0,
                  horizon_mm=2200.0, route_spacing_mm=550.0, max_gates=3,
-                 allow_looping_path=True, approach_mm=450.0, exit_mm=350.0,
-                 align_mm=0.0, step_mm=SWEEP_STEP_MM):
+                 approach_mm=450.0, exit_mm=350.0, align_mm=0.0,
+                 step_mm=SWEEP_STEP_MM):
         """
         I/O:
             min_radius_mm: tightest arc a plan may contain. Pass the robot's
@@ -376,7 +386,6 @@ class GoalPlanner:
         self.horizon_mm = float(horizon_mm)
         self.route_spacing_mm = float(route_spacing_mm)
         self.max_gates = int(max_gates)
-        self.allow_looping_path = bool(allow_looping_path)
         self.approach_mm = float(approach_mm)
         self.exit_mm = float(exit_mm)
         self.align_mm = float(align_mm)
@@ -947,10 +956,12 @@ class GoalPlanner:
             return: (goal actually used, sampled segment), or (None, None)
         """
         # How much lap there is between where this segment starts and the goal
-        # it aims at. A backward shift may not eat all of it - see
-        # MIN_SEGMENT_MM.
+        # it aims at. Signed: NEGATIVE means the goal is already behind the
+        # pose this segment starts from, which happens without anything being
+        # shifted at all - two pillars close together put the second one's
+        # pass goal behind the first one's exit pose. See the floor below.
         here, _ = self.path.project(cursor[0], cursor[1], direction)
-        room = self.path.gap(here, goal.progress) - MIN_SEGMENT_MM
+        lap_room = self.path.gap(here, goal.progress)
         search_step = self.step_mm * SEARCH_STEP_FACTOR
 
         best = None                     # (score, candidate)
@@ -966,27 +977,47 @@ class GoalPlanner:
         # align_mm off this is not on the path and the round behaves exactly
         # as it did. The same overlap prune applies as everywhere else: a pose
         # already inside the pillar is not a candidate however it was built.
+        # `lap_room > 0.0` for the same reason the attempts loop below tests
+        # it: this branch bypasses _attempts entirely, so without it a goal
+        # behind the cursor is drawn HERE instead and the guard below never
+        # gets to see it.
         translated = self.align_mm > 0.0
-        if translated and goal.obstacle is not None and math.hypot(
-                goal.x - goal.obstacle.x, goal.y - goal.obstacle.y) > (
-                BLOCK_RADIUS_MM + self.half_width_mm):
+        if (translated and lap_room > 0.0 and goal.obstacle is not None
+                and math.hypot(goal.x - goal.obstacle.x,
+                               goal.y - goal.obstacle.y)
+                > BLOCK_RADIUS_MM + self.half_width_mm):
             _, turned = dubins_cost(cursor, (goal.x, goal.y, goal.heading),
                                     self.min_radius_mm)
-            if self.allow_looping_path or turned <= 180.0:
-                if turned <= LOOP_TURN_DEG:
-                    segment = plan_dubins(cursor, (goal.x, goal.y, goal.heading),
-                                          self.min_radius_mm, step_mm=search_step)
-                    if segment is not None and len(segment.points) >= 2:
-                        first = goal
-                        score = min(self.clearances(segment.points,
-                                                    segment.headings, obstacles))
-                        if score > 0.0:
-                            return self._draw(cursor, goal)
-                        best = (score, goal)
-                        swept += 1
+            if turned <= LOOP_TURN_DEG:
+                segment = plan_dubins(cursor, (goal.x, goal.y, goal.heading),
+                                      self.min_radius_mm, step_mm=search_step)
+                if segment is not None and len(segment.points) >= 2:
+                    first = goal
+                    score = min(self.clearances(segment.points,
+                                                segment.headings, obstacles))
+                    if score > 0.0:
+                        return self._draw(cursor, goal)
+                    best = (score, goal)
+                    swept += 1
 
         for offset, clearance, turn, shift in self._attempts(goal):
-            if shift < 0.0 and -shift > room:
+            # Every candidate has to lie AHEAD of the pose its segment starts
+            # from, whether or not anything was shifted. A goal behind you is
+            # one Dubins reaches by going all the way round, because a circle
+            # is the shortest thing that gets there - and it arrives disguised
+            # as a valid answer. Testing only the SHIFT missed the case where
+            # the goal was already behind at shift 0, which measured over 3000
+            # random layouts was 13 of the 15 plans that drove a circle.
+            #
+            # The floor is MIN_SEGMENT_MM only for a goal being pulled BACK,
+            # because that constant is about not SPENDING lap room the segment
+            # does not have. A goal at its built progress is required to be
+            # ahead and nothing more: align_mm routinely leaves an align pose
+            # within 150mm of the pass it feeds - 139mm on the plain
+            # one-pillar case - so demanding the full margin there drops
+            # ordinary passes. Near-zero room with a big turn is real, and it
+            # is LOOP_TURN_DEG below that catches it, not this.
+            if lap_room + shift <= (MIN_SEGMENT_MM if shift < 0.0 else 0.0):
                 continue
             candidate = self._goal_at(goal.progress + shift, offset, direction,
                                       goal.obstacle, clearance,
@@ -1012,8 +1043,6 @@ class GoalPlanner:
             _, turned = dubins_cost(
                 cursor, (candidate.x, candidate.y, candidate.heading),
                 self.min_radius_mm)
-            if not self.allow_looping_path and turned > 180.0:
-                continue
             if turned > LOOP_TURN_DEG:
                 continue
 
