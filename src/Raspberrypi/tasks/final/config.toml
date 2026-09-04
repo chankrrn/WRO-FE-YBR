@@ -23,13 +23,19 @@
 # measured from the rear axle's centreline to the middle of the lidar. The
 # localizer casts its rays from here and reports the axle, so this is the one
 # number that turns "where the lidar is" into "where the robot is".
-lidar_ahead_mm = 120.0
+lidar_ahead_mm = 135.0
 
 [laps]
 # ONE LAP, THEN PARK. The round is driven as `uv run python main.py final`
 # with no flags, so this is the number that decides it - --laps still
 # overrides for a one-off.
-goal = 1
+goal = 3
+
+# With parking off the round otherwise drives the full laps.goal x path
+# length. This pulls the finish line back by this many millimetres, so the
+# round can be stopped short of the last bit of track without touching
+# laps.goal itself. 0 = finish at the full distance, as before.
+stop_early_mm = 280.0
 
 [speed]
 # A speed is the RAW PWM duty the Arduino writes (0-255), not a percentage -
@@ -38,14 +44,14 @@ goal = 1
 # about 24% duty and around 234mm/s.
 base = 75
 corner = 65
-lost = 55
-minimum = 55
+lost = 57
+minimum = 57
 # While the planner reports a pass it could not give full clearance to. Every
 # margin that makes a tight pass survivable - the lidar backstop having time
 # to fire, tracking error staying small, the pose staying fresh - is bought
 # with speed, so this is the one knob that helps in every compromised case.
 # Held at speed.minimum, as it was before the reduction.
-compromised = 55
+compromised = 57
 
 [path]
 resolution_mm = 20.0
@@ -53,7 +59,7 @@ resolution_mm = 20.0
 # Gap from the outer wall to the straights. Unset centres the loop in the
 # corridor (500mm to the wall, 500mm to the centre block), which is the most
 # forgiving line and leaves a pass equal room either way.
-wall_margin_mm = 520.0
+wall_margin_mm = 500.0
 
 # Corner radius. Unset takes the biggest that still clears the centre block,
 # which here is 480mm - this is deliberately WIDER than that.
@@ -183,7 +189,7 @@ mm_per_s_at_full = 390.0
 
 # Gap between the robot's BODY and the pillar's near face as it goes past.
 # A request, not a promise - see the header.
-clearance_mm = 325.0
+clearance_mm = 300.0
 
 # Half the robot's own width (centreline to its widest point - wheels,
 # mudguards, whatever sticks out furthest). A MEASUREMENT, not a tuning knob.
@@ -355,7 +361,7 @@ front_sector_deg = 25.0
 # it is right.
 # =============================================================================
 [parking]
-enabled = true
+enabled = false
 
 # ---------------------------------------------------------------------------
 # THE ROUND ITSELF NOW RUNS BayPark (classes/bay_park.py), NOT the six-state
@@ -674,15 +680,15 @@ enabled = true
 # forward_mm is how far to drive on that lock before the racing line takes
 # over.
 reverse_mm = 160.0
-steer_command = 45.0
-forward_mm = 350.0
+steer_command = 40.0
+forward_mm = 380.0
 # Counter-steer for the reverse leg, a MAGNITUDE pointing AWAY from the exit
 # side. Reversing negates yaw rate, so backing up on the opposite lock turns
 # the robot the same way the forward leg will - it leaves the bay mouth with
 # the nose already aimed out, instead of having to develop all that yaw from
 # inside the slot. The tail swings the other way while it does, so 0 (straight
 # back) is the right answer for a bay with no room behind the rear corners.
-reverse_steer_command = 10
+reverse_steer_command = 20
 speed = 70
 reverse_speed = 65
 look_s = 0.6
@@ -711,11 +717,11 @@ timeout_s = 15.0
 # Set relocalise_enabled = false to go back to deriving the lap the instant
 # the exit ends.
 relocalise_enabled = true
-relocalise_mm = 200.0
+relocalise_mm = 300.0
 # Which way to kink. Either sign works - it is the change of heading that
 # helps, not the direction - so pick the one with more room where the robot
 # starts.
-relocalise_steer = 37.0
+relocalise_steer = 42.0
 relocalise_speed = 50
 # Stand still for at least this long, and go when the confidence is back.
 relocalise_settle_s = 1.0

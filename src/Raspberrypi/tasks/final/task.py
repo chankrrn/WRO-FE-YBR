@@ -434,8 +434,15 @@ class FinalTask(PathDrivingTask):
             max_settle_s=float(self.setting("unpark.relocalise_max_settle_s")),
             mm_per_s_at_full=float(self.setting("startup.mm_per_s_at_full")),
             on_settle=self._reread_the_map,
-            # Continue the same curve the exit just turned out on, rather
-            # than a fixed direction that fights it on half the starts.
+            # Kink the way the exit actually turned, not the lap's ccw/cw
+            # sense: self.direction (+1 ccw/-1 cw, RacingLine's convention)
+            # and side (+1 right/-1 left, the steer convention shared by
+            # UnparkController and RelocaliseWalk) are sign-inverted
+            # relative to each other - wall_side is +1 exactly when
+            # direction is +1, and UnparkController.wall_side is -side, so
+            # side == -direction, not direction. Passing self._unparking.side
+            # sidesteps the conversion entirely and reuses the side the exit
+            # was actually measured and driven on.
             side=self._unparking.side)
         print(f"Out of the bay - looking around: "
               f"{self._relocalise.summary()}")
@@ -1161,7 +1168,7 @@ class FinalTask(PathDrivingTask):
             print(f"Stopping: {self._stop_reason}")
             return True
         if not self.setting("parking.enabled"):
-            return self.laps_done >= self.laps_goal
+            return super().is_finished()
         return (self._parking is not None
                 and self._parking.phase == BayPark.DONE)
 

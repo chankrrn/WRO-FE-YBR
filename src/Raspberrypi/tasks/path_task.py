@@ -1287,7 +1287,8 @@ class PathDrivingTask(Task):
         if self._stop_reason:
             print(f"Stopping: {self._stop_reason}")
             return True
-        return self.laps_done >= self.laps_goal
+        early = float(self.setting("laps.stop_early_mm") or 0.0)
+        return self.distance_driven >= self.laps_goal * self.path.length - early
 
     def finish(self):
         super().finish()

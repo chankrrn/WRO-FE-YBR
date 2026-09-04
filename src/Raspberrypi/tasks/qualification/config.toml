@@ -43,6 +43,11 @@ lidar_ahead_mm = 120.0
 [laps]
 goal = 3
 
+# Pulls the finish line back by this many millimetres, so the round can be
+# stopped short of the last bit of track without touching goal itself.
+# 0 = finish at the full laps.goal x path length, as before.
+stop_early_mm = 150.0
+
 [speed]
 # The two that matter. `base` is the straights; `corner` is the sharpest part
 # of a corner, blended in as the path curves. Raise base first, and only raise
@@ -79,7 +84,7 @@ minimum = 30
 # 230: comfortably past the cliff, and the straights still run 770mm from the
 # centre block. Push it back toward 200 to hug the wall again, but not below
 # 180.
-wall_margin_mm = 320.0
+wall_margin_mm = 290.0
 #
 # Corner radius. Leave unset for the biggest that still clears the centre
 # block, and keep it above the robot's turning circle (setup warns if not).
@@ -92,7 +97,7 @@ wall_margin_mm = 320.0
 # opens the corners out. That is very likely an improvement, but it is a
 # change to a round that is already tuned, so it is left as a deliberate
 # choice: delete this line to take it.
-corner_radius_mm = 600.0
+corner_radius_mm = 630.0
 resolution_mm = 20.0
 
 [pursuit]

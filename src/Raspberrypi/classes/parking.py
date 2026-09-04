@@ -2761,7 +2761,7 @@ class RelocaliseWalk:
         # the same curve the bay exit was already sweeping instead of
         # fighting it back the other way.
         self.side = 1 if side is None or side >= 0 else -1
-        self.steer_command = self.side * abs(float(steer_command))
+        self.steer_command = (self.side * abs(float(steer_command))) * -1
         self.speed = int(speed)
         self.settle_s = float(settle_s)
         self.min_confidence = float(min_confidence)
